@@ -1,0 +1,14 @@
+#!/bin/tcsh
+# gfortran -std=legacy -ffixed-form  -w -O3 -o csmodel code/csmain.f code/csodes.f code/csrates.f code/dvode.f code/cssubs.f code/csanalyse.f 
+#g77 -o csmodel csmain.f csodes.f dvode.f cssubs.f csrates.f
+#ifort -o csmodel csmain.f csodes.f dvode.f cssubs.f csrates.f
+
+
+gfortran -c -O2 code/dvode.f -fbounds-check -fno-align-commons
+gfortran -c -O2 code/csmain.f -fbounds-check -fno-align-commons
+gfortran -c -O2 code/csodes.f -fbounds-check -fno-align-commons
+gfortran -c -O2 code/cssubs.f -fbounds-check -fno-align-commons	
+gfortran -c -O2 code/csanalyse.f -fbounds-check -fno-align-commons
+gfortran -c -O2 code/csrates.f -fbounds-check -fno-align-commons
+
+gfortran -o csmodel csmain.o csrates.o dvode.o cssubs.o csodes.o csanalyse.o -fbounds-check -fno-align-commons  -Wimplicit-procedure

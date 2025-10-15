@@ -1,0 +1,48 @@
+#-- Folder paths. Must exist. Must contain $star_name$ subfolders where indicated.
+#   $star_name$ is taken from the ComboCode inputfile.
+#
+#-- Takes full folder paths (when the home of a different user is needed)
+#   Takes subfolders of ~/ when not specifying '/home/user/'
+#   Some ComboCode options require writing permissions, e.g. for gastronoom and 
+#   mcmax, which are model output home folders.
+#
+#-- Naming convention:  g+$name$  -- GASTRoNOoM related
+#                       m+$name$  -- MCMax related
+#                       d+$name$  -- Observational data related
+#                       ll+$name$ -- Line list related
+#
+#-- List as: keyword=path. No comments on the same line!
+#
+#-- ComboCode's home folder is defined as cc.path.home by default
+#   ComboCode's usr folder is defined as cc.path.usr by default
+#   ComboCode's aux folder is defined as cc.path.aux by default
+###############################################################################
+
+#-- Chemistry - CSE home folder
+#chemistry=/Volumes/Seagate/Chemistry/CSE/
+chemistry=/Users/sam/Documents/GitHub/Chemistry/
+
+#csource=Chemistry/CSE/src-InnerPhotons/
+#csource=Chemistry/CSE/src-InnerPhotons-Repsilon/
+#csource=Chemistry/CSE/src-InnerPhotons-Repsilon-NicWest/
+#csource=Chemistry/CSE/src-InnerPhotons-Repsilon-NicWest-C2H/
+
+#-- Chemistry - Dark Cloud home folder
+#chemdc = Chemistry/DC/
+#dcsource = Chemistry/CD/src/
+
+
+
+## Maybe for future use
+
+##-- Folder for IvS Repository data
+#ivsdata=/STER/pieterd/IVSDATA
+##-- Folder for model atmospheres. 
+#atm=/STER/pieterd/IVSDATA/sedtables/modelgrids
+#
+##-- Folder for model atmospheres
+#atm=/STER/pieterd/IVSDATA/sedtables/modelgrids
+##-- Folder for processed model atmospheres used in ComboCode
+#starf=ComboCode/StarFiles
+##-- Folder for processed density profiles. ICC key DENSFILE. 
+#densf=ComboCode/DensFiles

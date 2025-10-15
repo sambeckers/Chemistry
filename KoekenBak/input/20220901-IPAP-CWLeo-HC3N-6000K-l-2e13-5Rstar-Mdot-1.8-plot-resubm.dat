@@ -1,0 +1,206 @@
+###########################
+### INPUT FOR COMBOCODE ###
+###########################
+###################
+# GENERAL INPUT
+###################
+#-- Which codes to run
+CHEMISTRY=1                         	# Perform Forward Chemistry modelling
+SINGLE_SESSION = 0
+
+#-- Output folder management
+
+PATH_CHEMISTRY = src-CWLeo
+
+SRC_CHEMISTRY        = src-CWLeo
+
+#-- Various settings for this CC session
+REPLACE_DB_ENTRY=0                  	# Be very careful with putting this keyword to 1! If a model in a database is found (usually cooling or mcmax), it is replaced by a newly calculated model (also with a new model_id). Any mline, sphinx or pacs models stemming from the same cooling id will also be deleted!!!! Now works with grids as well: Any new calculated model in the grid will NOT be deleted. (hence, if an MCMax model is the same for all models in the grid, it will not be calculated anew every single time)
+
+####################
+# Stellar parameters
+####################
+STAR_NAME                       = cwleo      # Stellar Name (lower cases, no spaces, only SIMBAD name is accepted, greek letters written in full, omicron = o)
+
+
+
+#-- GRAIN PARAMETERS FOR H2 FORMATION AND CR IONISATION
+A_G = 1.0E-5
+X_G = 1.5e-12
+ALBEDO = 0.5
+ZETA = 1
+GAMCO = 3
+AUV_AV = 4.65
+
+
+#-- GAS TEMPERATURE
+TEMPMODE = EPSILON
+EPSILON_TEMP_LAW = 0.55
+T_STAR = 2330.0
+
+R_STAR = 4e13
+R_EPSIL = 4e13
+
+
+#-- DENSITY
+
+MLOSS = 1.8e-5
+VELOCITY = 14.5e5
+
+
+
+#-- RADIUS INFORMATION
+R_INNER_CHEM            = 2.05e14
+R_OUTER_CHEM            = 1e18
+RESOLUTION              = 0.03
+
+
+
+
+! INNER PHOTONS
+
+
+RSCALE = 50
+RDUST = 5.0
+
+TBIN = 6000
+RBIN = 8.14e10
+
+
+#-- CLUMPING PARAMETERS
+
+ISTELLAR  = 1
+IBIN      = 2
+
+
+CLUMPMODE     = POROSITY
+
+FIC           = 0.5
+FVOL          = 0.5
+L             = 2e13;4e13
+
+
+FIC           = 0.5
+FVOL          = 0.5:0.3
+L             = 2e13
+
+FIC           = 0.5:0.45:0.4:0.39:0.38:0.37:0.36:0.35:0.3
+FVOL          = 0.5
+L             = 2e13
+
+
+FIC           = 0.5
+FVOL          = 0.5
+L             = 2e13
+SPECIES_FILE             = rate16_IP_6000K_CWLeo_Agundez2012_Htot.specs;rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5.specs;rate16_IP_6000K_CWLeo_Agundez2012_Htot_HCN_5e-6.specs;rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs
+
+
+
+
+FIC           = 0.5:0.5:0.45:0.44:0.43:0.42:0.41:0.4
+FVOL          = 0.4;0.5
+FVOL          = 0.5
+L             = 2e13
+SPECIES_FILE             = rate16_IP_6000K_CWLeo_Agundez2012_Htot.specs:rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs:rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs:rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs:rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs:rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs:rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs:rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs
+
+
+
+FIC           = 0.5:0.45:0.44:0.43:0.42:0.41:0.4
+FVOL          = 0.5
+L             = 2e13
+SPECIES_FILE             = rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs
+
+
+
+
+ISTELLAR  = 0:0:1:1
+IBIN      = 0:0:2:2
+
+
+
+CLUMPMODE     = SMOOTH:POROSITY:SMOOTH:POROSITY
+
+FIC           = 0.4
+FVOL          = 0.5
+L             = 2e13
+
+
+SPECIES_FILE             = rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs
+
+
+
+#-- INPUT AND OUTPUT FILE NAMES
+
+REACTIONS_FILE           = rate16_IP_2330K_AP_6000K_corr_new_HF.rates
+#SPECIES_FILE             = rate16_IP_6000K_CWLeo_Agundez2012_Htot.specs;rate16_IP_6000K_CWLeo_Agundez2012_Htot_C2H2_2e-5_HCN_5e-6.specs
+
+
+#-- ANALYSE SUBROUTINE
+PERFORM_ROUTINE             = 0
+ROUTINE_RADIUS              = 1e15
+FULL_ANALYSIS               = 0
+SENSITIVITY                 = 0.01
+
+
+
+
+#-- DVODE
+RTOL = 1.0E-5
+ATOL = 1.0E-25
+
+IOUTPUTDVODE       = 0
+
+
+#-- SHIELDING FUNCTIONS CO AND N2
+FILECO                  = co/shield.03.5.69-557-36.dat
+FILEN2                  = n2/Tex_10K_bH2_3km.s-1_bH_5km.s-1_NH_1e+20cm-2.dat
+
+
+####################
+# Analyse CHEMISTRY output 
+####################
+STATISTICS = 0
+CHEMSTATS_MOLECULES=
+
+###################
+# PLOTTING INPUT
+###################
+#-- The following plot input is not required to run. Only include those that you need, if you want to plot something.
+#   Any plot method can be activated by putting PLOT_GAS/DUST_[METHOD] to 1. 
+#   Customisation of the plot can be done by giving the cfg file for Plottin2.plotCols() to the CFG_GAS/DUST_[METHOD] parameter
+#-- Plot input: Chemistry
+
+# PLOT_CHEMISTRY_ABUNDANCE_PROFILES=0
+# CFG_CHEMISTRY_ABUNDANCE_PROFILES=/lhome/mariev/Projects/cfg/plot_abundances_ices.cfg
+
+# PLOT_CHEMISTRY_MONO_LAYERS=0
+
+# PLOT_CHEMISTRY_ABUNDANCE_PROFILES_RESOLUTION=
+# CFG_CHEMISTRY_ABUNDANCE_PROFILES_RESOLUTION=/lhome/mariev/Dropbox/Projects/cfg/plot_abundances_cwleo_res.cfg
+
+# PLOT_CHEMISTRY_ABUNDANCE_PROFILES_COMPONENTS=0
+# CFG_CHEMISTRY_ABUNDANCE_PROFILES_COMPONENTS=/lhome/mariev/Dropbox/Projects/cfg/plot_abundances.cfg
+
+# PLOT_CHEMISTRY_RADIATION_FIELD=
+# CFG_CHEMISTRY_RADIATION_FIELD=/lhome/mariev/Dropbox/Projects/cfg/plot_radfield.cfg
+
+# PLOT_CHEMISTRY_VISUAL_EXTINCTION=
+# CFG_CHEMISTRY_VISUAL_EXTINCTION=#/lhome/mariev/Dropbox/Projects/cfg/plot_av_frame.cfg
+
+# PLOT_CHEMISTRY_PHOTODISSOCIATIONRATE_CO=
+# CFG_CHEMISTRY_PHOTODISSOCIATIONRATE_CO=/home/mariev/Dropbox/Projects/cfg/plot_H_frame.cfg
+
+# PLOT_CHEMISTRY_FULL_ANALYSIS=0
+# CFG_CHEMISTRY_FULL_ANALYSIS=/lhome/mariev/Projects/cfg/plot_fullanalysis.cfg
+
+# PLOT_CHEMISTRY_DESTRUCTION_RATES=0
+# CFG_CHEMISTRY_DESTRUCTION_RATES=/home/mariev/Dropbox/Projects/cfg/plot_destructionrates.cfg
+
+# PLOT_CHEMISTRY_PRODUCTION_RATES=0
+# CFG_CHEMISTRY_PRODUCTION_RATES=/home/mariev/Dropbox/cfg/plot_destructionrates.cfg
+
+# PLOT_CHEMISTRY_NETTO_RATES=
+# CFG_CHEMISTRY_NETTO_RATES=/lhome/mariev/Dropbox/Projects/cfg/plot_destructionrates.cfg
+
+# PLOT_CHEMISTRY_TEMP=
+# CFG_CHEMISTRY_FULL_ANALYSIS_PLOTTING2=/Users/Marie/Projects/rdor/cfg/plot_fullanalysis.cfg

@@ -1,0 +1,25 @@
+! FILE PARAMETERS FOR ENVELOPE MODEL
+! Physical conditions input file      
+averaged_particle_input_1.0dt.txt
+! Reaction file
+./rate12_complex.rates
+! Species file
+./rate12_complex_atomic.specs
+! Binding energies file
+./rate12_binding.dat
+! Reaction parameters file
+./reaction_parameters.txt
+! Grain parameters file
+./grain_parameters.txt
+! Radiation field parameters file
+./radiation_parameters.txt
+! Output abundances file
+model_output_test.dat
+! Output rates file
+model_rates_test.dat
+! Call analyse subroutine (T(RUE) or F(ALSE))?
+F
+! Grid point to run analyse
+0
+! Analyse file
+model_analyse.dat

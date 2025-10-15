@@ -1,0 +1,201 @@
+###########################
+### INPUT FOR COMBOCODE ###
+###########################
+###################
+# GENERAL INPUT
+###################
+#-- Which codes to run
+CHEMISTRY=1                         	# Perform Forward Chemistry modelling
+
+#-- Output folder management
+
+PATH_CHEMISTRY = OutputDec2022-IPVR-Crich
+
+SRC_CHEMISTRY        = src-includeDust-completeSurfaceChemistry-VR-adjustEbind-IPAP
+
+#-- Various settings for this CC session
+REPLACE_DB_ENTRY=0                  	# Be very careful with putting this keyword to 1! If a model in a database is found (usually cooling or mcmax), it is replaced by a newly calculated model (also with a new model_id). Any mline, sphinx or pacs models stemming from the same cooling id will also be deleted!!!! Now works with grids as well: Any new calculated model in the grid will NOT be deleted. (hence, if an MCMax model is the same for all models in the grid, it will not be calculated anew every single time)
+SINGLE_SESSION=1
+
+####################
+# Stellar parameters
+####################
+STAR_NAME                       = cwleo      # Stellar Name (lower cases, no spaces, only SIMBAD name is accepted, greek letters written in full, omicron = o)
+
+
+#-- GRAIN PARAMETERS FOR H2 FORMATION AND CR IONISATION
+A_G = 1e-05
+X_G = 1.5e-12
+ALBEDO = 0.5
+ZETA = 1
+GAMCO = 3
+AUV_AV = 4.65
+
+
+
+#-- PHYSICAL PARAMETERS OF THE CIRCUMSTELLAR ENVELOPE
+R_STAR = 5.0e13
+
+
+#-- GAS TEMPERATURE
+TEMPMODE = EPSILON
+EPSILON_TEMP_LAW = 0.7
+R_EPSIL = 5.0e13
+T_STAR = 2330
+
+
+#-- RADIUS INFORMATION
+R_INNER_CHEM            = 1.02e14
+R_OUTER_CHEM            = 5e17
+RESOLUTION              = 0.03
+
+
+
+#-- DENSITY
+MLOSS = 1e-6
+VELOCITY = 15e5
+VDRIFT = 10e5
+
+
+#-- DUST TEMPERATURE
+T_DUST = 1850
+S_DUST = 0.8
+
+
+
+
+
+#--  ANALYSE SUBROUTINE
+PERFORM_ROUTINE = 0
+ROUTINE_RADIUS = 0
+FULL_ANALYSIS = 0
+SENSITIVITY = 0
+
+
+#--  DVODE
+RTOL = 1e-05
+ATOL = 1.0E-25
+IOUTPUTDVODE = 0
+
+
+#--  CLUMPING PARAMETERS
+CLUMPMODE           = POROSITY
+FIC                 = 0.0;0.1;0.3;0.5
+FVOL                = 0.1;0.3;0.5
+L                   = 5e12;1e13
+
+
+#-- INNER PHOTONS
+ISTELLAR  = 1
+IBIN      = 2
+RSCALE = 50
+RDUST = 2.0
+TBIN = 6000
+RBIN = 8.14e10
+
+
+
+#-- DUST PARAMETERS
+IDGCHEM = 0
+ILH = 0
+IER = 0
+NS                      = 1e15
+NU                      = 1E12 
+NACT                    = 2
+EDIFF_EBIND             = 0.4
+
+#--  GRAIN-SIZE DISTRIBUTION
+IGRAINSIZEDIST = 1
+ISCALEAUV = 1
+AMIN              = 50E-8
+AMAX              = 0.25E-4
+GRAINEXP          = -3.5
+RHODUST           = 3.5
+DTG = 0.002
+
+
+#--  SPUTTERING
+ISPUTTERINGWOITKE = 0
+ISPUTTERINGTIELENS = 0
+SPUTCO = 0
+SPUTN2 = 0
+SPUTFACTORTWO = 0
+
+
+
+#--  RATE VOLATILE TO REFRACTORY
+RATEVR = 0.0
+BRANCH = 0.0
+IGRAINPHOTON = 0
+INCREASEBIND = 0.0
+
+
+
+
+
+
+#-- INPUT AND OUTPUT FILE NAMES
+
+
+REACTIONS_FILE           = rate12_v3_PH_rate16_IP_2330K_AP_6000K.rates
+SPECIES_FILE             = rate12_v3_PH_rate16_IP_2330K_AP_6000K_Crich_mean_Sensitivity_withMetals.specs
+
+BINDING_FILE               = binding/binding_energies_update_catherine_namescatherine.txt
+
+
+#-- SHIELDING FUNCTIONS CO AND N2
+FILECO                  = co/shield.03.5.69-557-36.dat
+FILEN2                  = n2/Tex_10K_bH2_3km.s-1_bH_5km.s-1_NH_1e+20cm-2.dat
+
+
+####################
+# Analyse CHEMISTRY output 
+####################
+STATISTICS = 0
+CHEMSTATS_MOLECULES=
+
+###################
+# PLOTTING INPUT
+###################
+#-- The following plot input is not required to run. Only include those that you need, if you want to plot something.
+#   Any plot method can be activated by putting PLOT_GAS/DUST_[METHOD] to 1. 
+#   Customisation of the plot can be done by giving the cfg file for Plottin2.plotCols() to the CFG_GAS/DUST_[METHOD] parameter
+#-- Plot input: Chemistry
+
+PLOT_CHEMISTRY_ABUNDANCE_PROFILES=0
+CFG_CHEMISTRY_ABUNDANCE_PROFILES=/lhome/mariev/Projects/cfg/plot_abundances_ices.cfg
+
+PLOT_CHEMISTRY_MONO_LAYERS=0
+
+PLOT_CHEMISTRY_ABUNDANCE_PROFILES_RESOLUTION=
+CFG_CHEMISTRY_ABUNDANCE_PROFILES_RESOLUTION=/lhome/mariev/Dropbox/Projects/cfg/plot_abundances_cwleo_res.cfg
+
+
+PLOT_CHEMISTRY_ABUNDANCE_PROFILES_COMPONENTS=0
+CFG_CHEMISTRY_ABUNDANCE_PROFILES_COMPONENTS=/lhome/mariev/Dropbox/Projects/cfg/plot_abundances.cfg
+
+PLOT_CHEMISTRY_RADIATION_FIELD=
+CFG_CHEMISTRY_RADIATION_FIELD=/lhome/mariev/Dropbox/Projects/cfg/plot_radfield.cfg
+
+PLOT_CHEMISTRY_VISUAL_EXTINCTION=
+CFG_CHEMISTRY_VISUAL_EXTINCTION=#/lhome/mariev/Dropbox/Projects/cfg/plot_av_frame.cfg
+
+PLOT_CHEMISTRY_PHOTODISSOCIATIONRATE_CO=
+CFG_CHEMISTRY_PHOTODISSOCIATIONRATE_CO=/home/mariev/Dropbox/Projects/cfg/plot_H_frame.cfg
+
+PLOT_CHEMISTRY_FULL_ANALYSIS=
+CFG_CHEMISTRY_FULL_ANALYSIS=/lhome/mariev/Dropbox/Projects/cfg/plot_fullanalysis.cfg
+
+PLOT_CHEMISTRY_DESTRUCTION_RATES=0
+CFG_CHEMISTRY_DESTRUCTION_RATES=/home/mariev/Dropbox/Projects/cfg/plot_destructionrates.cfg
+
+PLOT_CHEMISTRY_PRODUCTION_RATES=0
+CFG_CHEMISTRY_PRODUCTION_RATES=/home/mariev/Dropbox/cfg/plot_destructionrates.cfg
+
+PLOT_CHEMISTRY_NETTO_RATES=
+CFG_CHEMISTRY_NETTO_RATES=/lhome/mariev/Dropbox/Projects/cfg/plot_destructionrates.cfg
+
+
+PLOT_CHEMISTRY_TEMP=
+CFG_CHEMISTRY_FULL_ANALYSIS_PLOTTING2=/Users/Marie/Projects/rdor/cfg/plot_fullanalysis.cfg
+
