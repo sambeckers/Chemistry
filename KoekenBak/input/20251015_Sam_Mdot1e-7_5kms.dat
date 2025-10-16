@@ -113,11 +113,11 @@ FILEN2                  = n2/Tex_10K_bH2_3km.s-1_bH_5km.s-1_NH_1e+20cm-2.dat
 # Analyse CHEMISTRY output 
 ####################
 #-- ANALYSE SUBROUTINE
-PERFORM_ROUTINE             = 0
+PERFORM_ROUTINE             = 1
 ROUTINE_RADIUS              = 1e15
 FULL_ANALYSIS               = 1
 SENSITIVITY                 = 0.01
-PLOT_CHEMISTRY_FULL_ANALYSIS=0
+PLOT_CHEMISTRY_FULL_ANALYSIS=1
 CFG_CHEMISTRY_FULL_ANALYSIS=/Users/sam/Documents/GitHub/Chemistry/KoekenBak/config/plot_fullanalysis.cfg
 
 STATISTICS = 0
