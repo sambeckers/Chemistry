@@ -11,11 +11,6 @@ from kb import KoekenBak
 from kb import path
 import glob as gl
 
-
-###############################
-### Setting in- and output -###
-###############################
-
 #- Outputfolder where the figure will be saved
 savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
 model1_folder = 'complete_model_Mdot1e-5_15kms'
@@ -93,6 +88,7 @@ def plot_parents(model, model_folder):
           ax.loglog(radius, fracs[mol], color=pane_colors[ipane][imol], linestyle=linestyles[istar])
       
       if istar == len(model.star_grid) - 1:  # Only add labels after all models are plotted
+        # C-rich, O-rich labels
         handles, labels = ax.get_legend_handles_labels()
         handles.append(Line2D([0], [0], color='gray', linestyle='-', label='C-rich'))
         handles.append(Line2D([0], [0], color='gray', linestyle='--', label='O-rich'))
@@ -126,7 +122,7 @@ def plot_daughters(model, model_folder, daughters, rich_type):
         else:
           plt.loglog(radius,fracs[mol],color=colors[imol],linestyle =linestyles[istar])
   
-  # Add custom legend entries for linestyles
+  # C-rich, O-rich labels
   handles, labels = plt.gca().get_legend_handles_labels()
   handles.append(Line2D([0], [0], color='gray', linestyle='-', label='C-rich'))
   handles.append(Line2D([0], [0], color='gray', linestyle='--', label='O-rich'))
