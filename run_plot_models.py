@@ -8,18 +8,23 @@ import matplotlib.cm as cm
 from matplotlib.lines import Line2D
 from kb.modeling.tools import CodeIO
 from kb import KoekenBak
+from kb.tools.io import Database
 from kb import path
 import glob as gl
 
 #- Outputfolder where the figure will be saved
 savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
-model1_folder = 'complete_model_Mdot1e-5_15kms'
-model2_folder = 'complete_model_Mdot1e-7_5kms'
+model1_folder = 'complete_model_Mdot1e-5_15kms_v2'
+# model2_folder = 'complete_model_Mdot1e-7_5kms'
+
+# db  = Database.Database(str(savedirmain / model1_folder / 'Chemistry_models.db'))
+# db.pop('model_2025-10-17h16-58-20')
+# db.sync()
 
 #- Inputfile for KoekenBak
-inputfile1 = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot1e-5_15kms.dat')
+inputfile1 = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot1e-5_15kms_v2.dat')
 
-inputfile2 = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot1e-7_5kms.dat')
+# inputfile2 = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot1e-7_5kms.dat')
 
 ##- Run model
 def run_model(inputfile):
@@ -28,7 +33,7 @@ def run_model(inputfile):
   return model
 
 model1 = run_model(inputfile1)
-model2 = run_model(inputfile2)
+# model2 = run_model(inputfile2)
 
 def phys_params():
   radius = CodeIO.getChemistryPhysPar(folder+'csphyspar_smooth.out','RADIUS') # radius [cm]
@@ -103,7 +108,7 @@ def plot_parents(model, model_folder):
   plt.show()
 
 plot_parents(model1, model1_folder)
-plot_parents(model2, model2_folder)
+# plot_parents(model2, model2_folder)
 
 # Daughters
 daughters_Crich = ['C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N']
@@ -136,6 +141,27 @@ def plot_daughters(model, model_folder, daughters, rich_type):
   plt.show()
 
 plot_daughters(model1, model1_folder, daughters_Crich, 'Crich')
-plot_daughters(model2, model2_folder, daughters_Crich, 'Crich')
+# # plot_daughters(model2, model2_folder, daughters_Crich, 'Crich')
 plot_daughters(model1, model1_folder, daughters_Orich, 'Orich')
-plot_daughters(model2, model2_folder, daughters_Orich, 'Orich')
+# # plot_daughters(model2, model2_folder, daughters_Orich, 'Orich')
+
+# mol = 'C2H2'
+
+# fig = plt.figure()
+# for istar,star in enumerate(model1.star_grid):
+#   folder = os.path.join(path.cout,'models',star['LAST_CHEMISTRY_MODEL'])+'/'  
+#   radius = CodeIO.getChemistryPhysPar(folder+'csphyspar_smooth.out','RADIUS')
+#   fracs = CodeIO.getChemistryAbundances(folder+'csfrac_smooth.out')
+#   plt.loglog(radius,fracs[mol]*2)
+
+molecules = ['C2H2','C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N']
+molecules = ['SiO','SiN', 'SiC', 'OH', 'CN', 'SiOH+']
+fig = plt.figure()
+for istar,star in enumerate(model1.star_grid):
+  for mol in molecules:
+    folder = os.path.join(path.cout,'models',star['LAST_CHEMISTRY_MODEL'])+'/'  
+    radius = CodeIO.getChemistryPhysPar(folder+'csphyspar_smooth.out','RADIUS')
+    fracs = CodeIO.getChemistryAbundances(folder+'csfrac_smooth.out')
+    plt.loglog(radius,fracs[mol]*2, label=mol)
+plt.legend()
+plt.ylim(1e-12)

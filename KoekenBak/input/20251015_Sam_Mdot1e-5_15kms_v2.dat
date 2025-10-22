@@ -11,7 +11,7 @@ SINGLE_SESSION = 0
 
 #-- Output folder management
 PATH_CHEMISTRY = complete_model_Mdot1e-5_15kms_v2
-SRC_CHEMISTRY        = src-CWLeo
+SRC_CHEMISTRY        = src-includeDust-completeSurfaceChemistry-VR-adjustEbind-IPAP
 
 #-- Various settings for this CC session
 REPLACE_DB_ENTRY=0                  	# Be very careful with putting this keyword to 1! If a model in a database is found (usually cooling or mcmax), it is replaced by a newly calculated model (also with a new model_id). Any mline, sphinx or pacs models stemming from the same cooling id will also be deleted!!!! Now works with grids as well: Any new calculated model in the grid will NOT be deleted. (hence, if an MCMax model is the same for all models in the grid, it will not be calculated anew every single time)
@@ -102,7 +102,7 @@ T_STAR = 2330
 R_EPSIL = 4e13
 
 #-- INPUT AND OUTPUT FILE NAMES
-SPECIES_FILE = rate16_IP_6000K_Crich_mean_Htot.specs:rate16_IP_6000K_Orich_mean_Htot.specs
+SPECIES_FILE = rate16_IP_6000K_Crich_mean_Htot.specs
 REACTIONS_FILE = rate12_v3_PH_rate16_IP_2330K_AP_6000K.rates
 BINDING_FILE               = binding/binding_energies_update_catherine_namescatherine.txt
 #-- SHIELDING FUNCTIONS CO AND N2
@@ -113,11 +113,11 @@ FILEN2                  = n2/Tex_10K_bH2_3km.s-1_bH_5km.s-1_NH_1e+20cm-2.dat
 # Analyse CHEMISTRY output 
 ####################
 #-- ANALYSE SUBROUTINE
-PERFORM_ROUTINE             = 1
+PERFORM_ROUTINE             = 0
 ROUTINE_RADIUS              = 1e15
-FULL_ANALYSIS               = 1
+FULL_ANALYSIS               = 0
 SENSITIVITY                 = 0.01
-PLOT_CHEMISTRY_FULL_ANALYSIS= 1
+PLOT_CHEMISTRY_FULL_ANALYSIS= 0
 CFG_CHEMISTRY_FULL_ANALYSIS=/Users/sam/Documents/GitHub/Chemistry/KoekenBak/config/plot_fullanalysis.cfg
 
 STATISTICS = 0
