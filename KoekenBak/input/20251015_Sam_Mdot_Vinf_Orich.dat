@@ -1,0 +1,140 @@
+###########################
+### INPUT FOR COMBOCODE ###
+###########################
+###################
+# GENERAL INPUT
+###################
+#-- Which codes to run
+
+CHEMISTRY=1                         	# Perform Forward Chemistry modelling
+SINGLE_SESSION = 0
+
+#-- Output folder management
+PATH_CHEMISTRY = complete_model_Mdot_Vinf_Orich
+SRC_CHEMISTRY        = src-includeDust-completeSurfaceChemistry-VR-adjustEbind-IPAP
+
+#-- Various settings for this CC session
+REPLACE_DB_ENTRY=0                  	# Be very careful with putting this keyword to 1! If a model in a database is found (usually cooling or mcmax), it is replaced by a newly calculated model (also with a new model_id). Any mline, sphinx or pacs models stemming from the same cooling id will also be deleted!!!! Now works with grids as well: Any new calculated model in the grid will NOT be deleted. (hence, if an MCMax model is the same for all models in the grid, it will not be calculated anew every single time)
+####################
+# Stellar parameters
+####################
+STAR_NAME                       = cwleo      # Stellar Name (lower cases, no spaces, only SIMBAD name is accepted, greek letters written in full, omicron = o)
+
+#-- RADIUS INFORMATION
+R_STAR = 4e13
+RDUST = 5.0
+R_INNER_CHEM            = 2.05e14  #Minstens R_DUST * 1.025 
+R_OUTER_CHEM            = 1e18
+RESOLUTION              = 0.03
+RSCALE = 50
+
+#-- DENSITY
+MLOSS = 1e-5:1e-6:1e-7 #Msun/yr
+VELOCITY = 15e5:5e5:5e5 #cm/s
+
+#--  CLUMPING PARAMETERS
+CLUMPMODE           = SMOOTH #SMOOTH OR POROSITY
+FIC                 = 0 #Interclump density contrast
+FVOL                = 0 #Clump volume filling factor
+L                   = 0 # Size of clumps at stellar surface
+
+#-- COMPANION AND POROSITY
+ISTELLAR  = 0
+IBIN      = 0
+
+#-- INNER PHOTONS
+TBIN = 6000
+RBIN = 8.14e10
+
+#--  SPUTTERING
+ISPUTTERINGWOITKE = 0
+ISPUTTERINGTIELENS = 0
+SPUTCO = 0
+SPUTN2 = 0
+SPUTFACTORTWO = 0
+
+#--  RATE VOLATILE TO REFRACTORY
+RATEVR = 0
+BRANCH = 0
+IGRAINPHOTON = 0
+INCREASEBIND = 0.0
+
+#-- DVODE
+RTOL = 1.0E-5
+ATOL = 1.0E-20
+
+IOUTPUTDVODE       = 0
+
+#-- GRAIN PARAMETERS FOR H2 FORMATION AND CR IONISATION
+A_G = 1.0E-5
+X_G = 1.5e-12
+ALBEDO = 0.5
+ZETA = 1
+GAMCO = 3
+AUV_AV = 4.65
+
+#--  GRAIN-SIZE DISTRIBUTION
+IGRAINSIZEDIST = 1
+ISCALEAUV = 0
+AMIN              = 50E-8
+AMAX              = 0.25E-4
+GRAINEXP          = -3.5
+RHODUST           = 2.24
+DTG = 0.002
+
+#-- DUST PARAMETERS
+IDGCHEM = 0
+ILH = 0
+IER = 0
+NS                      = 1e15
+NU                      = 1E12 
+NACT                    = 2
+EDIFF_EBIND             = 0.4
+
+#-- DUST TEMPERATURE
+T_DUST = 1800
+S_DUST = 0.6
+
+#-- GAS TEMPERATURE
+TEMPMODE = EPSILON
+EPSILON_TEMP_LAW = 0.5
+T_STAR = 2330
+R_EPSIL = 4e13
+
+#-- INPUT AND OUTPUT FILE NAMES
+SPECIES_FILE = rate16_IP_6000K_Orich_mean_Htot.specs
+REACTIONS_FILE = rate12_v3_PH_rate16_IP_2330K_AP_6000K.rates
+BINDING_FILE               = binding/binding_energies_update_catherine_namescatherine.txt
+#-- SHIELDING FUNCTIONS CO AND N2
+FILECO                  = co/shield.03.5.69-557-36.dat
+FILEN2                  = n2/Tex_10K_bH2_3km.s-1_bH_5km.s-1_NH_1e+20cm-2.dat
+
+####################
+# Analyse CHEMISTRY output 
+####################
+#-- ANALYSE SUBROUTINE
+PERFORM_ROUTINE             = 0
+ROUTINE_RADIUS              = 1e15
+FULL_ANALYSIS               = 0
+SENSITIVITY                 = 0.01
+PLOT_CHEMISTRY_FULL_ANALYSIS= 0
+CFG_CHEMISTRY_FULL_ANALYSIS=/Users/sam/Documents/GitHub/Chemistry/KoekenBak/config/plot_fullanalysis.cfg
+
+STATISTICS = 0
+CHEMSTATS_MOLECULES=
+
+###################
+# PLOTTING INPUT
+###################
+#-- The following plot input is not required to run. Only include those that you need, if you want to plot something.
+#   Any plot method can be activated by putting PLOT_GAS/DUST_[METHOD] to 1. 
+#   Customisation of the plot can be done by giving the cfg file for Plottin2.plotCols() to the CFG_GAS/DUST_[METHOD] parameter
+#-- Plot input: Chemistry
+
+PLOT_CHEMISTRY_MONO_LAYERS=0
+
+
+
+
+
+
