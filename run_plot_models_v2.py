@@ -23,7 +23,6 @@ model1_folder = 'complete_model_Mdot1e-5_15kms_v2'
 
 #- Inputfile for KoekenBak
 inputfile1 = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot1e-5_15kms_v2.dat')
-
 # inputfile2 = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot1e-7_5kms.dat')
 
 ##- Run model

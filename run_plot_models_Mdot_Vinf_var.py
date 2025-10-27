@@ -14,16 +14,16 @@ import glob as gl
 
 #- Outputfolder where the figure will be saved
 savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
-# model_folder = 'complete_model_Mdot_Vinf_Crich'
-model_folder = 'complete_model_Mdot_Vinf_Orich'
+model_folder = 'complete_model_Mdot_Vinf_Crich'
+# model_folder = 'complete_model_Mdot_Vinf_Orich'
 
 # db  = Database.Database(str(savedirmain / model_folder / 'Chemistry_models.db'))
 # db.pop('model_2025-10-17h16-58-20')
 # db.sync()
 
 #- Inputfile for KoekenBak
-# inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
-inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
+inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
+# inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
 
 ##- Run model
 def run_model(inputfile):
@@ -72,6 +72,7 @@ colors_daughters = _oranges(np.linspace(0.3, 0.95, len(daughters_Crich)))
 fig, axes = plt.subplots(2, 3, figsize=(16, 9), dpi=300, sharey='row', sharex=True) # Each row will share an y-axis
 for col, ((star), mloss_label, vinf_label) in enumerate(zip(model.star_grid, MLOSS, VELOCITY)):
   folder = os.path.join(path.cout, 'models', star['LAST_CHEMISTRY_MODEL']) + '/'
+  print(folder)
   radius = CodeIO.getChemistryPhysPar(folder+'csphyspar_smooth.out','RADIUS')
   fracs = CodeIO.getChemistryAbundances(folder+'csfrac_smooth.out')
 
