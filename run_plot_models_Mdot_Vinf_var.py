@@ -14,16 +14,16 @@ import glob as gl
 
 #- Outputfolder where the figure will be saved
 savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
-model_folder = 'complete_model_Mdot_Vinf_Crich'
-# model_folder = 'complete_model_Mdot_Vinf_Orich'
+# model_folder = 'complete_model_Mdot_Vinf_Crich'
+model_folder = 'complete_model_Mdot_Vinf_Orich'
 
 # db  = Database.Database(str(savedirmain / model_folder / 'Chemistry_models.db'))
 # db.pop('model_2025-10-17h16-58-20')
-# db.sync()
+# db.sync() 
 
 #- Inputfile for KoekenBak
-inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
-# inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
+# inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
+inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
 
 ##- Run model
 def run_model(inputfile):
@@ -54,7 +54,8 @@ def phys_params():
 # Parent molecules
 parents = ["He", "CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
        "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS", "Mg", "Na", "Fe"]
-daughters_Crich = ['C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N']
+daughters = ['C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
+daughters = ["SiN", "SiC", "OH", "CN", "SiOH+"] # Orich
 
 MLOSS = ["$\dot{M}=10^{-5} M_{\odot} \\rm{yr}^{-1}$", 
          "$\dot{M}=10^{-6} M_{\odot} \\rm{yr}^{-1}$", 
@@ -67,7 +68,7 @@ VELOCITY = ["$v_{\infty}=15 \\rm{km\ s}^{-1}$",
 _reds = mpl.colormaps['tab20b']
 _oranges = mpl.colormaps['Oranges']
 colors_parents = _reds(np.linspace(0, 1, len(parents)))
-colors_daughters = _oranges(np.linspace(0.3, 0.95, len(daughters_Crich)))
+colors_daughters = _oranges(np.linspace(0.3, 0.95, len(daughters)))
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9), dpi=300, sharey='row', sharex=True) # Each row will share an y-axis
 for col, ((star), mloss_label, vinf_label) in enumerate(zip(model.star_grid, MLOSS, VELOCITY)):
@@ -88,7 +89,7 @@ for col, ((star), mloss_label, vinf_label) in enumerate(zip(model.star_grid, MLO
 
   # Bottom row: daughters 
   ax_bot = axes[1, col]
-  for imol, mol in enumerate(daughters_Crich):
+  for imol, mol in enumerate(daughters):
     label = mol if col == 2 else None
     ax_bot.loglog(radius, fracs[mol], color=colors_daughters[imol % len(colors_daughters)], linewidth=1.2, label=label)
   # No mdot/vinf titles on the bottom row
