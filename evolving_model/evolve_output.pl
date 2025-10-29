@@ -171,14 +171,26 @@ $imax = $imax - 1;
 print FILE1 "# Collapse Model Output \n \n";
 print FILE1 "# $outfile in GNUPLOT format produced by $0 \n \n";
 
-print FILE1 "# X               Y               Z              DENSITY         TEMP            AV              TIME            ";
+# print FILE1 "#X               Y               Z              DENSITY         TEMP            AV              TIME            ";
+	
+# 	for $s (0..$smax)
+# 	{		
+# 		$species[$s] = sprintf("%-12s",$species[$s]);
+# 		$count = $s+1;
+# 		$count = sprintf("%-2i",$count);
+# 		print FILE1 "$count $species[$s]";
+		
+# 	}
+
+# Adapted for np.genfromtxt (no # before header & no count for species)
+print FILE1 "X               Y               Z              DENSITY         TEMP            AV              TIME            ";
 	
 	for $s (0..$smax)
 	{		
 		$species[$s] = sprintf("%-12s",$species[$s]);
 		$count = $s+1;
 		$count = sprintf("%-2i",$count);
-		print FILE1 "$count $species[$s]";
+		print FILE1 "$species[$s]";
 		
 	}
 

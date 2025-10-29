@@ -14,16 +14,16 @@ import glob as gl
 
 #- Outputfolder where the figure will be saved
 savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
-# model_folder = 'complete_model_Mdot_Vinf_Crich'
-model_folder = 'complete_model_Mdot_Vinf_Orich'
+model_folder = 'complete_model_Mdot_Vinf_Crich'
+# model_folder = 'complete_model_Mdot_Vinf_Orich'
 
 # db  = Database.Database(str(savedirmain / model_folder / 'Chemistry_models.db'))
 # db.pop('model_2025-10-17h16-58-20')
 # db.sync() 
 
 #- Inputfile for KoekenBak
-# inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
-inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
+inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
+# inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
 
 ##- Run model
 def run_model(inputfile):
