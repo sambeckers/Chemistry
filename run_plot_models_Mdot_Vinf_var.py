@@ -65,9 +65,9 @@ VELOCITY = ["$v_{\infty}=15 \\rm{km\ s}^{-1}$",
       "$v_{\infty}=5 \\rm{km\ s}^{-1}$"]
 
 # Colors
-_reds = mpl.colormaps['tab20b']
+tab20 = mpl.colormaps['tab20b']
 _oranges = mpl.colormaps['Oranges']
-colors_parents = _reds(np.linspace(0, 1, len(parents)))
+colors_parents = tab20(np.linspace(0, 1, len(parents)))
 colors_daughters = _oranges(np.linspace(0.3, 0.95, len(daughters)))
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9), dpi=300, sharey='row', sharex=True) # Each row will share an y-axis

@@ -4,8 +4,9 @@ from pathlib import Path
 
 savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
 mf = 'evolving_model'
+of = 'ev_output'
 
-out = np.genfromtxt(savedirmain / mf / "evolved_ab.dat", comments="#", skip_header=4, names=True)
+out = np.genfromtxt(savedirmain / mf / of / "ev_13775.dat", comments="#", skip_header=4, names=True)
 t = out['TIME']
 
 fig, axes = plt.subplots(4, 1, figsize=(10, 12), dpi=300, sharex=True)
@@ -33,7 +34,7 @@ axes[3].set_yscale('log')
 axes[3].grid(True, alpha=0.7)
 
 plt.tight_layout()
-plt.savefig(savedirmain / 'figures' / f'evolution_params.pdf', bbox_inches='tight', dpi=300)
+# plt.savefig(savedirmain / 'figures' / f'evolution_params5001.pdf', bbox_inches='tight', dpi=300)
 plt.show()
 
 fig = plt.figure(dpi=300)
@@ -43,8 +44,8 @@ ax.set_xlabel("x")
 ax.set_ylabel("y")
 ax.set_zlabel("z")
 cbar = plt.colorbar(scatter, ax=ax, shrink=0.5, aspect=10)
-cbar.set_label('Time [yr]', labelpad=15)
+cbar.set_label('Time [yr]', labelpad=15 )
 plt.tight_layout()
 plt.title("3D trace")
-plt.savefig(savedirmain / 'figures' / f'evolution_3Dtrace.pdf', bbox_inches='tight', dpi=300)
+# plt.savefig(savedirmain / 'figures' / f'evolution_3Dtrace5001.pdf', bbox_inches='tight', dpi=300)
 plt.show()
