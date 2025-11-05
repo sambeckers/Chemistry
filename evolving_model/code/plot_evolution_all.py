@@ -64,6 +64,7 @@ def plot_all_params(all_data, bounds, particle_IDs, save=True):
 
     # Format axes
     axes[0].set_ylabel('$\\rho$ [cm$^{-3}$]', fontsize=16)
+    axes[0].set_xscale('log')
     axes[0].set_yscale('log')
     axes[0].set_xlim(bounds['time'].min(), bounds['time'].max())
     axes[0].set_ylim(bounds['density'])
@@ -71,14 +72,15 @@ def plot_all_params(all_data, bounds, particle_IDs, save=True):
     axes[0].legend(loc='best', fontsize=8, ncol=3)
     
     axes[1].set_ylabel('$T$ [K]', fontsize=16)
+    axes[1].set_xscale('log')
     axes[1].set_yscale('log')
     axes[1].set_ylim(bounds['temp'])
     axes[1].grid(True, alpha=0.7)
 
     axes[2].set_ylabel('$A_V$ [mag]', fontsize=16)
+    axes[2].set_xscale('log')
     axes[2].set_yscale('log')
     axes[2].set_xlabel('Time [yr]', fontsize=16)
-    # axes[2].set_xscale('log')
     axes[2].set_ylim(bounds['av'])
     axes[2].grid(True, alpha=0.7)
     
@@ -133,7 +135,7 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
 
 def create_animation(all_data, bounds, particle_IDs, 
                      save=True, max_frames=200, fps=30) -> None:
-    """Create and optionally save animated GIF of particle evolution.
+    """Create and optionally save animation of particle evolution.
     
     Parameters:
     -----------
