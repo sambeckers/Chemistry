@@ -26,11 +26,13 @@ def load_all_particles(particle_IDs):
     all_density = np.concatenate([data['DENSITY'] for data in all_data.values()])
     all_temp = np.concatenate([data['TEMP'] for data in all_data.values()])
     all_av = np.concatenate([data['AV'] for data in all_data.values()])
+    all_r = np.sqrt(all_x**2 + all_y**2 + all_z**2)
     
     bounds = {
         'x': (all_x.min(), all_x.max()),
         'y': (all_y.min(), all_y.max()),
         'z': (all_z.min(), all_z.max()),
+        'r': (all_r.min(), all_r.max()),
         'time': np.sort(np.unique(all_times)),
         'density': (all_density.min(), all_density.max()),
         'temp': (all_temp.min(), all_temp.max()),
@@ -39,7 +41,7 @@ def load_all_particles(particle_IDs):
     
     return all_data, bounds
 
-def plot_all_params(all_data, bounds, particle_IDs, save=True):
+def plot_all_params_time(all_data, bounds, particle_IDs, save=True):
     """Plot density, temperature, and A_V for all particles."""
     fig, axes = plt.subplots(3, 1, figsize=(10, 10), dpi=300, sharex=True)
     
@@ -87,7 +89,70 @@ def plot_all_params(all_data, bounds, particle_IDs, save=True):
     plt.tight_layout()
     
     if save:
-        plt.savefig(savedirmain / ff / 'ev_all_params.pdf', 
+        plt.savefig(savedirmain / ff / 'ev_all_params_time.pdf', 
+                   bbox_inches='tight', dpi=300)
+    plt.show()
+
+def plot_all_params_radius(all_data, bounds, particle_IDs, save=True):
+    fig, axes = plt.subplots(4, 1, figsize=(10, 10), dpi=300, sharex=True)
+    
+    # Generate colors for all particles
+    colors = plt.cm.Oranges(np.linspace(0.2, 1, len(particle_IDs)))
+
+    print(bounds['r'])
+    
+    for i, pid in enumerate(particle_IDs):
+        data = all_data[pid]
+        t = data['TIME']
+        r = np.sqrt(data['X']**2 + data['Y']**2 + data['Z']**2)
+
+        # Density
+        axes[0].plot(r, data['DENSITY'], color=colors[i], lw=2, 
+                    label=f'{pid}')
+        
+        # Temperature
+        axes[1].plot(r, data['TEMP'], color=colors[i], lw=2, 
+                    label=f'{pid}')
+
+        # A_V
+        axes[2].plot(r, data['AV'], color=colors[i], lw=2, 
+                    label=f'{pid}')
+        
+        # C2H2 abundance
+        axes[3].plot(r, data['C2H2'], color=colors[i], lw=2, 
+                    label=f'{pid}')
+
+    # Format axes
+    axes[0].set_ylabel('$\\rho$ [cm$^{-3}$]', fontsize=16)
+    axes[0].set_xscale('log')
+    axes[0].set_yscale('log')
+    axes[0].set_xlim(bounds['r'])
+    axes[0].set_ylim(bounds['density'])
+    axes[0].grid(True, alpha=0.7)
+    axes[0].legend(loc='best', fontsize=8, ncol=3)
+    
+    axes[1].set_ylabel('$T$ [K]', fontsize=16)
+    axes[1].set_xscale('log')
+    axes[1].set_yscale('log')
+    axes[1].set_ylim(bounds['temp'])
+    axes[1].grid(True, alpha=0.7)
+
+    axes[2].set_ylabel('$A_V$ [mag]', fontsize=16)
+    axes[2].set_xscale('log')
+    axes[2].set_yscale('log')
+    axes[2].set_ylim(bounds['av'])
+    axes[2].grid(True, alpha=0.7)
+
+    axes[3].set_ylabel('C$_2$H$_2$ Abundance', fontsize=16)
+    axes[3].set_xscale('log')
+    axes[3].set_yscale('log')
+    axes[3].set_xlabel('Radius [pc]', fontsize=16)
+    axes[3].grid(True, alpha=0.7)
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(savedirmain / ff / 'ev_all_params_radius.pdf', 
                    bbox_inches='tight', dpi=300)
     plt.show()
 
@@ -266,13 +331,16 @@ def main():
     all_data, bounds = load_all_particles(particle_IDs)
     
     # Plot rho, T, and A_V for all particles
-    plot_all_params(all_data, bounds, particle_IDs, save=True)
+    # plot_all_params_time(all_data, bounds, particle_IDs, save=True)
+
+    # Plot rho, T, A_V, and C2H2 abundance vs radius for all particles
+    plot_all_params_radius(all_data, bounds, particle_IDs, save=True)
 
     # Plot abundances for each particle
-    plot_abundances(all_data, particle_IDs, savedirmain, save=True)
+    # plot_abundances(all_data, particle_IDs, savedirmain, save=True)
 
     # Create and save animation (faster: max_frames=200, fps=30)
-    create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
+    # create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
 
 if __name__ == '__main__':
     main()
