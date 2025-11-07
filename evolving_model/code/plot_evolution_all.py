@@ -93,16 +93,18 @@ def plot_all_params_time(all_data, bounds, particle_IDs, save=True):
                    bbox_inches='tight', dpi=300)
     plt.show()
 
-def plot_all_params_radius(all_data, bounds, particle_IDs, save=True):
+def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False, save=True):
     fig, axes = plt.subplots(4, 1, figsize=(10, 10), dpi=300, sharex=True)
     
     # Generate colors for all particles
     colors = plt.cm.Oranges(np.linspace(0.2, 1, len(particle_IDs)))
 
-    print(bounds['r'])
+    ref_data = all_data[particle_IDs[0]]['C2H2']
     
     for i, pid in enumerate(particle_IDs):
         data = all_data[pid]
+        if i == 0:
+            ref_abundance = data['C2H2']
         t = data['TIME']
         r = np.sqrt(data['X']**2 + data['Y']**2 + data['Z']**2)
 
@@ -119,7 +121,13 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, save=True):
                     label=f'{pid}')
         
         # C2H2 abundance
-        axes[3].plot(r, data['C2H2'], color=colors[i], lw=2, 
+        ab = data['C2H2']
+        if normalize_ab:
+            norm_ab = ab * (ref_abundance[0] / ab[0])
+            axes[3].plot(r, norm_ab, color=colors[i], lw=2, 
+                    label=f'{pid}')
+        else:
+            axes[3].plot(r, ab, color=colors[i], lw=2, 
                     label=f'{pid}')
 
     # Format axes
@@ -151,7 +159,10 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, save=True):
     
     plt.tight_layout()
     
-    if save:
+    if save and normalize_ab:
+        plt.savefig(savedirmain / ff / 'ev_all_params_radius_normab.pdf', 
+                   bbox_inches='tight', dpi=300)
+    elif save:
         plt.savefig(savedirmain / ff / 'ev_all_params_radius.pdf', 
                    bbox_inches='tight', dpi=300)
     plt.show()
@@ -334,8 +345,8 @@ def main():
     # plot_all_params_time(all_data, bounds, particle_IDs, save=True)
 
     # Plot rho, T, A_V, and C2H2 abundance vs radius for all particles
-    plot_all_params_radius(all_data, bounds, particle_IDs, save=True)
-
+    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=True, save=True)
+ 
     # Plot abundances for each particle
     # plot_abundances(all_data, particle_IDs, savedirmain, save=True)
 
