@@ -94,8 +94,6 @@ def convert_csphyspar(input_file, output_dir, velocity_km_s=15.0, n_slices=None)
     None
         Writes file(s) to output_dir
     """
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
     velocity_cm_s = velocity_km_s * 1e5
     
     # Read and parse data
