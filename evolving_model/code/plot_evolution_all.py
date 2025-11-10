@@ -320,38 +320,39 @@ def main():
     of = 'ev_output'
     ff = 'figures/Evolution_traces'
 
-    particle_IDs = [
-        5001,
-        13775,
-        22549,
-        31323,
-        40097,
-        48871,
-        57645,
-        66419,
-        75193,
-        83967,
-        92741,
-        101515,
-        110289,
-        119063,
-        127837
-    ]
+    # particle_IDs = [
+    #     5001,
+    #     13775,
+    #     22549,
+    #     31323,
+    #     40097,
+    #     48871,
+    #     57645,
+    #     66419,
+    #     75193,
+    #     83967,
+    #     92741,
+    #     101515,
+    #     110289,
+    #     119063,
+    #     127837
+    # ]
 
+    particle_IDs = [0, 1, 2, 3, 4]
     # Load all particle data
     all_data, bounds = load_all_particles(particle_IDs)
     
     # Plot rho, T, and A_V for all particles
-    # plot_all_params_time(all_data, bounds, particle_IDs, save=True)
+    plot_all_params_time(all_data, bounds, particle_IDs, save=True)
 
     # Plot rho, T, A_V, and C2H2 abundance vs radius for all particles
-    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=True, save=True)
+    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
  
     # Plot abundances for each particle
-    # plot_abundances(all_data, particle_IDs, savedirmain, save=True)
+    plot_abundances(all_data, particle_IDs, savedirmain, save=True)
 
     # Create and save animation (faster: max_frames=200, fps=30)
-    # create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
+    create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
 
 if __name__ == '__main__':
     main()

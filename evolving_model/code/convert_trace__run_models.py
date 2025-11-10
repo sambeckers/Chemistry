@@ -99,7 +99,7 @@ def convert_csphyspar(input_file, output_dir, velocity_km_s=15.0, n_slices=None)
     # Read and parse data
     data_lines = [line.split() for line in open(input_file) 
                   if line.strip() and not line.strip().startswith(('**', 'RADIUS'))]
-    data_array = np.array([[float(p) for p in line[:10]] for line in data_lines if len(line) >= 10]) # Convert to array
+    data_array = np.array([[float(p) for p in line[:4]] for line in data_lines]) # Convert to array
     
     radius_cm, n_h2, temp, av = data_array[:, 0], data_array[:, 1], data_array[:, 2], data_array[:, 3]
     xcoord_pc = (radius_cm * u.cm).to(u.pc).value
@@ -140,19 +140,22 @@ def convert_csphyspar(input_file, output_dir, velocity_km_s=15.0, n_slices=None)
             if start_idx >= n_points:
                 break
             
-            output_file = output_dir / f'particle_slice_{i+1:02d}.txt'
+            output_file = output_dir / f'particle_slice_{i}.txt'
             data_dict = {'X': xcoord_pc[start_idx:], 'Y': zeros[start_idx:], 'Z': zeros[start_idx:],
                         'DENS': n_h2[start_idx:], 'TGAS': temp[start_idx:], 'TDUST': temp[start_idx:],
                         'AV': av[start_idx:], 'ZXR': 0.0, 'ZCR': 0.0, 'TIME': time_s[start_idx:]}
             write_output(data_dict, output_file)
-            print(f"Slice {i+1:2d}: r ≥ {xcoord_pc[start_idx]:.3e} pc, {n_points - start_idx:3d} points -> {output_file.name}")
+            print(f"Slice {i}: r ≥ {xcoord_pc[start_idx]:.3e} pc, {n_points - start_idx:3d} points -> {output_file.name}")
 
 def write_file_params(particle_ID):
     fpfile = open(savedirmain / mf / 'param' / 'trace_file_param' /
                       f"file_parameters_{particle_ID}.txt", "w")
     fpfile.write("! FILE PARAMETERS FOR ENVELOPE MODEL\n")
-    fpfile.write("! Physical conditions input file\n")      
-    fpfile.write(f"input/{particle_ID}.txt\n")
+    fpfile.write("! Physical conditions input file\n")
+    if phantom:      
+        fpfile.write(f"input/{particle_ID}.txt\n")
+    else:
+        fpfile.write(f"input/particle_slice_{particle_ID}.txt\n")
     fpfile.write("! Reaction file\n")
     fpfile.write("./rate12_complex.rates\n")
     fpfile.write("! Species file\n")
@@ -177,7 +180,7 @@ def write_file_params(particle_ID):
     fpfile.write(f"./model_analyse_{particle_ID}.dat\n")
     fpfile.close()
 
-def run_model(particle_ID):
+def run_model(particle_ID=None, particle_slice=None):
     os.system(f"cd {savedirmain / mf} && "
             f"time ./model param/trace_file_param/file_parameters_{particle_ID}.txt")
     
@@ -192,10 +195,12 @@ def convert_outmodel_to_evolve_output(particle_ID):
         f"perl evolve_output.pl output/model_output_{particle_ID}.dat ev_output/ev_{particle_ID} {molecule_str}")
     
 def main():
-    global savedirmain, tracesf, mf
+    global savedirmain, tracesf, mf, phantom, model_1D
     savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
     tracesf = 'Phantom trace/trace_output'
     mf = 'evolving_model'
+    phantom = False
+    model_1D = True
     model_1D_output = 'complete_model_Mdot_Vinf_Crich/models/model_2025-10-22h14-41-04/csphyspar_smooth.out'
 
     particle_IDs = [
@@ -216,22 +221,24 @@ def main():
     127837
     ]
 
-    input_file = savedirmain / model_1D_output
-    output_folder = savedirmain / mf / 'input'
-    convert_csphyspar(input_file, output_folder, n_slices = 5)
+    if model_1D:
+        input_file = savedirmain / model_1D_output
+        output_folder = savedirmain / mf / 'input'
+        convert_csphyspar(input_file, output_folder, n_slices = 5)
 
-    for particle_ID in tqdm(particle_IDs, total=len(particle_IDs)):
-        input_file = savedirmain / tracesf / f'{particle_ID}.phys'
-        output_file = savedirmain / mf / 'input' / f'{particle_ID}.txt'
-        # convert_phys(input_file, output_file)
-        # print(f"Converted {particle_ID}.phys to {particle_ID}.txt")
+        for i in tqdm(range(5), total=5):
+            write_file_params(i)
+            run_model(i)
+            convert_outmodel_to_evolve_output(i)
 
-        # write_file_params(particle_ID)
-        # print(f"Wrote file parameters for particle {particle_ID}")
-
-        # run_model(particle_ID)
-
-        # convert_outmodel_to_evolve_output(particle_ID)
+    if phantom:
+        for particle_ID in tqdm(particle_IDs, total=len(particle_IDs)):
+            input_file = savedirmain / tracesf / f'{particle_ID}.phys'
+            output_file = savedirmain / mf / 'input' / f'{particle_ID}.txt'
+            # convert_phys(input_file, output_file)
+            # write_file_params(particle_ID)
+            # run_model(particle_ID)
+            # convert_outmodel_to_evolve_output(particle_ID)
 
     # print("DONE!")
     # print(f"Output columns:")
