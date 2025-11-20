@@ -195,31 +195,19 @@ def convert_outmodel_to_evolve_output(particle_ID):
         f"perl evolve_output.pl output/model_output_{particle_ID}.dat ev_output/ev_{particle_ID} {molecule_str}")
     
 def main():
-    global savedirmain, tracesf, mf, phantom, model_1D
+    global savedirmain, pmf, tracesf, mf, phantom, model_1D
     savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
-    tracesf = 'Phantom trace/trace_output'
+    pmf = 'wind_rad1_dustb_run2'
+    tracesf = f'{pmf}/trace_output'
     mf = 'evolving_model'
-    phantom = False
-    model_1D = True
+    phantom = True
+    model_1D = False
     model_1D_output = 'complete_model_Mdot_Vinf_Crich/models/model_2025-10-22h14-41-04/csphyspar_smooth.out'
 
-    particle_IDs = [
-    5001,
-    13775,
-    22549,
-    31323,
-    40097,
-    48871,
-    57645,
-    66419,
-    75193,
-    83967,
-    92741,
-    101515,
-    110289,
-    119063,
-    127837
-    ]
+    # Read particle IDs from file
+    particle_IDs_file = savedirmain / pmf / 'particle_IDs.txt'
+    with open(particle_IDs_file, 'r') as f:
+        particle_IDs = [int(line.strip()) for line in f if line.strip()]
 
     if model_1D:
         input_file = savedirmain / model_1D_output
@@ -232,13 +220,14 @@ def main():
             convert_outmodel_to_evolve_output(i)
 
     if phantom:
+        print(f"Running {mf} on phantom particle traces from {pmf}")
         for particle_ID in tqdm(particle_IDs, total=len(particle_IDs)):
             input_file = savedirmain / tracesf / f'{particle_ID}.phys'
             output_file = savedirmain / mf / 'input' / f'{particle_ID}.txt'
-            # convert_phys(input_file, output_file)
-            # write_file_params(particle_ID)
-            # run_model(particle_ID)
-            # convert_outmodel_to_evolve_output(particle_ID)
+            convert_phys(input_file, output_file)
+            write_file_params(particle_ID)
+            run_model(particle_ID)
+            convert_outmodel_to_evolve_output(particle_ID)
 
     # print("DONE!")
     # print(f"Output columns:")

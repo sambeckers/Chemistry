@@ -16,6 +16,9 @@ def load_all_particles(particle_IDs):
     for pid in particle_IDs:
         filepath = savedirmain / mf / of / f"ev_{pid}.dat"
         data = np.genfromtxt(filepath, comments="#", skip_header=4, names=True)
+        # Ensure data is always at least 1D (handles single-row files)
+        if data.ndim == 0:
+            data = np.array([data])
         all_data[pid] = data
 
     # Collect all data across all particles
@@ -164,6 +167,46 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
                    bbox_inches='tight', dpi=300)
     elif save:
         plt.savefig(savedirmain / ff / 'ev_all_params_radius.pdf', 
+                   bbox_inches='tight', dpi=300)
+    plt.show()
+
+def plot_molecules_normalized(all_data, bounds, particle_IDs, save=True):
+    """Plot normalized abundances for CO, CH4, C2H2, HCN, and C2H4."""
+    molecules = ['CO', 'CH4', 'C2H2', 'HCN', 'C2H4']
+    
+    fig, axes = plt.subplots(5, 1, figsize=(10, 14), dpi=300, sharex=True)
+    
+    # Generate colors for all particles
+    colors = plt.cm.Oranges(np.linspace(0.2, 1, len(particle_IDs)))
+    
+    for i, pid in enumerate(particle_IDs):
+        data = all_data[pid]
+        r = np.sqrt(data['X']**2 + data['Y']**2 + data['Z']**2)
+        
+        for j, mol in enumerate(molecules):
+            abundance = data[mol]
+            # Normalize to initial abundance
+            normalized_ab = abundance / abundance[0]
+            
+            axes[j].plot(r, normalized_ab, color=colors[i], lw=2, 
+                        label=f'{pid}')
+    
+    # Format axes
+    for j, mol in enumerate(molecules):
+        axes[j].set_ylabel(f'{mol} (normalized)', fontsize=14)
+        axes[j].set_xscale('log')
+        axes[j].set_yscale('log')
+        axes[j].set_xlim(bounds['r'])
+        axes[j].grid(True, alpha=0.7)
+        if j == 0:
+            axes[j].legend(loc='best', fontsize=8, ncol=3)
+    
+    axes[-1].set_xlabel('Radius [pc]', fontsize=16)
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(savedirmain / ff / 'ev_molecules_normalized.pdf', 
                    bbox_inches='tight', dpi=300)
     plt.show()
 
@@ -316,29 +359,16 @@ def create_animation(all_data, bounds, particle_IDs,
 def main():
     global savedirmain, mf, of, ff
     savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
+    pmf = 'wind_rad1_dustb_run2'
     mf = 'evolving_model'
     of = 'ev_output'
     ff = 'figures/Evolution_traces'
 
-    # particle_IDs = [
-    #     5001,
-    #     13775,
-    #     22549,
-    #     31323,
-    #     40097,
-    #     48871,
-    #     57645,
-    #     66419,
-    #     75193,
-    #     83967,
-    #     92741,
-    #     101515,
-    #     110289,
-    #     119063,
-    #     127837
-    # ]
+    particle_IDs_file = savedirmain / pmf / 'particle_IDs.txt'
+    with open(particle_IDs_file, 'r') as f:
+        particle_IDs = [int(line.strip()) for line in f if line.strip()]
 
-    particle_IDs = [0, 1, 2, 3, 4]
+    # particle_IDs = [0, 1, 2, 3, 4]
     # Load all particle data
     all_data, bounds = load_all_particles(particle_IDs)
     
@@ -346,7 +376,10 @@ def main():
     plot_all_params_time(all_data, bounds, particle_IDs, save=True)
 
     # Plot rho, T, A_V, and C2H2 abundance vs radius for all particles
-    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
+    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=True, save=True)
+    
+    # Plot normalized abundances for selected molecules
+    plot_molecules_normalized(all_data, bounds, particle_IDs, save=True)
  
     # Plot abundances for each particle
     plot_abundances(all_data, particle_IDs, savedirmain, save=True)
