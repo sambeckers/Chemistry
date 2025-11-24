@@ -16,10 +16,10 @@ FINAL_DIR=PH_DIR  # Output to the same directory
 FILENAME="wind"
 
 # Number of particles to analyze (reduced for test run)
-PARTICLE_COUNT = 15
+PARTICLE_COUNT = 500
 
 # number of boundary particles to skip (reduced for test run)
-SKIP_BOUNDARY = 1
+SKIP_BOUNDARY = 5000
 
 #step to account for dump files
 DUMP_STEP = 1

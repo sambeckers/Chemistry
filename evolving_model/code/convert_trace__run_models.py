@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import shutil
 from pathlib import Path
 from astropy import units as u
 from tqdm import tqdm
@@ -193,11 +194,50 @@ def convert_outmodel_to_evolve_output(particle_ID):
     
     os.system(f"cd {savedirmain / mf} && "
         f"perl evolve_output.pl output/model_output_{particle_ID}.dat ev_output/ev_{particle_ID} {molecule_str}")
+
+def setup_directories(base_path):
+    """Create or clear directories for model runs.
+    
+    Parameters
+    ----------
+    base_path : Path
+        Base path for the evolving model directory
+    
+    Returns
+    -------
+    bool
+        True if setup successful, False if user cancelled
+    """
+    directories = ['ev_output', 'input', 'output']
+    
+    for dir_name in directories:
+        dir_path = base_path / dir_name
+        
+        if dir_path.exists():
+            # Check if directory has files
+            if any(dir_path.iterdir()):
+                print(f"\nDirectory '{dir_name}' already exists and contains files.")
+                response = input(f"Empty '{dir_name}' directory? [y/n]: ").strip().lower()
+                
+                if response == 'y' or response == 'yes':
+                    print(f"   Removing all files in {dir_name}/...")
+                    shutil.rmtree(dir_path)
+                    dir_path.mkdir(parents=True, exist_ok=True)
+                    print(f"   ✓ {dir_name}/ cleared")
+                else:
+                    print(f"✗ Keeping existing files in {dir_name}/")
+            else:
+                print(f"✓ {dir_name}/ exists (empty)")
+        else:
+            dir_path.mkdir(parents=True, exist_ok=True)
+            print(f"✓ Created {dir_name}/")
+    
+    return True
     
 def main():
     global savedirmain, pmf, tracesf, mf, phantom, model_1D
     savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
-    pmf = 'wind_rad1_dustb_run2'
+    pmf = 'wind'
     tracesf = f'{pmf}/trace_output'
     mf = 'evolving_model'
     phantom = True
@@ -208,6 +248,18 @@ def main():
     particle_IDs_file = savedirmain / pmf / 'particle_IDs.txt'
     with open(particle_IDs_file, 'r') as f:
         particle_IDs = [int(line.strip()) for line in f if line.strip()]
+
+    particle_IDs = particle_IDs[:15]  
+
+    # Setup directories (create or clear)
+    print("=" * 80)
+    print("DIRECTORY SETUP")
+    print("=" * 80)
+    if not setup_directories(savedirmain / mf):
+        print("\n✗ Setup cancelled by user")
+        return
+    print("=" * 80)
+    print()
 
     if model_1D:
         input_file = savedirmain / model_1D_output
@@ -220,7 +272,7 @@ def main():
             convert_outmodel_to_evolve_output(i)
 
     if phantom:
-        print(f"Running {mf} on phantom particle traces from {pmf}")
+        print(f"Running {mf} on {len(particle_IDs)} phantom particle traces from {pmf}")
         for particle_ID in tqdm(particle_IDs, total=len(particle_IDs)):
             input_file = savedirmain / tracesf / f'{particle_ID}.phys'
             output_file = savedirmain / mf / 'input' / f'{particle_ID}.txt'

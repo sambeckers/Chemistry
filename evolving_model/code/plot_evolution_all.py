@@ -359,7 +359,7 @@ def create_animation(all_data, bounds, particle_IDs,
 def main():
     global savedirmain, mf, of, ff
     savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
-    pmf = 'wind_rad1_dustb_run2'
+    pmf = 'wind'
     mf = 'evolving_model'
     of = 'ev_output'
     ff = 'figures/Evolution_traces'
@@ -368,6 +368,7 @@ def main():
     with open(particle_IDs_file, 'r') as f:
         particle_IDs = [int(line.strip()) for line in f if line.strip()]
 
+    particle_IDs = particle_IDs[:15]
     # particle_IDs = [0, 1, 2, 3, 4]
     # Load all particle data
     all_data, bounds = load_all_particles(particle_IDs)
