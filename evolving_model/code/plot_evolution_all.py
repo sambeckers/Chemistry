@@ -170,7 +170,7 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
                    bbox_inches='tight', dpi=300)
     plt.show()
 
-def plot_molecules_normalized(all_data, bounds, particle_IDs, save=True):
+def plot_molecules(all_data, bounds, particle_IDs, save=True):
     """Plot normalized abundances for CO, CH4, C2H2, HCN, and C2H4."""
     molecules = ['CO', 'CH4', 'C2H2', 'HCN', 'C2H4']
     
@@ -188,12 +188,12 @@ def plot_molecules_normalized(all_data, bounds, particle_IDs, save=True):
             # Normalize to initial abundance
             normalized_ab = abundance / abundance[0]
             
-            axes[j].plot(r, normalized_ab, color=colors[i], lw=2, 
+            axes[j].plot(r, abundance, color=colors[i], lw=2, 
                         label=f'{pid}')
     
     # Format axes
     for j, mol in enumerate(molecules):
-        axes[j].set_ylabel(f'{mol} (normalized)', fontsize=14)
+        axes[j].set_ylabel(f'{mol}', fontsize=14)
         axes[j].set_xscale('log')
         axes[j].set_yscale('log')
         axes[j].set_xlim(bounds['r'])
@@ -206,7 +206,7 @@ def plot_molecules_normalized(all_data, bounds, particle_IDs, save=True):
     plt.tight_layout()
     
     if save:
-        plt.savefig(savedirmain / ff / 'ev_molecules_normalized.pdf', 
+        plt.savefig(savedirmain / ff / 'ev_molecules.pdf', 
                    bbox_inches='tight', dpi=300)
     plt.show()
 
@@ -222,11 +222,12 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
     for pid in tqdm(particle_IDs, total=len(particle_IDs)):
         data = all_data[pid]
         t = data['TIME']
+        r = np.sqrt(data['X']**2 + data['Y']**2 + data['Z']**2)
         fig, axes = plt.subplots(2, 1, figsize=(10, 8), dpi=300, sharex=True)
         
         # Parents
         for imol, mol in enumerate(parents):
-            axes[0].plot(t, data[mol], color=colors_parents[imol], lw=2, label=mol)
+            axes[0].plot(r, data[mol], color=colors_parents[imol], lw=2, label=mol)
         axes[0].set_ylabel('Abundance (wrt H$_{nuc}$)', fontsize=14)
         axes[0].set_yscale('log')
         axes[0].set_xscale('log')
@@ -236,12 +237,12 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
         
         # Daughters
         for imol, mol in enumerate(daughters):
-            axes[1].plot(t, data[mol], color=colors_daughters[imol], lw=2, label=mol)
+            axes[1].plot(r, data[mol], color=colors_daughters[imol], lw=2, label=mol)
         axes[1].set_ylabel('Abundance (wrt H$_{nuc}$)', fontsize=14)
         axes[1].set_yscale('log')
         axes[1].set_xscale('log')
         axes[1].set_title(f'Particle {pid} - Daughter Molecules', fontsize=16)
-        axes[1].set_xlabel('Time [yr]', fontsize=14)
+        axes[1].set_xlabel('Radius [pc]', fontsize=14)
         axes[1].grid(True, alpha=0.7)
         axes[1].legend(loc='best', fontsize=8, ncol=3)
         
@@ -370,6 +371,7 @@ def main():
 
     particle_IDs = particle_IDs[:15]
     # particle_IDs = [0, 1, 2, 3, 4]
+
     # Load all particle data
     all_data, bounds = load_all_particles(particle_IDs)
     
@@ -377,16 +379,16 @@ def main():
     plot_all_params_time(all_data, bounds, particle_IDs, save=True)
 
     # Plot rho, T, A_V, and C2H2 abundance vs radius for all particles
-    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=True, save=True)
+    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
     
     # Plot normalized abundances for selected molecules
-    plot_molecules_normalized(all_data, bounds, particle_IDs, save=True)
+    plot_molecules(all_data, bounds, particle_IDs, save=True)
  
     # Plot abundances for each particle
     plot_abundances(all_data, particle_IDs, savedirmain, save=True)
 
     # Create and save animation (faster: max_frames=200, fps=30)
-    create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
+    # create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
 
 if __name__ == '__main__':
     main()
