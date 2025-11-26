@@ -9,6 +9,7 @@ plt.rcParams.update({
 })
 from pathlib import Path
 from tqdm import tqdm
+from astropy import units as u
 
 def load_all_particles(particle_IDs):
     """Load all particle trace data and compute global bounds."""
@@ -25,6 +26,11 @@ def load_all_particles(particle_IDs):
     all_x = np.concatenate([data['X'] for data in all_data.values()])
     all_y = np.concatenate([data['Y'] for data in all_data.values()])
     all_z = np.concatenate([data['Z'] for data in all_data.values()])
+
+    if to_cm:
+        all_x = (all_x * u.pc).to(u.cm).value
+        all_y = (all_y * u.pc).to(u.cm).value
+        all_z = (all_z * u.pc).to(u.cm).value
     all_times = np.concatenate([data['TIME'] for data in all_data.values()])
     all_density = np.concatenate([data['DENSITY'] for data in all_data.values()])
     all_temp = np.concatenate([data['TEMP'] for data in all_data.values()])
@@ -109,7 +115,16 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
         if i == 0:
             ref_abundance = data['C2H2']
         t = data['TIME']
-        r = np.sqrt(data['X']**2 + data['Y']**2 + data['Z']**2)
+        x = data['X']
+        y = data['Y']
+        z = data['Z']
+
+        if to_cm:
+            x = (x * u.pc).to(u.cm).value
+            y = (y * u.pc).to(u.cm).value
+            z = (z * u.pc).to(u.cm).value
+
+        r = np.sqrt(x**2 + y**2 + z**2)
 
         # Density
         axes[0].plot(r, data['DENSITY'], color=colors[i], lw=2, 
@@ -157,17 +172,17 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
     axes[3].set_ylabel('C$_2$H$_2$ Abundance', fontsize=16)
     axes[3].set_xscale('log')
     axes[3].set_yscale('log')
-    axes[3].set_xlabel('Radius [pc]', fontsize=16)
+    axes[3].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=16)
     axes[3].grid(True, alpha=0.7)
     
     plt.tight_layout()
     
     if save and normalize_ab:
-        plt.savefig(savedirmain / ff / 'ev_all_params_radius_normab.pdf', 
-                   bbox_inches='tight', dpi=300)
+        name = 'ev_all_params_radius_normab_cm.pdf' if to_cm else 'ev_all_params_radius_normab.pdf'
+        plt.savefig(savedirmain / ff / name, bbox_inches='tight', dpi=300)
     elif save:
-        plt.savefig(savedirmain / ff / 'ev_all_params_radius.pdf', 
-                   bbox_inches='tight', dpi=300)
+        name = 'ev_all_params_radius_cm.pdf' if to_cm else 'ev_all_params_radius.pdf'
+        plt.savefig(savedirmain / ff / name, bbox_inches='tight', dpi=300)
     plt.show()
 
 def plot_molecules(all_data, bounds, particle_IDs, save=True):
@@ -181,7 +196,16 @@ def plot_molecules(all_data, bounds, particle_IDs, save=True):
     
     for i, pid in enumerate(particle_IDs):
         data = all_data[pid]
-        r = np.sqrt(data['X']**2 + data['Y']**2 + data['Z']**2)
+        x = data['X']
+        y = data['Y']
+        z = data['Z']
+
+        if to_cm:
+            x = (x * u.pc).to(u.cm).value
+            y = (y * u.pc).to(u.cm).value
+            z = (z * u.pc).to(u.cm).value
+
+        r = np.sqrt(x**2 + y**2 + z**2)
         
         for j, mol in enumerate(molecules):
             abundance = data[mol]
@@ -201,13 +225,13 @@ def plot_molecules(all_data, bounds, particle_IDs, save=True):
         if j == 0:
             axes[j].legend(loc='best', fontsize=8, ncol=3)
     
-    axes[-1].set_xlabel('Radius [pc]', fontsize=16)
+    axes[-1].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=16)
     
     plt.tight_layout()
     
     if save:
-        plt.savefig(savedirmain / ff / 'ev_molecules.pdf', 
-                   bbox_inches='tight', dpi=300)
+        name = 'ev_molecules_cm.pdf' if to_cm else 'ev_molecules.pdf'
+        plt.savefig(savedirmain / ff / name, bbox_inches='tight', dpi=300)
     plt.show()
 
 def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
@@ -222,7 +246,16 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
     for pid in tqdm(particle_IDs, total=len(particle_IDs)):
         data = all_data[pid]
         t = data['TIME']
-        r = np.sqrt(data['X']**2 + data['Y']**2 + data['Z']**2)
+        x = data['X']
+        y = data['Y']
+        z = data['Z']
+
+        if to_cm:
+            x = (x * u.pc).to(u.cm).value
+            y = (y * u.pc).to(u.cm).value
+            z = (z * u.pc).to(u.cm).value
+
+        r = np.sqrt(x**2 + y**2 + z**2)
         fig, axes = plt.subplots(2, 1, figsize=(10, 8), dpi=300, sharex=True)
         
         # Parents
@@ -242,15 +275,16 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
         axes[1].set_yscale('log')
         axes[1].set_xscale('log')
         axes[1].set_title(f'Particle {pid} - Daughter Molecules', fontsize=16)
-        axes[1].set_xlabel('Radius [pc]', fontsize=14)
+        axes[1].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=14)
         axes[1].grid(True, alpha=0.7)
         axes[1].legend(loc='best', fontsize=8, ncol=3)
         
         plt.tight_layout()
         
         if save:
-            plt.savefig(savedirmain / ff / 'abundances' / f'ev_{pid}_abundances.pdf', 
-                       bbox_inches='tight', dpi=300)
+            suffix = '_cm' if to_cm else ''
+            outpath = savedirmain / ff / 'abundances' / f'ev_{pid}_abundances{suffix}.pdf'
+            plt.savefig(outpath, bbox_inches='tight', dpi=300)
         # plt.show()
 
 def create_animation(all_data, bounds, particle_IDs, 
@@ -358,7 +392,8 @@ def create_animation(all_data, bounds, particle_IDs,
     plt.savefig(savedirmain / ff / 'ev_all_3D.pdf', dpi=300)
 
 def main():
-    global savedirmain, mf, of, ff
+    global savedirmain, mf, of, ff, to_cm
+    to_cm = True
     savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
     pmf = 'wind'
     mf = 'evolving_model'
