@@ -12,7 +12,7 @@ def convert_phys(in_file, out_file) -> None:
     - Write output file
     
     Input columns:
-    time(s)   x(AU)   Y(AU)   Z(AU)   n(cm-3)   T(K)   A_UV(mag)
+    time(s)   x(AU)   Y(AU)   Z(AU)   n(cm-3)   T(K)   A_UV(mag)  A_V(mag)
 
     Output columns: 
     XCOORD(pc), YCOORD(pc), ZCOORD(pc), DENS(cm-3),
@@ -34,7 +34,8 @@ def convert_phys(in_file, out_file) -> None:
                 'z': float(values[3]),
                 'dens_str': values[4],
                 'temp_str': values[5],
-                'av_str': values[6],
+                'a_uv_str': values[6],
+                'av_str': values[7],
             })
 
     # Convert to output format
@@ -208,7 +209,7 @@ def setup_directories(base_path):
     bool
         True if setup successful, False if user cancelled
     """
-    directories = ['ev_output', 'input', 'output']
+    directories = ['param/trace_file_param', 'ev_output', 'input', 'output']
     
     for dir_name in directories:
         dir_path = base_path / dir_name
@@ -237,19 +238,25 @@ def setup_directories(base_path):
 def main():
     global savedirmain, pmf, tracesf, mf, phantom, model_1D
     savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
-    pmf = 'wind'
-    tracesf = f'{pmf}/trace_output'
+    pmf = 'wind_v10'
+    tracesf = f'traces/{pmf}/trace_output_with_av'
     mf = 'evolving_model'
     phantom = True
     model_1D = False
     model_1D_output = 'complete_model_Mdot_Vinf_Crich/models/model_2025-10-22h14-41-04/csphyspar_smooth.out'
 
     # Read particle IDs from file
-    particle_IDs_file = savedirmain / pmf / 'particle_IDs.txt'
+    particle_IDs_file = savedirmain / 'traces' / pmf / 'particle_IDs.txt'
     with open(particle_IDs_file, 'r') as f:
         particle_IDs = [int(line.strip()) for line in f if line.strip()]
 
-    particle_IDs = particle_IDs[:15]  
+    # Select up to 15 evenly spaced particle IDs for testing
+    n_select = min(15, len(particle_IDs))
+    if n_select > 0:
+        indices = np.linspace(1, len(particle_IDs) - 2, num=n_select, dtype=int) # Skip first and last trace
+        particle_IDs = [particle_IDs[i] for i in indices]
+    else:
+        particle_IDs = []
 
     # Setup directories (create or clear)
     print("=" * 80)

@@ -9,6 +9,7 @@ plt.rcParams.update({
 })
 from pathlib import Path
 from tqdm import tqdm
+import shutil
 from astropy import units as u
 
 def load_all_particles(particle_IDs):
@@ -323,9 +324,17 @@ def create_animation(all_data, bounds, particle_IDs,
     ax_anim.set_xlim(bounds['x'])
     ax_anim.set_ylim(bounds['y'])
     ax_anim.set_zlim(bounds['z'])
-    ax_anim.set_xlabel('X [pc]', labelpad=10)
-    ax_anim.set_ylabel('Y [pc]', labelpad=10)
-    ax_anim.set_zlabel('Z [pc]', labelpad=10)
+    unit_label = 'cm' if to_cm else 'pc'
+
+    # Format tick labels with scientific notation for 3D axes
+    if to_cm:
+        ax_anim.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.1e}'))
+        ax_anim.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.1e}'))
+        ax_anim.zaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.1e}'))
+
+    ax_anim.set_xlabel(f'X [{unit_label}]', labelpad=10)
+    ax_anim.set_ylabel(f'Y [{unit_label}]', labelpad=10)
+    ax_anim.set_zlabel(f'Z [{unit_label}]', labelpad=10)
     ax_anim.tick_params(axis='x', pad=5)
     ax_anim.tick_params(axis='y', pad=5)
     ax_anim.tick_params(axis='z', pad=5)
@@ -362,6 +371,12 @@ def create_animation(all_data, bounds, particle_IDs,
                 x = data['X'][mask]
                 y = data['Y'][mask]
                 z = data['Z'][mask]
+
+                if to_cm:
+                    x = (x * u.pc).to(u.cm).value
+                    y = (y * u.pc).to(u.cm).value
+                    z = (z * u.pc).to(u.cm).value
+
                 scatter._offsets3d = (x, y, z)
             else:
                 scatter._offsets3d = ([], [], [])
@@ -391,39 +406,82 @@ def create_animation(all_data, bounds, particle_IDs,
     plt.tight_layout()
     plt.savefig(savedirmain / ff / 'ev_all_3D.pdf', dpi=300)
 
+def setup_figure_directories(base_path):
+    """Create or clear figure directories for evolution traces and abundances.
+
+    Returns
+    -------
+    bool
+        True if setup successful, False if user cancelled
+    """
+    directories = ['figures/Evolution_traces', 'figures/Evolution_traces/abundances']
+
+    for dir_name in directories:
+        dir_path = base_path / dir_name
+
+        if dir_path.exists():
+            if any(dir_path.iterdir()):
+                print(f"\nDirectory '{dir_name}' already exists and contains files.")
+                response = input(f"Empty '{dir_name}' directory? [y/n]: ").strip().lower()
+
+                if response in {'y', 'yes'}:
+                    print(f"   Removing all files in {dir_name}/...")
+                    shutil.rmtree(dir_path)
+                    dir_path.mkdir(parents=True, exist_ok=True)
+                    print(f"   ✓ {dir_name}/ cleared")
+                else:
+                    print(f"✗ Keeping existing files in {dir_name}/")
+            else:
+                print(f"✓ {dir_name}/ exists (empty)")
+        else:
+            dir_path.mkdir(parents=True, exist_ok=True)
+            print(f"✓ Created {dir_name}/")
+
+    return True
+
 def main():
     global savedirmain, mf, of, ff, to_cm
     to_cm = True
     savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
-    pmf = 'wind'
+    pmf = 'wind_v10'
     mf = 'evolving_model'
     of = 'ev_output'
     ff = 'figures/Evolution_traces'
 
-    particle_IDs_file = savedirmain / pmf / 'particle_IDs.txt'
+    if not setup_figure_directories(savedirmain):
+        print("\n✗ Setup cancelled by user")
+        return
+
+    particle_IDs_file = savedirmain / 'traces' / pmf / 'particle_IDs.txt'
     with open(particle_IDs_file, 'r') as f:
         particle_IDs = [int(line.strip()) for line in f if line.strip()]
 
-    particle_IDs = particle_IDs[:15]
+    # Select up to 15 evenly spaced particle IDs for testing
+    n_select = min(15, len(particle_IDs))
+    if n_select > 0:
+        indices = np.linspace(1, len(particle_IDs) - 2, num=n_select, dtype=int)
+        particle_IDs = [particle_IDs[i] for i in indices]
+    else:
+        particle_IDs = []
     # particle_IDs = [0, 1, 2, 3, 4]
 
     # Load all particle data
     all_data, bounds = load_all_particles(particle_IDs)
     
     # Plot rho, T, and A_V for all particles
-    plot_all_params_time(all_data, bounds, particle_IDs, save=True)
+    # plot_all_params_time(all_data, bounds, particle_IDs, save=True)
 
-    # Plot rho, T, A_V, and C2H2 abundance vs radius for all particles
-    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
+    # # Plot rho, T, A_V, and C2H2 abundance vs radius for all particles
+    # plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
     
-    # Plot normalized abundances for selected molecules
-    plot_molecules(all_data, bounds, particle_IDs, save=True)
+    # # Plot normalized abundances for selected molecules
+    # plot_molecules(all_data, bounds, particle_IDs, save=True)
  
-    # Plot abundances for each particle
-    plot_abundances(all_data, particle_IDs, savedirmain, save=True)
+    # # Plot abundances for each particle
+    # plot_abundances(all_data, particle_IDs, savedirmain, save=True)
 
     # Create and save animation (faster: max_frames=200, fps=30)
-    # create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
+    create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
 
 if __name__ == '__main__':
     main()
