@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from matplotlib.animation import FuncAnimation, PillowWriter, FFMpegWriter
 # Set plt font to LaTeX
 plt.rcParams.update({
@@ -239,7 +240,7 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
     """Plot abundances for given particle IDs."""
     parents = ["He", "CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
     "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS", "Mg", "Na", "Fe"]
-    daughters = ['C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
+    daughters = ['CN','C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
 
     colors_parents = plt.cm.tab20b(np.linspace(0, 1, len(parents)))
     colors_daughters = plt.cm.Oranges(np.linspace(0.3, 0.95, len(daughters)))
@@ -287,6 +288,69 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
             outpath = savedirmain / ff / 'abundances' / f'ev_{pid}_abundances{suffix}.pdf'
             plt.savefig(outpath, bbox_inches='tight', dpi=300)
         # plt.show()
+
+def plot_parent_daughter(all_data, bounds, particle_IDs, save=True):
+    """Plot parent-daughter abundances for C2H2 -> C2H and HCN -> CN."""
+    parents = ["C2H2", "HCN"]
+    daughters = ['C2H', 'CN']
+
+    fig, axes = plt.subplots(1, len(parents), figsize=(14,7), dpi=300, sharey=True)
+    
+    # Generate colors for all particles
+    colors = plt.cm.Oranges(np.linspace(0.2, 1, len(particle_IDs)))
+    # colors = plt.cm.tab20b(np.linspace(0, 1, len(particle_IDs)))
+    particle_handles = [
+        Line2D([0], [0], color=colors[i], lw=2, label=f'{pid}')
+        for i, pid in enumerate(particle_IDs)
+    ]
+    pd_handles = [
+        Line2D([0], [0], color='k', lw=2.5, ls='-', label='Parent'),
+        Line2D([0], [0], color='k', lw=1.5, ls=':', label='Daughter')
+    ]
+    
+    for i, pid in enumerate(particle_IDs):
+        data = all_data[pid]
+        x = data['X']
+        y = data['Y']
+        z = data['Z']
+
+        if to_cm:
+            x = (x * u.pc).to(u.cm).value
+            y = (y * u.pc).to(u.cm).value
+            z = (z * u.pc).to(u.cm).value
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        
+        for j, (par, dau) in enumerate(zip(parents, daughters)):
+            ab_par = data[par]
+            ab_dau = data[dau]
+            
+            axes[j].plot(r, ab_par, color=colors[i], lw=2,
+                        label=f'{pid}')
+            axes[j].plot(r, ab_dau, color=colors[i], lw=1.5, ls=':')
+    
+    # Format axes
+    for j,(par, dau) in enumerate(zip(parents, daughters)):
+        axes[j].set_xscale('log')
+        axes[j].set_yscale('log')
+        axes[j].set_xlim(bounds['r'])
+        axes[j].grid(True, alpha=0.7)
+        particle_legend = axes[j].legend(handles=particle_handles, loc='best', fontsize=10, ncol=3)
+        axes[j].add_artist(particle_legend)
+        axes[j].legend(handles=pd_handles, loc='upper right', fontsize=10)
+        axes[j].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=16)
+        axes[j].set_title(f'{par} - {dau}', fontsize=16)
+        if j==0:
+            axes[j].set_ylabel('Abundance (wrt H$_{nuc}$)', fontsize=16)
+    
+    plt.tight_layout()
+    
+    if save:
+        name = 'ev_parent_daughter_cm.pdf' if to_cm else 'ev_parent_daughter.pdf'
+        plt.savefig(savedirmain / ff / name, bbox_inches='tight', dpi=300)
+    plt.show()
+
+
 
 def create_animation(all_data, bounds, particle_IDs, 
                      save=True, max_frames=200, fps=30) -> None:
@@ -448,9 +512,9 @@ def main():
     of = 'ev_output'
     ff = 'figures/Evolution_traces'
 
-    if not setup_figure_directories(savedirmain):
-        print("\n✗ Setup cancelled by user")
-        return
+    # if not setup_figure_directories(savedirmain):
+    #     print("\n✗ Setup cancelled by user")
+    #     return
 
     particle_IDs_file = savedirmain / 'traces' / pmf / 'particle_IDs.txt'
     with open(particle_IDs_file, 'r') as f:
@@ -459,7 +523,7 @@ def main():
     # Select up to 15 evenly spaced particle IDs for testing
     n_select = min(15, len(particle_IDs))
     if n_select > 0:
-        indices = np.linspace(1, len(particle_IDs) - 2, num=n_select, dtype=int)
+        indices = np.linspace(2, len(particle_IDs) - 2, num=n_select, dtype=int)
         particle_IDs = [particle_IDs[i] for i in indices]
     else:
         particle_IDs = []
@@ -468,7 +532,7 @@ def main():
     # Load all particle data
     all_data, bounds = load_all_particles(particle_IDs)
     
-    # Plot rho, T, and A_V for all particles
+    # # Plot rho, T, and A_V for all particles
     # plot_all_params_time(all_data, bounds, particle_IDs, save=True)
 
     # # Plot rho, T, A_V, and C2H2 abundance vs radius for all particles
@@ -480,8 +544,11 @@ def main():
     # # Plot abundances for each particle
     # plot_abundances(all_data, particle_IDs, savedirmain, save=True)
 
-    # Create and save animation (faster: max_frames=200, fps=30)
-    create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
+    # Plot parent-daughter abundances
+    plot_parent_daughter(all_data, bounds, particle_IDs, save=True)
+
+    # # Create and save animation (faster: max_frames=200, fps=30)
+    # create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
 
 if __name__ == '__main__':
     main()

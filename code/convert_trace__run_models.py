@@ -189,7 +189,7 @@ def run_model(particle_ID=None, particle_slice=None):
 def convert_outmodel_to_evolve_output(particle_ID):
     parents = ["He", "CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
        "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS", "Mg", "Na", "Fe"]
-    daughters = ['C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
+    daughters = ['CN', 'C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
     molecules = parents + daughters
     molecule_str = " ".join(molecules) # Single space separated string
     
@@ -253,7 +253,7 @@ def main():
     # Select up to 15 evenly spaced particle IDs for testing
     n_select = min(15, len(particle_IDs))
     if n_select > 0:
-        indices = np.linspace(1, len(particle_IDs) - 2, num=n_select, dtype=int) # Skip first and last trace
+        indices = np.linspace(2, len(particle_IDs) - 2, num=n_select, dtype=int) # Skip first two and last trace
         particle_IDs = [particle_IDs[i] for i in indices]
     else:
         particle_IDs = []
