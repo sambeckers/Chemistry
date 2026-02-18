@@ -5,6 +5,26 @@ from pathlib import Path
 from astropy import units as u
 from tqdm import tqdm
 
+def select_particle_ids(
+    particle_IDs_file,
+    trace_dir,
+    max_particle_id=300000,
+    start_index=2,
+    n_select=15,
+):
+    """Select particle IDs with optional spacing and file existence checks."""
+    with open(particle_IDs_file, 'r') as f:
+        particle_IDs = [int(line.strip()) for line in f if line.strip()]
+
+    particle_IDs = [pid for pid in particle_IDs if pid <= max_particle_id]
+    particle_IDs = [pid for pid in particle_IDs if (trace_dir / f"{pid}.phys").exists()]
+    print(f"Found {len(particle_IDs)} valid particle IDs in {trace_dir} (max ID={max_particle_id})")
+
+    n_pick = min(n_select, len(particle_IDs))
+    indices = np.linspace(start_index, len(particle_IDs)-1, num=n_pick, dtype=int)
+
+    return [particle_IDs[i] for i in indices]
+
 def convert_phys(in_file, out_file) -> None:
     """
     - Read a .phys file preserving exact string representations.
@@ -187,8 +207,8 @@ def run_model(particle_ID=None, particle_slice=None):
             f"time ./model param/trace_file_param/file_parameters_{particle_ID}.txt")
     
 def convert_outmodel_to_evolve_output(particle_ID):
-    parents = ["He", "CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
-       "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS", "Mg", "Na", "Fe"]
+    parents = ["CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
+       "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS"]
     daughters = ['CN', 'C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
     molecules = parents + daughters
     molecule_str = " ".join(molecules) # Single space separated string
@@ -245,18 +265,18 @@ def main():
     model_1D = False
     model_1D_output = 'complete_model_Mdot_Vinf_Crich/models/model_2025-10-22h14-41-04/csphyspar_smooth.out'
 
-    # Read particle IDs from file
+    # Read and select particle IDs
     particle_IDs_file = savedirmain / 'traces' / pmf / 'particle_IDs.txt'
-    with open(particle_IDs_file, 'r') as f:
-        particle_IDs = [int(line.strip()) for line in f if line.strip()]
+    trace_dir = savedirmain / tracesf
+    particle_IDs = select_particle_ids(
+        particle_IDs_file,
+        trace_dir,
+        max_particle_id=300000,
+        start_index=2,
+        n_select=15,
+    )
 
-    # Select up to 15 evenly spaced particle IDs for testing
-    n_select = min(15, len(particle_IDs))
-    if n_select > 0:
-        indices = np.linspace(2, len(particle_IDs) - 2, num=n_select, dtype=int) # Skip first two and last trace
-        particle_IDs = [particle_IDs[i] for i in indices]
-    else:
-        particle_IDs = []
+    particle_IDs = [29823, 46371]
 
     # Setup directories (create or clear)
     print("=" * 80)

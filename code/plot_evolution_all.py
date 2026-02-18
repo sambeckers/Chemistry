@@ -12,6 +12,9 @@ from pathlib import Path
 from tqdm import tqdm
 import shutil
 from astropy import units as u
+from numpy.lib import recfunctions as rfn
+from convert_trace__run_models import select_particle_ids
+from n_distinct_colours import generate_colormap
 
 def load_all_particles(particle_IDs):
     """Load all particle trace data and compute global bounds."""
@@ -22,6 +25,15 @@ def load_all_particles(particle_IDs):
         # Ensure data is always at least 1D (handles single-row files)
         if data.ndim == 0:
             data = np.array([data])
+        x = data['X']
+        y = data['Y']
+        z = data['Z']
+        if to_cm:
+            x = (x * u.pc).to(u.cm).value
+            y = (y * u.pc).to(u.cm).value
+            z = (z * u.pc).to(u.cm).value
+        r = np.sqrt(x**2 + y**2 + z**2)
+        data = rfn.append_fields(data, 'R', r, usemask=False)
         all_data[pid] = data
 
     # Collect all data across all particles
@@ -76,7 +88,7 @@ def plot_all_params_time(all_data, bounds, particle_IDs, save=True):
                     label=f'{pid}')
 
     # Format axes
-    axes[0].set_ylabel('$\\rho$ [cm$^{-3}$]', fontsize=16)
+    axes[0].set_ylabel('$n$ [cm$^{-3}$]', fontsize=16)
     axes[0].set_xscale('log')
     axes[0].set_yscale('log')
     axes[0].set_xlim(bounds['time'].min(), bounds['time'].max())
@@ -109,6 +121,7 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
     
     # Generate colors for all particles
     colors = plt.cm.Oranges(np.linspace(0.2, 1, len(particle_IDs)))
+    colors = generate_colormap(len(particle_IDs)).colors
 
     ref_data = all_data[particle_IDs[0]]['C2H2']
     
@@ -116,17 +129,7 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
         data = all_data[pid]
         if i == 0:
             ref_abundance = data['C2H2']
-        t = data['TIME']
-        x = data['X']
-        y = data['Y']
-        z = data['Z']
-
-        if to_cm:
-            x = (x * u.pc).to(u.cm).value
-            y = (y * u.pc).to(u.cm).value
-            z = (z * u.pc).to(u.cm).value
-
-        r = np.sqrt(x**2 + y**2 + z**2)
+        r = data['R']
 
         # Density
         axes[0].plot(r, data['DENSITY'], color=colors[i], lw=2, 
@@ -151,7 +154,7 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
                     label=f'{pid}')
 
     # Format axes
-    axes[0].set_ylabel('$\\rho$ [cm$^{-3}$]', fontsize=16)
+    axes[0].set_ylabel('$n$ [cm$^{-3}$]', fontsize=16)
     axes[0].set_xscale('log')
     axes[0].set_yscale('log')
     axes[0].set_xlim(bounds['r'])
@@ -198,16 +201,7 @@ def plot_molecules(all_data, bounds, particle_IDs, save=True):
     
     for i, pid in enumerate(particle_IDs):
         data = all_data[pid]
-        x = data['X']
-        y = data['Y']
-        z = data['Z']
-
-        if to_cm:
-            x = (x * u.pc).to(u.cm).value
-            y = (y * u.pc).to(u.cm).value
-            z = (z * u.pc).to(u.cm).value
-
-        r = np.sqrt(x**2 + y**2 + z**2)
+        r = data['R']
         
         for j, mol in enumerate(molecules):
             abundance = data[mol]
@@ -238,8 +232,8 @@ def plot_molecules(all_data, bounds, particle_IDs, save=True):
 
 def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
     """Plot abundances for given particle IDs."""
-    parents = ["He", "CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
-    "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS", "Mg", "Na", "Fe"]
+    parents = ["CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
+    "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS"]
     daughters = ['CN','C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
 
     colors_parents = plt.cm.tab20b(np.linspace(0, 1, len(parents)))
@@ -247,17 +241,7 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
     
     for pid in tqdm(particle_IDs, total=len(particle_IDs)):
         data = all_data[pid]
-        t = data['TIME']
-        x = data['X']
-        y = data['Y']
-        z = data['Z']
-
-        if to_cm:
-            x = (x * u.pc).to(u.cm).value
-            y = (y * u.pc).to(u.cm).value
-            z = (z * u.pc).to(u.cm).value
-
-        r = np.sqrt(x**2 + y**2 + z**2)
+        r = data['R']
         fig, axes = plt.subplots(2, 1, figsize=(10, 8), dpi=300, sharex=True)
         
         # Parents
@@ -310,16 +294,7 @@ def plot_parent_daughter(all_data, bounds, particle_IDs, save=True):
     
     for i, pid in enumerate(particle_IDs):
         data = all_data[pid]
-        x = data['X']
-        y = data['Y']
-        z = data['Z']
-
-        if to_cm:
-            x = (x * u.pc).to(u.cm).value
-            y = (y * u.pc).to(u.cm).value
-            z = (z * u.pc).to(u.cm).value
-
-        r = np.sqrt(x**2 + y**2 + z**2)
+        r = data['R']
         
         for j, (par, dau) in enumerate(zip(parents, daughters)):
             ab_par = data[par]
@@ -512,43 +487,47 @@ def main():
     of = 'ev_output'
     ff = 'figures/Evolution_traces'
 
-    # if not setup_figure_directories(savedirmain):
-    #     print("\n✗ Setup cancelled by user")
-    #     return
+    if not setup_figure_directories(savedirmain):
+        print("\n✗ Setup cancelled by user")
+        return
 
     particle_IDs_file = savedirmain / 'traces' / pmf / 'particle_IDs.txt'
-    with open(particle_IDs_file, 'r') as f:
-        particle_IDs = [int(line.strip()) for line in f if line.strip()]
+    tracesf = f'traces/{pmf}/trace_output_with_av'
+    trace_dir = savedirmain / tracesf
+    particle_IDs = select_particle_ids(
+        particle_IDs_file,
+        trace_dir,
+        max_particle_id=300000,
+        start_index=2,
+        n_select=15,
+    )
+    print(f"Selected particle IDs: {particle_IDs}")
+    particle_IDs[1] = 29823
+    particle_IDs[2] = 46371
 
-    # Select up to 15 evenly spaced particle IDs for testing
-    n_select = min(15, len(particle_IDs))
-    if n_select > 0:
-        indices = np.linspace(2, len(particle_IDs) - 2, num=n_select, dtype=int)
-        particle_IDs = [particle_IDs[i] for i in indices]
-    else:
-        particle_IDs = []
     # particle_IDs = [0, 1, 2, 3, 4]
+    # particle_IDs = [21549, 311143]
 
     # Load all particle data
     all_data, bounds = load_all_particles(particle_IDs)
     
-    # # Plot rho, T, and A_V for all particles
-    # plot_all_params_time(all_data, bounds, particle_IDs, save=True)
+    # Plot n, T, and A_V for all particles
+    plot_all_params_time(all_data, bounds, particle_IDs, save=True)
 
-    # # Plot rho, T, A_V, and C2H2 abundance vs radius for all particles
-    # plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
+    # Plot n, T, A_V, and C2H2 abundance vs radius for all particles
+    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
     
-    # # Plot normalized abundances for selected molecules
-    # plot_molecules(all_data, bounds, particle_IDs, save=True)
+    # Plot normalized abundances for selected molecules
+    plot_molecules(all_data, bounds, particle_IDs, save=True)
  
-    # # Plot abundances for each particle
-    # plot_abundances(all_data, particle_IDs, savedirmain, save=True)
+    # Plot abundances for each particle
+    plot_abundances(all_data, particle_IDs, savedirmain, save=True)
 
     # Plot parent-daughter abundances
     plot_parent_daughter(all_data, bounds, particle_IDs, save=True)
 
     # # Create and save animation (faster: max_frames=200, fps=30)
-    # create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
+    create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
 
 if __name__ == '__main__':
     main()
