@@ -15,6 +15,9 @@ from astropy import units as u
 from numpy.lib import recfunctions as rfn
 from convert_trace__run_models import select_particle_ids
 from n_distinct_colours import generate_colormap
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import BASE_PATH
 
 def load_all_particles(particle_IDs):
     """Load all particle trace data and compute global bounds."""
@@ -481,7 +484,7 @@ def setup_figure_directories(base_path):
 def main():
     global savedirmain, mf, of, ff, to_cm
     to_cm = True
-    savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
+    savedirmain = BASE_PATH
     pmf = 'wind_v10'
     mf = 'evolving_model'
     of = 'ev_output'

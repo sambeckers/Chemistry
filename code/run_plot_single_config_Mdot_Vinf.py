@@ -7,9 +7,12 @@ from kb.modeling.tools import CodeIO
 from kb import KoekenBak
 from kb import path
 from n_distinct_colours import generate_colormap
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import BASE_PATH
 
 # Output folder where the figure will be saved
-savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
+savedirmain = BASE_PATH
 model_folder = 'complete_model_Mdot_Vinf_Crich'
 # model_folder = 'complete_model_Mdot_Vinf_Orich'
 

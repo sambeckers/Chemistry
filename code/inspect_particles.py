@@ -9,6 +9,9 @@ from convert_trace__run_models import select_particle_ids
 from n_distinct_colours import generate_colormap
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import BASE_PATH
 
 
 def get_distinct_colors(n_colors):
@@ -1064,7 +1067,7 @@ def setup_inspection_directory(base_path):
 
 def main():
     to_cm = True
-    savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
+    savedirmain = BASE_PATH
     pmf = 'wind_v10'
     mf = 'evolving_model'
     of = 'ev_output'

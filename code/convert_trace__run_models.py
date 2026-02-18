@@ -4,6 +4,9 @@ import shutil
 from pathlib import Path
 from astropy import units as u
 from tqdm import tqdm
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import BASE_PATH
 
 def select_particle_ids(
     particle_IDs_file,
@@ -257,7 +260,7 @@ def setup_directories(base_path):
     
 def main():
     global savedirmain, pmf, tracesf, mf, phantom, model_1D
-    savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
+    savedirmain = BASE_PATH
     pmf = 'wind_v10'
     tracesf = f'traces/{pmf}/trace_output_with_av'
     mf = 'evolving_model'

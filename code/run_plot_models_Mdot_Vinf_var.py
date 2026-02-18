@@ -11,9 +11,12 @@ from kb import KoekenBak
 from kb.tools.io import Database
 from kb import path
 import glob as gl
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import BASE_PATH
 
 #- Outputfolder where the figure will be saved
-savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
+savedirmain = BASE_PATH
 model_folder = 'complete_model_Mdot_Vinf_Crich'
 # model_folder = 'complete_model_Mdot_Vinf_Orich'
 

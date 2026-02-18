@@ -1,8 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import BASE_PATH
 
-savedirmain = Path('/Users/sam/Documents/GitHub/Chemistry')
+savedirmain = BASE_PATH
 mf = 'evolving_model'
 of = 'ev_output'
 
