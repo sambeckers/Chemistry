@@ -70,6 +70,7 @@ my @abundance;
 my $i;
 my $imax = 0;
 my $ab;
+my %species_warned;
 
 # Read input file using a while loop - close when finished reading
 
@@ -152,9 +153,13 @@ while (<FILE3>)
 # Check for existence of species in input file
 # Check if @abundance value is empty
 
-				if ($abundance[$s][$imax-1] == 0)
+				if (!defined($abundance[$s][$imax-1]) || $abundance[$s][$imax-1] == 0)
 				{
-					die("Died! Species, $species[$s], does not exist in your data! \n");
+					unless ($species_warned{$species[$s]}) {
+						warn("Warning: Species $species[$s] has zero or undefined abundance - continuing with 0.\n");
+						$species_warned{$species[$s]} = 1;
+					}
+					$abundance[$s][$imax-1] = 0;
 				}
 
                 	}
@@ -164,6 +169,15 @@ while (<FILE3>)
 
 $imax = $imax - 1;
 
+# Ensure any species not found in the output file are set to 0 for all grid points
+for $s (0..$smax) {
+    for $i (0..$imax) {
+        $abundance[$s][$i] = 0 unless defined($abundance[$s][$i]);
+    }
+    unless (defined($abundance[$s][0])) {
+        warn("Warning: Species $species[$s] was not found in the model output - all abundances set to 0.\n");
+    }
+}
 
 # Now print output for GNUPLOT data
 # Print to FILE1 - the .dat file

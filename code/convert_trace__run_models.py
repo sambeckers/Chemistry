@@ -212,8 +212,14 @@ def run_model(particle_ID=None, particle_slice=None):
 def convert_outmodel_to_evolve_output(particle_ID):
     parents = ["CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
        "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS"]
-    daughters = ['CN', 'C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
-    molecules = parents + daughters
+    daughters = ['CN', 'C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich
+    daughters_2 = ["HCO+", "CH", "CH2", "CH3", "NH", "NH2", "NH3", "SO", "SO2", "HS", "HCNH+", "NH4+"]
+    daughters_3 = ["H2CO", "H2CS", "CH3CN", "SiC", "SiN"]
+    grains = ["GSiO", "GH2O", "GC2H2", "GHCN", "GH2S", "GCH4", "GC2H4"]
+    atoms = ["C", "N", "H", "O", "S", "Si", "Cl", "F", "P"]
+    atoms_plus = ["C+", "N+", "H+", "O+", "S+", "Si+", "Cl+", "F+", "P+"]
+
+    molecules = parents + daughters + daughters_2 + daughters_3 + grains + atoms + atoms_plus
     molecule_str = " ".join(molecules) # Single space separated string
     
     os.system(f"cd {savedirmain / mf} && "
@@ -278,18 +284,19 @@ def main():
         start_index=2,
         n_select=15,
     )
-
-    particle_IDs = [29823, 46371]
+    particle_IDs[1] = 29823
+    particle_IDs[2] = 46371
+    # particle_IDs = [29823, 46371]
 
     # Setup directories (create or clear)
-    print("=" * 80)
-    print("DIRECTORY SETUP")
-    print("=" * 80)
-    if not setup_directories(savedirmain / mf):
-        print("\n✗ Setup cancelled by user")
-        return
-    print("=" * 80)
-    print()
+    # print("=" * 80)
+    # print("DIRECTORY SETUP")
+    # print("=" * 80)
+    # if not setup_directories(savedirmain / mf):
+    #     print("\n✗ Setup cancelled by user")
+    #     return
+    # print("=" * 80)
+    # print()
 
     if model_1D:
         input_file = savedirmain / model_1D_output
