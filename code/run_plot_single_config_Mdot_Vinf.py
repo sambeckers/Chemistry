@@ -3,13 +3,17 @@ import os
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+import importlib
 from kb.modeling.tools import CodeIO
 from kb import KoekenBak
+from kb.managers import PlottingManager as PlottingManagerModule
+from kb.plotting import plotFunctions as plotFunctionsModule
+from kb.plotting.objects import PlotChem as PlotChemModule
 from kb import path
 from n_distinct_colours import generate_colormap
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import BASE_PATH
+from config import BASE_PATH, parents, daughters_Crich as daughters, daughters_Orich
 
 # Output folder where the figure will be saved
 savedirmain = BASE_PATH
@@ -36,17 +40,17 @@ VELOCITY = [
 TARGET_MLOSS = MLOSS[0]
 TARGET_VELOCITY = VELOCITY[0]
 
-# Parent and daughter molecules
-parents = [
-    "He", "CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN",
-    "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS",
-]
-
-daughters = ['C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N']  # C-rich
-# daughters = ["SiN", "SiC", "OH", "CN", "SiOH+"]    # O-rich
+# Parent and daughter molecules (loaded from config.py)
+parents = parents
+daughters = daughters
+# daughters = daughters_Orich        (O-rich, uncomment import alias to switch)
 
 
 def run_model(kb_inputfile):
+    importlib.reload(plotFunctionsModule)
+    importlib.reload(PlotChemModule)
+    importlib.reload(PlottingManagerModule)
+    importlib.reload(KoekenBak)
     model = KoekenBak.KoekenBak(kb_inputfile)
     model.startSession()
     return model

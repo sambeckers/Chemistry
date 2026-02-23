@@ -17,9 +17,21 @@ from matplotlib import rc
 rc('text', usetex=True)
 
 
+def _reaction_label(rates, num):
+    """Build a human-readable reaction string from the rates dict,
+    falling back to the raw reaction number if rates is None or missing."""
+    if rates is None:
+        return str(num)
+    key = str(num)
+    if key not in rates:
+        return key
+    r = rates[key]
+    reactants = ' + '.join(sp for sp in r['REACTANTS'] if sp)
+    products  = ' + '.join(sp for sp in r['PRODUCTS']  if sp)
+    return '{} $\\rightarrow$ {}'.format(reactants, products)
 
 
-def plotProductionReactions(radii,preact,component,m,title,pfn,cfg):
+def plotProductionReactions(radii,preact,component,m,title,pfn,cfg,rates=None):
     """
     Plot the fractional production rate of the main reactions at each radius
     for a certain molecule.
@@ -80,9 +92,9 @@ def plotProductionReactions(radii,preact,component,m,title,pfn,cfg):
     for ii,pr in reactions.items():			
         x = [radii[q[0]] for q in pr]
         y = [float(q[1]) for q in pr]
-        p.plot(x,y,label=ii,color=colors[j],marker=markers[j])
+        p.plot(x,y,label=_reaction_label(rates,ii),color=colors[j],marker=markers[j])
         j += 1
-    p.legend()
+    p.legend(fontsize=11)
     p.title(title)
     p.xlim((xmin,xmax))
     p.xlabel('Radius (cm)')
@@ -95,7 +107,7 @@ def plotProductionReactions(radii,preact,component,m,title,pfn,cfg):
 
 
 
-def plotProductionReactionsAccuracy(radii,preact,component,m,title,pfn,cfg):
+def plotProductionReactionsAccuracy(radii,preact,component,m,title,pfn,cfg,rates=None):
     """
     Plot the fractional production rate of the main reactions at each radius
     for a certain molecule.
@@ -170,7 +182,7 @@ def plotProductionReactionsAccuracy(radii,preact,component,m,title,pfn,cfg):
         #p.plot(x,y,label=ii,color=colours[j],marker=markers[j],markeredgecolor=colors[q[2]],markerfacecolor=colors[q[2]])
         p.plot(x,y,label=ii,color=colours[j],marker=markers[j],markerfacecolor=colors[q[2]])
         j += 1
-    p.legend()
+    p.legend(fontsize=11)
     p.title(title)
     p.xlim((xmin,xmax))
     p.xlabel('Radius (cm)')
@@ -185,7 +197,7 @@ def plotProductionReactionsAccuracy(radii,preact,component,m,title,pfn,cfg):
 
 
             
-def plotDestructionReactions(radii,dreact,component,m,title,pfn,cfg):
+def plotDestructionReactions(radii,dreact,component,m,title,pfn,cfg,rates=None):
     """
     Plot the fractional destruction rate of the main reactions at each radius
     for a certain molecule.
@@ -247,9 +259,9 @@ def plotDestructionReactions(radii,dreact,component,m,title,pfn,cfg):
     for ii,pr in reactions.items():			
         x = [radii[q[0]] for q in pr]
         y = [float(q[1]) for q in pr]
-        p.plot(x,y,label=ii,color=colors[j],marker=markers[j])
+        p.plot(x,y,label=_reaction_label(rates,ii),color=colors[j],marker=markers[j])
         j += 1
-    p.legend()
+    p.legend(fontsize=11)
     p.title(title)
     p.xlim((xmin,xmax))
     p.xlabel('Radius (cm)')
@@ -262,7 +274,7 @@ def plotDestructionReactions(radii,dreact,component,m,title,pfn,cfg):
 
 
 
-def plotDestructionReactionsAccuracy(radii,dreact,component,m,title,pfn,cfg):
+def plotDestructionReactionsAccuracy(radii,dreact,component,m,title,pfn,cfg,rates=None):
     """
     Plot the fractional destruction rate of the main reactions at each radius
     for a certain molecule.
@@ -333,9 +345,9 @@ def plotDestructionReactionsAccuracy(radii,dreact,component,m,title,pfn,cfg):
         clrs = [colors[q[2]] for q in pr]
         
         #p.plot(x,y,label=ii,color=colours[j],marker=markers[j],markeredgecolor=colors[q[2]],markerfacecolor=colors[q[2]])
-        p.plot(x,y,label=ii,color=colours[j],marker=markers[j],markerfacecolor=colors[q[2]])
+        p.plot(x,y,label=_reaction_label(rates,ii),color=colours[j],marker=markers[j],markerfacecolor=colors[q[2]])
         j += 1
-    p.legend()
+    p.legend(fontsize=11)
     p.title(title)
     p.xlim((xmin,xmax))
     p.xlabel('Radius (cm)')

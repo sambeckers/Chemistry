@@ -31,6 +31,39 @@ from matplotlib.backends.backend_pdf import PdfPages
 #from PyPDF2 import PdfFileMerger
 
 
+def _reaction_id_to_label(reacfile, reaction_id):
+    """Convert a reaction number into a full reaction string."""
+    key = str(reaction_id)
+    if key not in reacfile:
+        return key
+    reactants = ' + '.join(filter(None, reacfile[key]['REACTANTS']))
+    products = ' + '.join(filter(None, reacfile[key]['PRODUCTS']))
+    return reactants + ' $\\rightarrow$ ' + products
+
+
+def _full_analysis_plot_basename(molecule, kind, component='major'):
+    """Create plot filename base for full-analysis outputs."""
+    base = molecule + '_' + kind
+    if component != 'major':
+        base += '_' + component
+    return base
+
+
+def _with_reaction_labels(dreact, preact, reacfile):
+    """Replace reaction-number identifiers by readable reaction strings."""
+    def convert(reactions):
+        converted = dict()
+        for ir, entries in reactions.items():
+            converted[ir] = []
+            for entry in entries:
+                new_entry = list(entry)
+                new_entry[0] = _reaction_id_to_label(reacfile, entry[0])
+                converted[ir].append(new_entry)
+        return converted
+
+    return convert(dreact), convert(preact)
+
+
 class PlotChem(PlottingSession):
 
     """ 
@@ -173,6 +206,7 @@ class PlotChem(PlottingSession):
                 full = CodeIO.readFullAnalysis(star,component=component)
                 radii = [full[f]['radius'] for f in full.keys()]
             
+            reacfile = CodeIO.readRatesFile(star)
             for m in molecules:
                     print(m)
                     #- Check if output file with the main production and destruction 
@@ -186,14 +220,16 @@ class PlotChem(PlottingSession):
                     if os.path.isfile(outfile):
                             ##- Get main destruction and formation reactions at all radii
                             dreact,preact = AnalyseIO.getMainReactions(full,m)				
+                            dreact,preact = _with_reaction_labels(dreact, preact, reacfile)
                             
                             titlep = 'production-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
                             titled = 'destruction-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
                             ###-- Plot of PRODUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                                    else 'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'production', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional production rates
                             #pfnp.append(plotFunctions.plotProductionReactions(radii,preact,component,m,titlep,\
                                                                             #pfn,cfg))
@@ -201,9 +237,10 @@ class PlotChem(PlottingSession):
                                                                             pfn,cfg)
                             ###-- Plot of DESTRUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                                    else 'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'destruction', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional destruction rates
                             #pfnd.append(plotFunctions.plotDestructionReactions(radii,dreact,component,m,titled,\
                                                                             #pfn,cfg))
@@ -215,14 +252,16 @@ class PlotChem(PlottingSession):
 
                             ##- Get main destruction and formation reactions at all radii
                             dreact,preact = AnalyseIO.getMainReactions(full,m)				
+                            dreact,preact = _with_reaction_labels(dreact, preact, reacfile)
                             titlep = 'production-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
                             titled = 'destruction-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
 
                             ###-- Plot of PRODUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                                    else 'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'production', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional production rates
                             #pfnp.append(plotFunctions.plotProductionReactions(radii,preact,component,m,titlep,\
                                                                             #pfn,cfg))
@@ -230,9 +269,10 @@ class PlotChem(PlottingSession):
                                                                             pfn,cfg)
                             ###-- Plot of DESTRUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                                    else 'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'destruction', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional destruction rates
                             #pfnd.append(plotFunctions.plotDestructionReactions(radii,dreact,component,m,titled,\
                                                                             #pfn,cfg))
@@ -273,15 +313,17 @@ class PlotChem(PlottingSession):
                     
                             ##- Get main destruction and formation reactions at all radii
                             dreact,preact = AnalyseIO.getMainReactions(full,m)				
+                            dreact,preact = _with_reaction_labels(dreact, preact, reacfile)
 
                             ###-- Plot of PRODUCTION reactions
                             #- Initialise figure filename	
                             titlep = 'production-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
                             titled = 'destruction-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
 
-                            pfn = fn_plt+'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                        else 'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)						
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'production', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional production rates
                             #pfnp.append(plotFunctions.plotProductionReactions(radii,preact,component,m,titlep,\
                                                                                     #pfn,cfg))
@@ -289,9 +331,10 @@ class PlotChem(PlottingSession):
                                                                                     pfn,cfg)
                             ###-- Plot of DESTRUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                        else 'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'destruction', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional destruction rates
                             #pfnd.append(plotFunctions.plotDestructionReactions(radii,dreact,component,m,titled,\
                                                                                     #pfn,cfg))
@@ -303,14 +346,16 @@ class PlotChem(PlottingSession):
             
                             ##- Get main destruction and formation reactions at all radii
                             dreact,preact = AnalyseIO.getMainReactions(full,m)				
+                            dreact,preact = _with_reaction_labels(dreact, preact, reacfile)
                             titlep = 'production-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
                             titled = 'destruction-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
 
                             ###-- Plot of PRODUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                        else 'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)						#- Plot fractional production rates
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'production', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional production rates
                             #pfnp.append(plotFunctions.plotProductionReactions(radii,preact,component,m,titlep,\
                                                                                     #pfn,cfg))
@@ -318,9 +363,10 @@ class PlotChem(PlottingSession):
                                                                                     pfn,cfg)
                             ###-- Plot of DESTRUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                        else 'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'destruction', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional destruction rates
                             #pfnd.append(plotFunctions.plotDestructionReactions(radii,dreact,component,m,titled,\
                                                                                     #pfn,cfg))
@@ -389,11 +435,10 @@ class PlotChem(PlottingSession):
         if 'print_summary' in cfg_dict:
             print_summary = cfg_dict.pop('print_summary')
 
-        reacfile = CodeIO.readRatesFile(star_grid[0])
-        
         print('done')
 
         for istar,star in enumerate(star_grid):
+            reacfile = CodeIO.readRatesFile(star)
             if not star['LAST_CHEMISTRY_MODEL']: continue
             if not star['FULL_ANALYSIS']:
                 print('** No full analysis requested for a model. Aborting.')
@@ -437,22 +482,25 @@ class PlotChem(PlottingSession):
                             for ir in preact.keys():
                                 for r in preact[ir]:
                                     r.append(reacfile[r[0]]['COEFF'][6])
+                            dreact,preact = _with_reaction_labels(dreact, preact, reacfile)
                             
                             titlep = 'production-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
                             titled = 'destruction-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
                             ###-- Plot of PRODUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                                    else 'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'production', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional production rates
                             plotFunctions.plotProductionReactionsAccuracy(radii,preact,component,m,titlep,\
                                                                             pfn,cfg)
                             ###-- Plot of DESTRUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                                    else 'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'destruction', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional destruction rates
                             plotFunctions.plotDestructionReactionsAccuracy(radii,dreact,component,m,titled,\
                                                                             pfn,cfg)
@@ -470,6 +518,7 @@ class PlotChem(PlottingSession):
                             for ir in preact.keys():
                                 for r in preact[ir]:
                                     r.append(reacfile[r[0]]['COEFF'][6])
+                            dreact,preact = _with_reaction_labels(dreact, preact, reacfile)
 
 
                             titlep = 'production-'+component+'-'+str(istar)+'-'+m+'-'+star['LAST_CHEMISTRY_MODEL'].replace('_','-')
@@ -477,17 +526,19 @@ class PlotChem(PlottingSession):
 
                             ###-- Plot of PRODUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                                    else 'full_analysis_production_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'production', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional production rates
                             plotFunctions.plotProductionReactionsAccuracy(radii,preact,component,m,titlep,\
                                                                             pfn,cfg)
                             ###-- Plot of DESTRUCTION reactions
                             #- Initialise figure filename				
-                            pfn = fn_plt+'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']  if fn_plt \
-                                                    else 'full_analysis_destruction_'+component+'_'+str(istar)+'_'+m+'_'+star['LAST_CHEMISTRY_MODEL']
-                            pfn = self.setFnPlt(pfn)
+                            pfn = self.setFnPlt(
+                                _full_analysis_plot_basename(m, 'destruction', component),
+                                fn_subfolder='Full_analysis_'+str(istar)+'_'+star['LAST_CHEMISTRY_MODEL']
+                            )
                             #- Plot fractional destruction rates
                             plotFunctions.plotDestructionReactionsAccuracy(radii,dreact,component,m,titled,\
                                                                                 pfn,cfg)

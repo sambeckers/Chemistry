@@ -12,15 +12,21 @@ from pathlib import Path
 from tqdm import tqdm
 import shutil
 from astropy import units as u
-from numpy.lib import recfunctions as rfn
+from numpy.lib import recfunctions as rfn  # noqa: F401  (kept for potential future use)
 from convert_trace__run_models import select_particle_ids
 from n_distinct_colours import generate_colormap
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import BASE_PATH
+from config import (BASE_PATH, parents, daughters_Crich as daughters,
+                    molecules_plot, pd_parents, pd_daughters)
 
 def load_all_particles(particle_IDs):
-    """Load all particle trace data and compute global bounds."""
+    """Load all particle trace data and compute global bounds.
+
+    X, Y, Z, R are read directly from the ev_output files.  No coordinate
+    conversion is needed because postprocess_ev_output already wrote them
+    in the requested units (cm when to_cm=True, pc otherwise).
+    """
     all_data = {}
     for pid in particle_IDs:
         filepath = savedirmain / mf / of / f"ev_{pid}.dat"
@@ -28,32 +34,18 @@ def load_all_particles(particle_IDs):
         # Ensure data is always at least 1D (handles single-row files)
         if data.ndim == 0:
             data = np.array([data])
-        x = data['X']
-        y = data['Y']
-        z = data['Z']
-        if to_cm:
-            x = (x * u.pc).to(u.cm).value
-            y = (y * u.pc).to(u.cm).value
-            z = (z * u.pc).to(u.cm).value
-        r = np.sqrt(x**2 + y**2 + z**2)
-        data = rfn.append_fields(data, 'R', r, usemask=False)
         all_data[pid] = data
 
-    # Collect all data across all particles
+    # Collect all data across all particles (already in correct units)
     all_x = np.concatenate([data['X'] for data in all_data.values()])
     all_y = np.concatenate([data['Y'] for data in all_data.values()])
     all_z = np.concatenate([data['Z'] for data in all_data.values()])
-
-    if to_cm:
-        all_x = (all_x * u.pc).to(u.cm).value
-        all_y = (all_y * u.pc).to(u.cm).value
-        all_z = (all_z * u.pc).to(u.cm).value
+    all_r = np.concatenate([data['R'] for data in all_data.values()])
     all_times = np.concatenate([data['TIME'] for data in all_data.values()])
     all_density = np.concatenate([data['DENSITY'] for data in all_data.values()])
     all_temp = np.concatenate([data['TEMP'] for data in all_data.values()])
     all_av = np.concatenate([data['AV'] for data in all_data.values()])
-    all_r = np.sqrt(all_x**2 + all_y**2 + all_z**2)
-    
+
     bounds = {
         'x': (all_x.min(), all_x.max()),
         'y': (all_y.min(), all_y.max()),
@@ -64,7 +56,7 @@ def load_all_particles(particle_IDs):
         'temp': (all_temp.min(), all_temp.max()),
         'av': (all_av.min(), all_av.max())
     }
-    
+
     return all_data, bounds
 
 def plot_all_params_time(all_data, bounds, particle_IDs, save=True):
@@ -195,7 +187,7 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
 
 def plot_molecules(all_data, bounds, particle_IDs, save=True):
     """Plot normalized abundances for CO, CH4, C2H2, HCN, and C2H4."""
-    molecules = ['CO', 'CH4', 'C2H2', 'HCN', 'C2H4']
+    molecules = molecules_plot
     
     fig, axes = plt.subplots(5, 1, figsize=(10, 14), dpi=300, sharex=True)
     
@@ -235,9 +227,6 @@ def plot_molecules(all_data, bounds, particle_IDs, save=True):
 
 def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
     """Plot abundances for given particle IDs."""
-    parents = ["CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
-    "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS"]
-    daughters = ['CN','C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
 
     colors_parents = plt.cm.tab20b(np.linspace(0, 1, len(parents)))
     colors_daughters = plt.cm.Oranges(np.linspace(0.3, 0.95, len(daughters)))
@@ -278,8 +267,8 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
 
 def plot_parent_daughter(all_data, bounds, particle_IDs, save=True):
     """Plot parent-daughter abundances for C2H2 -> C2H and HCN -> CN."""
-    parents = ["C2H2", "HCN"]
-    daughters = ['C2H', 'CN']
+    parents = pd_parents
+    daughters = pd_daughters
 
     fig, axes = plt.subplots(1, len(parents), figsize=(14,7), dpi=300, sharey=True)
     

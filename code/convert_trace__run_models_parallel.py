@@ -8,7 +8,8 @@ from astropy import units as u
 from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import BASE_PATH
+from config import (BASE_PATH, parents, daughters_Crich as daughters,
+                    daughters_2, daughters_3, grains, atoms, atoms_plus)
 
 
 def select_particle_ids(
@@ -113,6 +114,75 @@ def write_file_params(model_base, particle_id):
         fpfile.write(f"./model_analyse_{particle_id}.dat\n")
 
 
+def postprocess_ev_output(filepath, to_cm=True):
+    """Insert R column after Z in an ev_output file, optionally converting X/Y/Z to cm.
+
+    evolve_output.pl writes X/Y/Z in pc.  This function computes
+    R = sqrt(X^2+Y^2+Z^2) and inserts it after the Z column so downstream
+    readers can use data['R'] directly without any coordinate arithmetic.
+    When to_cm=True the X, Y, Z, R values are also converted to centimetres.
+    The file is rewritten in-place.
+    """
+    filepath = Path(filepath)
+    if not filepath.exists():
+        return
+
+    with open(filepath, "r") as f:
+        raw_lines = f.readlines()
+
+    NAMES_IDX = 4
+    UNITS_IDX = 5
+
+    col_names = raw_lines[NAMES_IDX].split()
+    xi = col_names.index("X")
+    yi = col_names.index("Y")
+    zi = col_names.index("Z")
+
+    pc_to_cm = (1.0 * u.pc).to(u.cm).value
+    unit_str = "(CM)" if to_cm else "(PC)"
+
+    new_col_names = col_names[:zi + 1] + ["R"] + col_names[zi + 1:]
+    names_line = "  ".join(f"{n:<16}" for n in new_col_names) + "\n"
+
+    if UNITS_IDX < len(raw_lines) and raw_lines[UNITS_IDX].lstrip().startswith("#"):
+        old_units = raw_lines[UNITS_IDX].lstrip("#").split()
+        new_units = old_units[:zi + 1] + [unit_str] + old_units[zi + 1:]
+        if to_cm:
+            new_units[xi] = unit_str
+            new_units[yi] = unit_str
+            new_units[zi] = unit_str
+        units_line = "#  " + "  ".join(f"{u:<16}" for u in new_units) + "\n"
+        data_start = UNITS_IDX + 1
+    else:
+        units_line = raw_lines[UNITS_IDX]
+        data_start = UNITS_IDX
+
+    new_lines = raw_lines[:NAMES_IDX] + [names_line, units_line]
+
+    for line in raw_lines[data_start:]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            new_lines.append(line)
+            continue
+        parts = stripped.split()
+        x = float(parts[xi])
+        y = float(parts[yi])
+        z = float(parts[zi])
+        if to_cm:
+            x *= pc_to_cm
+            y *= pc_to_cm
+            z *= pc_to_cm
+            parts[xi] = f"{x:.5e}"
+            parts[yi] = f"{y:.5e}"
+            parts[zi] = f"{z:.5e}"
+        r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+        parts = parts[:zi + 1] + [f"{r:.5e}"] + parts[zi + 1:]
+        new_lines.append("  ".join(parts) + "\n")
+
+    with open(filepath, "w") as f:
+        f.writelines(new_lines)
+
+
 def run_model(model_base, particle_id):
     os.system(
         f"cd {model_base} && "
@@ -120,15 +190,7 @@ def run_model(model_base, particle_id):
     )
 
 
-def convert_outmodel_to_evolve_output(model_base, particle_id):
-    parents = ["CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS"]
-    daughters = ["CN", "C2H", "C4H", "C6H", "HC3N", "HC5N", "HC7N"]
-    daughters_2 = ["HCO+", "CH", "CH2", "CH3", "NH", "NH2", "NH3", "SO", "SO2", "HS", "HCNH+", "NH4+"]
-    daughters_3 = ["H2CO", "H2CS", "CH3CN", "SiC", "SiN"]
-    grains = ["GSiO", "GH2O", "GC2H2", "GHCN", "GH2S", "GCH4", "GC2H4"]
-    atoms = ["C", "N", "H", "O", "S", "Si", "Cl", "F", "P"]
-    atoms_plus = ["C+", "N+", "H+", "O+", "S+", "Si+", "Cl+", "F+", "P+"]
-
+def convert_outmodel_to_evolve_output(model_base, particle_id, to_cm=True):
     molecules = parents + daughters + daughters_2 + daughters_3 + grains + atoms + atoms_plus
     molecule_str = " ".join(molecules)
 
@@ -136,6 +198,8 @@ def convert_outmodel_to_evolve_output(model_base, particle_id):
         f"cd {model_base} && "
         f"perl evolve_output.pl output/model_output_{particle_id}.dat ev_output/ev_{particle_id} {molecule_str}"
     )
+    ev_file = model_base / "ev_output" / f"ev_{particle_id}.dat"
+    postprocess_ev_output(ev_file, to_cm=to_cm)
 
 
 def ensure_directories(model_base):
@@ -177,6 +241,11 @@ def parse_args():
     parser.add_argument("--use-slurm-array", action="store_true")
     parser.add_argument("--slurm-index-base", type=int, default=0)
     parser.add_argument("--selected-ids-out", type=str, default=None)
+    parser.add_argument(
+        "--no-cm", dest="to_cm", action="store_false",
+        help="Keep X/Y/Z/R in pc instead of converting to cm (default: convert to cm)",
+    )
+    parser.set_defaults(to_cm=True)
     return parser.parse_args()
 
 
@@ -221,7 +290,7 @@ def main():
         convert_phys(input_file, output_file)
         write_file_params(model_base, particle_id)
         run_model(model_base, particle_id)
-        convert_outmodel_to_evolve_output(model_base, particle_id)
+        convert_outmodel_to_evolve_output(model_base, particle_id, to_cm=args.to_cm)
 
 
 if __name__ == "__main__":

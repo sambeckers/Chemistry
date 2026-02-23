@@ -13,7 +13,7 @@ from kb import path
 import glob as gl
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import BASE_PATH
+from config import BASE_PATH, parents_He_extended as parents, daughters_Crich_no_CN, daughters_Orich
 
 #- Outputfolder where the figure will be saved
 savedirmain = BASE_PATH
@@ -54,11 +54,9 @@ def phys_params():
   nums = CodeIO.getChemistryAbundances(folder+'csnum_smooth.out')
   return radius,hnr,tempgas,tempdust,av,radfield,fracs,nums
 
-# Parent molecules
-parents = ["He", "CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN", 
-       "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS", "Mg", "Na", "Fe"]
-daughters = ['C2H', 'C4H', 'C6H', 'HC3N', 'HC5N', 'HC7N'] # Crich 
-daughters = ["SiN", "SiC", "OH", "CN", "SiOH+"] # Orich
+# Parent and daughter molecules (loaded from config.py)
+# daughters = daughters_Crich_no_CN  # C-rich (uncomment to use)
+daughters = daughters_Orich  # O-rich
 
 MLOSS = ["$\dot{M}=10^{-5} M_{\odot} \\rm{yr}^{-1}$", 
          "$\dot{M}=10^{-6} M_{\odot} \\rm{yr}^{-1}$", 
