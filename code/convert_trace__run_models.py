@@ -173,15 +173,145 @@ def convert_csphyspar(input_file, output_dir, velocity_km_s=15.0, n_slices=None)
             write_output(data_dict, output_file)
             print(f"Slice {i}: r ≥ {xcoord_pc[start_idx]:.3e} pc, {n_points - start_idx:3d} points -> {output_file.name}")
 
-def write_file_params(particle_ID):
-    fpfile = open(savedirmain / mf / 'param' / 'trace_file_param' /
-                      f"file_parameters_{particle_ID}.txt", "w")
+def write_analysis_params(particle_ids, output_file):
+    """Create a template analysis parameters file pre-filled with all particle IDs.
+
+    All entries default to ANA = F and r_coord_cm = 0.0.  Edit the file
+    manually: set the second column to T for any particle you want analysed,
+    and set the third column to the radius (in cm) at which to run the
+    analyse subroutine.
+
+    Parameters
+    ----------
+    particle_ids : list of int
+        Particle IDs to include in the file.
+    output_file : str or Path
+        Path to write the template file.
+    """
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    col_w = max(len(str(pid)) for pid in particle_ids)
+    with open(output_file, 'w') as f:
+        f.write(f"# {'particle_id':<{col_w}}  analyse(T/F)  r_coord_cm\n")
+        f.write(f"# {'----------':<{col_w}}  ------------  ----------\n")
+        for pid in particle_ids:
+            f.write(f"  {pid:<{col_w}}  {'F':<12}  0\n")
+    print(f"Created analysis params template: {output_file}")
+
+def load_analysis_params(analysis_params_file):
+    """Load per-particle analysis settings from a whitespace-delimited text file.
+
+    File format (# comments and blank lines are ignored)::
+
+        # particle_id   analyse(T/F)   r_coord_cm
+        29823           T              1.0e+14
+        46371           F              0
+
+    Parameters
+    ----------
+    analysis_params_file : str or Path
+        Path to the analysis parameters text file.
+
+    Returns
+    -------
+    dict
+        Mapping of ``particle_id (int)`` -> ``(ana (bool), r_coord_cm (float))``.
+    """
+    params = {}
+    with open(analysis_params_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split()
+            pid = int(parts[0])
+            ana = parts[1].strip().upper().startswith('T')
+            r_coord_cm = float(parts[2])
+            params[pid] = (ana, r_coord_cm)
+    return params
+
+def find_grid_point(model_base, particle_id, r_coord_cm):
+    """Return the 1-based grid point index whose radius is closest to *r_coord_cm*.
+
+    Looks up the ev_output file first (R column already in cm after
+    postprocessing).  Falls back to computing R from X/Y/Z in the input trace
+    file (columns in pc, converted to cm) if the ev_output does not exist.
+
+    Parameters
+    ----------
+    model_base : Path
+        Base directory of the evolving model.
+    particle_id : int
+        Particle identifier.
+    r_coord_cm : float
+        Target radius in cm.
+
+    Returns
+    -------
+    int
+        1-based grid point index of the closest point to *r_coord_cm*.
+    """
+    ev_file = model_base / 'ev_output' / f'ev_{particle_id}.dat'
+
+    if ev_file.exists():
+        with open(ev_file, 'r') as f:
+            raw_lines = f.readlines()
+        col_names = raw_lines[4].split()
+        ri = col_names.index('R')
+        r_values = []
+        for line in raw_lines[6:]:
+            stripped = line.strip()
+            if not stripped or stripped.startswith('#'):
+                continue
+            r_values.append(float(stripped.split()[ri]))
+    else:
+        # Fall back to input trace file: X/Y/Z are in pc, convert to cm
+        pc_to_cm = (1.0 * u.pc).to(u.cm).value
+        input_file = model_base / 'input' / f'{particle_id}.txt'
+        r_values = []
+        with open(input_file, 'r') as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped or stripped.startswith('#'):
+                    continue
+                parts = stripped.split()
+                x = float(parts[0]) * pc_to_cm
+                y = float(parts[1]) * pc_to_cm
+                z = float(parts[2]) * pc_to_cm
+                r_values.append(np.sqrt(x**2 + y**2 + z**2))
+
+    r_arr = np.array(r_values)
+    idx = int(np.argmin(np.abs(r_arr - r_coord_cm)))
+    return idx + 1  # convert to 1-based index
+
+
+def write_file_params(model_base, particle_id, phantom=True, ana=False, iana=0):
+    """Write the file_parameters_<particle_id>.txt input file for the Fortran model.
+
+    Parameters
+    ----------
+    model_base : Path
+        Base directory of the evolving model.
+    particle_id : int
+        Particle identifier used to name input/output files.
+    phantom : bool, optional
+        If True (default), the physical conditions file is
+        ``input/<particle_id>.txt``.  If False, it is
+        ``input/particle_slice_<particle_id>.txt``.
+    ana : bool, optional
+        Whether to call the analyse subroutine (sets ANA = T or F).
+    iana : int, optional
+        1-based grid point index at which to run the analyse subroutine.
+        Only meaningful when *ana* is True.
+    """
+    fpfile = open(model_base / 'param' / 'trace_file_param' /
+                      f"file_parameters_{particle_id}.txt", "w")
     fpfile.write("! FILE PARAMETERS FOR ENVELOPE MODEL\n")
     fpfile.write("! Physical conditions input file\n")
     if phantom:      
-        fpfile.write(f"input/{particle_ID}.txt\n")
+        fpfile.write(f"input/{particle_id}.txt\n")
     else:
-        fpfile.write(f"input/particle_slice_{particle_ID}.txt\n")
+        fpfile.write(f"input/particle_slice_{particle_id}.txt\n")
     fpfile.write("! Reaction file\n")
     fpfile.write("./rate12_complex.rates\n")
     fpfile.write("! Species file\n")
@@ -195,15 +325,15 @@ def write_file_params(particle_ID):
     fpfile.write("! Radiation field parameters file\n")
     fpfile.write("param/radiation_parameters.txt\n")
     fpfile.write("! Output abundances file\n")
-    fpfile.write(f"output/model_output_{particle_ID}.dat\n")
+    fpfile.write(f"output/model_output_{particle_id}.dat\n")
     fpfile.write("! Output rates file\n")
-    fpfile.write(f"output/model_rates_{particle_ID}.dat\n")
+    fpfile.write(f"output/model_rates_{particle_id}.dat\n")
     fpfile.write("! Call analyse subroutine (T(RUE) or F(ALSE))?\n")
-    fpfile.write("F\n")
+    fpfile.write("T\n" if ana else "F\n")
     fpfile.write("! Grid point to run analyse\n")
-    fpfile.write("0\n")
+    fpfile.write(f"{iana}\n")
     fpfile.write("! Analyse file\n")
-    fpfile.write(f"./model_analyse_{particle_ID}.dat\n")
+    fpfile.write(f"output/model_analyse_{particle_id}.dat\n")
     fpfile.close()
 
 def postprocess_ev_output(filepath, to_cm=True):
@@ -285,26 +415,30 @@ def postprocess_ev_output(filepath, to_cm=True):
         f.writelines(new_lines)
 
 
-def run_model(particle_ID=None, particle_slice=None):
-    os.system(f"cd {savedirmain / mf} && "
-            f"time ./model param/trace_file_param/file_parameters_{particle_ID}.txt")
+def run_model(model_base, particle_id):
+    os.system(f"cd {model_base} && "
+            f"time ./model param/trace_file_param/file_parameters_{particle_id}.txt")
     
-def convert_outmodel_to_evolve_output(particle_ID, to_cm=True):
+def convert_outmodel_to_evolve_output(model_base, particle_id, to_cm=True):
     molecules = parents + daughters + daughters_2 + daughters_3 + grains + atoms + atoms_plus
     molecule_str = " ".join(molecules) # Single space separated string
     
-    os.system(f"cd {savedirmain / mf} && "
-        f"perl evolve_output.pl output/model_output_{particle_ID}.dat ev_output/ev_{particle_ID} {molecule_str}")
-    ev_file = savedirmain / mf / 'ev_output' / f'ev_{particle_ID}.dat'
+    os.system(f"cd {model_base} && "
+        f"perl evolve_output.pl output/model_output_{particle_id}.dat ev_output/ev_{particle_id} {molecule_str}")
+    ev_file = model_base / 'ev_output' / f'ev_{particle_id}.dat'
     postprocess_ev_output(ev_file, to_cm=to_cm)
 
-def setup_directories(base_path):
-    """Create or clear directories for model runs.
+def setup_directories(base_path, particle_ids=None, analysis=False):
+    """Create or clear directories for model runs, and create an analysis
+    parameters template file if one does not already exist.
     
     Parameters
     ----------
     base_path : Path
         Base path for the evolving model directory
+    particle_ids : list of int, optional
+        Particle IDs used to populate the analysis parameters template.
+        If None, no template is created.
     
     Returns
     -------
@@ -334,11 +468,18 @@ def setup_directories(base_path):
         else:
             dir_path.mkdir(parents=True, exist_ok=True)
             print(f"✓ Created {dir_name}/")
-    
+
+    if analysis:
+        analysis_params_path = base_path / 'param' / 'analysis_params.txt'
+        if not analysis_params_path.exists():
+            write_analysis_params(particle_ids, analysis_params_path)
+            sys.exit(f"\nPlease edit the analysis parameters file at {analysis_params_path} to enable per-particle analysis, then re-run the script.")
+        else:
+            print(f"✓ Analysis params file already exists: {analysis_params_path}")
+
     return True
     
 def main():
-    global savedirmain, pmf, tracesf, mf, phantom, model_1D
     savedirmain = BASE_PATH
     pmf = 'wind_v10'
     tracesf = f'traces/{pmf}/trace_output_with_av'
@@ -346,7 +487,9 @@ def main():
     phantom = True
     model_1D = False
     to_cm = True  # Convert X/Y/Z/R to cm in ev_output files
+    analysis = True
     model_1D_output = 'complete_model_Mdot_Vinf_Crich/models/model_2025-10-22h14-41-04/csphyspar_smooth.out'
+    model_base = savedirmain / mf
 
     # Read and select particle IDs
     particle_IDs_file = savedirmain / 'traces' / pmf / 'particle_IDs.txt'
@@ -362,35 +505,44 @@ def main():
     particle_IDs[2] = 46371
     # particle_IDs = [29823, 46371]
 
-    # Setup directories (create or clear)
-    # print("=" * 80)
-    # print("DIRECTORY SETUP")
-    # print("=" * 80)
-    # if not setup_directories(savedirmain / mf):
-    #     print("\n✗ Setup cancelled by user")
-    #     return
-    # print("=" * 80)
-    # print()
+    # Setup directories (create or clear) and create analysis params template if needed
+    print("=" * 80)
+    print("DIRECTORY SETUP")
+    print("=" * 80)
+    if not setup_directories(model_base, particle_IDs, analysis=analysis):
+        print("\n✗ Setup cancelled by user")
+        return
+    print("=" * 80)
+    print()
+
+    if analysis:
+        analysis_params_file = model_base / 'param' / 'analysis_params.txt'
+        analysis_params = load_analysis_params(analysis_params_file)
 
     if model_1D:
         input_file = savedirmain / model_1D_output
-        output_folder = savedirmain / mf / 'input'
+        output_folder = model_base / 'input'
         convert_csphyspar(input_file, output_folder, n_slices = 5)
 
         for i in tqdm(range(5), total=5):
-            write_file_params(i)
-            run_model(i)
-            convert_outmodel_to_evolve_output(i, to_cm=to_cm)
+            write_file_params(model_base, i, phantom=False)
+            run_model(model_base, i)
+            convert_outmodel_to_evolve_output(model_base, i, to_cm=to_cm)
 
     if phantom:
         print(f"Running {mf} on {len(particle_IDs)} phantom particle traces from {pmf}")
         for particle_ID in tqdm(particle_IDs, total=len(particle_IDs)):
             input_file = savedirmain / tracesf / f'{particle_ID}.phys'
-            output_file = savedirmain / mf / 'input' / f'{particle_ID}.txt'
-            convert_phys(input_file, output_file)
-            write_file_params(particle_ID)
-            run_model(particle_ID)
-            convert_outmodel_to_evolve_output(particle_ID, to_cm=to_cm)
+            output_file = model_base / 'input' / f'{particle_ID}.txt'
+            # convert_phys(input_file, output_file)
+            if analysis:
+                ana_flag, r_coord = analysis_params[particle_ID]
+                iana = find_grid_point(model_base, particle_ID, r_coord) if ana_flag else 0
+                write_file_params(model_base, particle_ID, ana=ana_flag, iana=iana)
+            else:
+                write_file_params(model_base, particle_ID)
+            run_model(model_base, particle_ID)
+            # convert_outmodel_to_evolve_output(model_base, particle_ID, to_cm=to_cm)
 
     # print("DONE!")
     # print(f"Output columns:")

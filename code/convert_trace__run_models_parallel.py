@@ -3,34 +3,19 @@ import os
 from pathlib import Path
 import sys
 
-import numpy as np
-from astropy import units as u
 from tqdm import tqdm
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import (BASE_PATH, parents, daughters_Crich as daughters,
-                    daughters_2, daughters_3, grains, atoms, atoms_plus)
-
-
-def select_particle_ids(
-    particle_ids_file,
-    trace_dir,
-    max_particle_id=300000,
-    start_index=2,
-    n_select=15,
-):
-    with open(particle_ids_file, "r") as f:
-        particle_ids = [int(line.strip()) for line in f if line.strip()]
-
-    particle_ids = [pid for pid in particle_ids if pid <= max_particle_id]
-    particle_ids = [pid for pid in particle_ids if (trace_dir / f"{pid}.phys").exists()]
-
-    if not particle_ids:
-        return []
-
-    n_pick = min(n_select, len(particle_ids))
-    indices = np.linspace(start_index, len(particle_ids) - 1, num=n_pick, dtype=int)
-    return [particle_ids[i] for i in indices]
+sys.path.insert(0, str(Path(__file__).parent))         # for sibling module import
+sys.path.insert(0, str(Path(__file__).parent.parent))  # for config
+from config import BASE_PATH
+from convert_trace__run_models import (
+    select_particle_ids,
+    convert_phys,
+    write_file_params,
+    postprocess_ev_output,
+    run_model,
+    convert_outmodel_to_evolve_output,
+)
 
 
 def apply_custom_particle_overrides(particle_ids):
@@ -40,166 +25,6 @@ def apply_custom_particle_overrides(particle_ids):
     if len(particle_ids) > 2:
         particle_ids[2] = 46371
     return particle_ids
-
-
-def convert_phys(in_file, out_file):
-    rows = []
-    with open(in_file, "r") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-
-            values = line.split()
-            rows.append(
-                {
-                    "time_str": values[0],
-                    "x": float(values[1]),
-                    "y": float(values[2]),
-                    "z": float(values[3]),
-                    "dens_str": values[4],
-                    "temp_str": values[5],
-                    "av_str": values[7],
-                }
-            )
-
-    with open(out_file, "w") as f:
-        for row in rows:
-            x_pc = (row["x"] * u.AU).to(u.pc).value
-            y_pc = (row["y"] * u.AU).to(u.pc).value
-            z_pc = (row["z"] * u.AU).to(u.pc).value
-
-            line = (
-                f"    {x_pc:.14e}"
-                f"    {y_pc:.14e}"
-                f"    {z_pc:.14e}"
-                f"    {row['dens_str']}"
-                f"    {row['temp_str']}"
-                f"    {row['temp_str']}"
-                f"    {row['av_str']}"
-                f"    0.00000e+00"
-                f"    0.00000e+00"
-                f"    {row['time_str']}\n"
-            )
-            f.write(line)
-
-
-def write_file_params(model_base, particle_id):
-    param_file = model_base / "param" / "trace_file_param" / f"file_parameters_{particle_id}.txt"
-    with open(param_file, "w") as fpfile:
-        fpfile.write("! FILE PARAMETERS FOR ENVELOPE MODEL\n")
-        fpfile.write("! Physical conditions input file\n")
-        fpfile.write(f"input/{particle_id}.txt\n")
-        fpfile.write("! Reaction file\n")
-        fpfile.write("./rate12_complex.rates\n")
-        fpfile.write("! Species file\n")
-        fpfile.write("./rate12_complex_atomic_Crich.specs\n")
-        fpfile.write("! Binding energies file\n")
-        fpfile.write("./rate12_binding.dat\n")
-        fpfile.write("! Reaction parameters file\n")
-        fpfile.write("param/reaction_parameters.txt\n")
-        fpfile.write("! Grain parameters file\n")
-        fpfile.write("param/grain_parameters.txt\n")
-        fpfile.write("! Radiation field parameters file\n")
-        fpfile.write("param/radiation_parameters.txt\n")
-        fpfile.write("! Output abundances file\n")
-        fpfile.write(f"output/model_output_{particle_id}.dat\n")
-        fpfile.write("! Output rates file\n")
-        fpfile.write(f"output/model_rates_{particle_id}.dat\n")
-        fpfile.write("! Call analyse subroutine (T(RUE) or F(ALSE))?\n")
-        fpfile.write("F\n")
-        fpfile.write("! Grid point to run analyse\n")
-        fpfile.write("0\n")
-        fpfile.write("! Analyse file\n")
-        fpfile.write(f"./model_analyse_{particle_id}.dat\n")
-
-
-def postprocess_ev_output(filepath, to_cm=True):
-    """Insert R column after Z in an ev_output file, optionally converting X/Y/Z to cm.
-
-    evolve_output.pl writes X/Y/Z in pc.  This function computes
-    R = sqrt(X^2+Y^2+Z^2) and inserts it after the Z column so downstream
-    readers can use data['R'] directly without any coordinate arithmetic.
-    When to_cm=True the X, Y, Z, R values are also converted to centimetres.
-    The file is rewritten in-place.
-    """
-    filepath = Path(filepath)
-    if not filepath.exists():
-        return
-
-    with open(filepath, "r") as f:
-        raw_lines = f.readlines()
-
-    NAMES_IDX = 4
-    UNITS_IDX = 5
-
-    col_names = raw_lines[NAMES_IDX].split()
-    xi = col_names.index("X")
-    yi = col_names.index("Y")
-    zi = col_names.index("Z")
-
-    pc_to_cm = (1.0 * u.pc).to(u.cm).value
-    unit_str = "(CM)" if to_cm else "(PC)"
-
-    new_col_names = col_names[:zi + 1] + ["R"] + col_names[zi + 1:]
-    names_line = "  ".join(f"{n:<16}" for n in new_col_names) + "\n"
-
-    if UNITS_IDX < len(raw_lines) and raw_lines[UNITS_IDX].lstrip().startswith("#"):
-        old_units = raw_lines[UNITS_IDX].lstrip("#").split()
-        new_units = old_units[:zi + 1] + [unit_str] + old_units[zi + 1:]
-        if to_cm:
-            new_units[xi] = unit_str
-            new_units[yi] = unit_str
-            new_units[zi] = unit_str
-        units_line = "#  " + "  ".join(f"{u:<16}" for u in new_units) + "\n"
-        data_start = UNITS_IDX + 1
-    else:
-        units_line = raw_lines[UNITS_IDX]
-        data_start = UNITS_IDX
-
-    new_lines = raw_lines[:NAMES_IDX] + [names_line, units_line]
-
-    for line in raw_lines[data_start:]:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            new_lines.append(line)
-            continue
-        parts = stripped.split()
-        x = float(parts[xi])
-        y = float(parts[yi])
-        z = float(parts[zi])
-        if to_cm:
-            x *= pc_to_cm
-            y *= pc_to_cm
-            z *= pc_to_cm
-            parts[xi] = f"{x:.5e}"
-            parts[yi] = f"{y:.5e}"
-            parts[zi] = f"{z:.5e}"
-        r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
-        parts = parts[:zi + 1] + [f"{r:.5e}"] + parts[zi + 1:]
-        new_lines.append("  ".join(parts) + "\n")
-
-    with open(filepath, "w") as f:
-        f.writelines(new_lines)
-
-
-def run_model(model_base, particle_id):
-    os.system(
-        f"cd {model_base} && "
-        f"time ./model param/trace_file_param/file_parameters_{particle_id}.txt"
-    )
-
-
-def convert_outmodel_to_evolve_output(model_base, particle_id, to_cm=True):
-    molecules = parents + daughters + daughters_2 + daughters_3 + grains + atoms + atoms_plus
-    molecule_str = " ".join(molecules)
-
-    os.system(
-        f"cd {model_base} && "
-        f"perl evolve_output.pl output/model_output_{particle_id}.dat ev_output/ev_{particle_id} {molecule_str}"
-    )
-    ev_file = model_base / "ev_output" / f"ev_{particle_id}.dat"
-    postprocess_ev_output(ev_file, to_cm=to_cm)
 
 
 def ensure_directories(model_base):

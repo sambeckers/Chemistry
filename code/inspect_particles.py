@@ -1526,10 +1526,52 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
         return false;
     }});
 
+    function copyPointValueToClipboard(point) {{
+        const hasX = point && typeof point.x !== 'undefined' && point.x !== null;
+        if (!hasX) return;
+
+        const valueToCopy = point.x;
+        const numericValue = Number(valueToCopy);
+        const textToCopy = Number.isFinite(numericValue)
+            ? numericValue.toExponential(5)
+            : String(valueToCopy);
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {{
+            navigator.clipboard.writeText(textToCopy).catch(function() {{
+                const el = document.createElement('textarea');
+                el.value = textToCopy;
+                el.setAttribute('readonly', '');
+                el.style.position = 'absolute';
+                el.style.left = '-9999px';
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            }});
+            return;
+        }}
+
+        const el = document.createElement('textarea');
+        el.value = textToCopy;
+        el.setAttribute('readonly', '');
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+    }}
+
     plot.on('plotly_click', function(event) {{
         const isShiftClick = !!(event.event && event.event.shiftKey);
+        const isMetaClick = !!(event.event && event.event.metaKey);
         const point = event.points && event.points.length ? event.points[0] : null;
         if (!point) return;
+
+        if (isMetaClick) {{
+            copyPointValueToClipboard(point);
+            return;
+        }}
 
         const trace = plot.data[point.curveNumber];
         const isMarker = trace && trace.meta && trace.meta.isUserMarker;
@@ -2236,7 +2278,7 @@ def generate_html_interface(particle_IDs, output_dir, title="Particle Inspection
     </div>
     
     <div class="navigation">
-        <div class="marker-help-text">Click a line to add marker &middot; Click marker to focus/unfocus &middot; Shift+click marker to remove</div>
+        <div class="marker-help-text">Click a line to add marker &middot; Click marker to focus/unfocus &middot; Shift+click marker to remove &middot; ⌘+click to copy exact value</div>
         <div class="nav-buttons">
             <button id="prevBtn" onclick="changeParticle(-1)">← Previous</button>
             <button id="nextBtn" onclick="changeParticle(1)">Next →</button>
