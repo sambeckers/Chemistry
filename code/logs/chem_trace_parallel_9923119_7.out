@@ -1,4 +1,5 @@
-Starting job 9845844, array task 7 on dave1
+Starting job 9923127, array task 7 on dave71
+Found 35 valid particle IDs in /fred/oz304/beckers/Chemistry/traces/wind_v10/trace_output_with_av (max ID=300000)
 Running evolving_model for 1 particle(s): [162209]
 
  +++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -26,6 +27,7 @@ Running evolving_model for 1 particle(s): [162209]
 
  Output file          = output/model_output_162209.dat                                        
  Rates file           = output/model_rates_162209.dat                                         
+ Analyse file         = output/model_analyse_162209.dat                                       
 
  Opening and reading physical conditions file ...
 
@@ -43,7 +45,7 @@ Running evolving_model for 1 particle(s): [162209]
   No. nonlinear convergence failures =       0
   No. error test failures =      24
   Last step size used =    0.56215E+08
-  Index compenent largest error =        0
+  Index compenent largest error = ********
 
  ...    2 /1539
 
@@ -80,6 +82,10 @@ Running evolving_model for 1 particle(s): [162209]
   No. error test failures =      17
   Last step size used =    0.47447E+06
   Index compenent largest error =        0
+
+
+ Calling analyse subroutine ...
+ ... done!
 
  ...    6 /1539
 
@@ -13892,16 +13898,16 @@ Running evolving_model for 1 particle(s): [162209]
  +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-+------------------ Job Report: 9845844 (COMPLETED) -------------------+
-| Memory (RAM)  [#                   ]  5.3% (54 MB peak / 1 GB)       |
-| CPU           [##################  ] 91.8% average                   |
-| Time          [>                   ]  1.8% (0-00:13:13 / 0-12:00:00) |
++------------------ Job Report: 9923127 (COMPLETED) -------------------+
+| Memory (RAM)  [#                   ]  5.4% (55 MB peak / 1 GB)       |
+| CPU           [##################  ] 93.9% average                   |
+| Time          [>                   ]  1.7% (0-00:12:04 / 0-12:00:00) |
 |                                                                      |
 | Lustre Filesystem:                                                   |
 |   Path    Total Read    Total Write    Total IOPS                    |
 |   ------  ------------  -------------  ------------                  |
-|   /apps   0 B           0 B            128                           |
-|   /fred   732 KB        1.1 GB         71.7 K                        |
+|   /apps   7.3 MB        0 B            259                           |
+|   /fred   5.7 MB        1.1 GB         87.4 K                        |
 |                                                                      |
 | Warnings:                                                            |
 |   - Too much memory requested                                        |

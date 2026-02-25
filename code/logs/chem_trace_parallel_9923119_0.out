@@ -1,4 +1,5 @@
-Starting job 9845837, array task 0 on dave78
+Starting job 9923120, array task 0 on gina1
+Found 35 valid particle IDs in /fred/oz304/beckers/Chemistry/traces/wind_v10/trace_output_with_av (max ID=300000)
 Running evolving_model for 1 particle(s): [21549]
 
  +++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -26,6 +27,7 @@ Running evolving_model for 1 particle(s): [21549]
 
  Output file          = output/model_output_21549.dat                                         
  Rates file           = output/model_rates_21549.dat                                          
+ Analyse file         = output/model_analyse_21549.dat                                        
 
  Opening and reading physical conditions file ...
 
@@ -43,7 +45,7 @@ Running evolving_model for 1 particle(s): [21549]
   No. nonlinear convergence failures =       0
   No. error test failures =      38
   Last step size used =    0.99572E+07
-  Index compenent largest error =        0
+  Index compenent largest error = ********
 
  ...    2 /1593
 
@@ -2861,6 +2863,10 @@ Running evolving_model for 1 particle(s): [21549]
   No. error test failures =       1
   Last step size used =    0.46063E+07
   Index compenent largest error =        0
+
+
+ Calling analyse subroutine ...
+ ... done!
 
  ...  315 /1593
 
@@ -14378,10 +14384,10 @@ Running evolving_model for 1 particle(s): [21549]
  +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-+------------------ Job Report: 9845837 (COMPLETED) -------------------+
-| Memory (RAM)  [#                   ]  5.3% (54 MB peak / 1 GB)       |
-| CPU           [##################  ] 91.8% average                   |
-| Time          [>                   ]  1.5% (0-00:11:01 / 0-12:00:00) |
++------------------ Job Report: 9923120 (COMPLETED) -------------------+
+| Memory (RAM)  [#                   ]  5.5% (56 MB peak / 1 GB)       |
+| CPU           [##################  ] 92.7% average                   |
+| Time          [>                   ]  1.3% (0-00:09:34 / 0-12:00:00) |
 |                                                                      |
 | Lustre Filesystem:                                                   |
 |   No data available                                                  |

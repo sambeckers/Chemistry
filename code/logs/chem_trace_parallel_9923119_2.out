@@ -1,4 +1,5 @@
-Starting job 9845839, array task 2 on dave78
+Starting job 9923122, array task 2 on gina3
+Found 35 valid particle IDs in /fred/oz304/beckers/Chemistry/traces/wind_v10/trace_output_with_av (max ID=300000)
 Running evolving_model for 1 particle(s): [46371]
 
  +++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -26,6 +27,7 @@ Running evolving_model for 1 particle(s): [46371]
 
  Output file          = output/model_output_46371.dat                                         
  Rates file           = output/model_rates_46371.dat                                          
+ Analyse file         = output/model_analyse_46371.dat                                        
 
  Opening and reading physical conditions file ...
 
@@ -43,7 +45,7 @@ Running evolving_model for 1 particle(s): [46371]
   No. nonlinear convergence failures =       0
   No. error test failures =      29
   Last step size used =    0.21002E+08
-  Index compenent largest error =        0
+  Index compenent largest error = ********
 
  ...    2 /1583
 
@@ -215,6 +217,10 @@ Running evolving_model for 1 particle(s): [46371]
   No. error test failures =       6
   Last step size used =    0.32660E+07
   Index compenent largest error =        0
+
+
+ Calling analyse subroutine ...
+ ... done!
 
  ...   21 /1583
 
@@ -14288,16 +14294,16 @@ Running evolving_model for 1 particle(s): [46371]
  +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-+------------------ Job Report: 9845839 (COMPLETED) -------------------+
++------------------ Job Report: 9923122 (COMPLETED) -------------------+
 | Memory (RAM)  [#                   ]  5.5% (56 MB peak / 1 GB)       |
-| CPU           [##################  ] 92.7% average                   |
-| Time          [>                   ]  1.8% (0-00:12:49 / 0-12:00:00) |
+| CPU           [##################  ] 92.6% average                   |
+| Time          [>                   ]  1.7% (0-00:12:28 / 0-12:00:00) |
 |                                                                      |
 | Lustre Filesystem:                                                   |
 |   Path    Total Read    Total Write    Total IOPS                    |
 |   ------  ------------  -------------  ------------                  |
-|   /apps   0 B           0 B            35                            |
-|   /fred   8 KB          1.2 GB         83.7 K                        |
+|   /apps   0 B           0 B            254                           |
+|   /fred   7.1 MB        1.1 GB         87.2 K                        |
 |                                                                      |
 | Warnings:                                                            |
 |   - Too much memory requested                                        |

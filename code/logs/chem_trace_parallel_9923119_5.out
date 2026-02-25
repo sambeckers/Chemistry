@@ -1,4 +1,5 @@
-Starting job 9845842, array task 5 on dave78
+Starting job 9923125, array task 5 on dave2
+Found 35 valid particle IDs in /fred/oz304/beckers/Chemistry/traces/wind_v10/trace_output_with_av (max ID=300000)
 Running evolving_model for 1 particle(s): [120838]
 
  +++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -26,6 +27,7 @@ Running evolving_model for 1 particle(s): [120838]
 
  Output file          = output/model_output_120838.dat                                        
  Rates file           = output/model_rates_120838.dat                                         
+ Analyse file         = output/model_analyse_120838.dat                                       
 
  Opening and reading physical conditions file ...
 
@@ -43,7 +45,7 @@ Running evolving_model for 1 particle(s): [120838]
   No. nonlinear convergence failures =       0
   No. error test failures =      26
   Last step size used =    0.90718E+08
-  Index compenent largest error =        0
+  Index compenent largest error = ********
 
  ...    2 /1555
 
@@ -188,6 +190,10 @@ Running evolving_model for 1 particle(s): [120838]
   No. error test failures =       5
   Last step size used =    0.39569E+07
   Index compenent largest error =        0
+
+
+ Calling analyse subroutine ...
+ ... done!
 
  ...   18 /1555
 
@@ -14036,16 +14042,16 @@ Running evolving_model for 1 particle(s): [120838]
  +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-+------------------ Job Report: 9845842 (COMPLETED) -------------------+
++------------------ Job Report: 9923125 (COMPLETED) -------------------+
 | Memory (RAM)  [#                   ]  5.5% (56 MB peak / 1 GB)       |
-| CPU           [##################  ] 94.7% average                   |
-| Time          [>                   ]  2.3% (0-00:16:19 / 0-12:00:00) |
+| CPU           [##################  ] 94.3% average                   |
+| Time          [>                   ]  2.3% (0-00:16:40 / 0-12:00:00) |
 |                                                                      |
 | Lustre Filesystem:                                                   |
 |   Path    Total Read    Total Write    Total IOPS                    |
 |   ------  ------------  -------------  ------------                  |
-|   /apps   0 B           0 B            129                           |
-|   /fred   192 KB        1.1 GB         80.1 K                        |
+|   /apps   7.6 MB        0 B            1.1 K                         |
+|   /fred   4.6 MB        1.1 GB         88.5 K                        |
 |                                                                      |
 | Warnings:                                                            |
 |   - Too much memory requested                                        |
