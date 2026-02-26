@@ -262,10 +262,8 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
       WRITE(*,*) 'Progress = ...'
 
-      DO 200 I = 1, NGRID
-
-      IF (ANA .AND. (I .GT. IANA)) GO TO 300
-
+      DO I = 1, NGRID
+          
       WRITE(*,'(X,A4,I4,A2,I4)') '... ', I, ' /', NGRID
       WRITE(10,'(X,A4,I4,A2,I4)') '... ', I, ' /', NGRID
 
@@ -282,12 +280,8 @@ C Call chemistry subroutine
      2   REACFILE,SPECFILE,BINDFILE,GRAINFILE,RADFILE,SWITCHFILE,
      3   GISM,MASS,Y,ABUN,SPEC,NSPEC,NTOT)
 
-200    CONTINUE
-
 C Write preamble for grid point in output file
       
-300    CONTINUE
-
          WRITE(9,'(X,A10,1PE10.3,X,A2)')  'X COORD = ',
      *      XCOORD(I), 'PC'
          WRITE(9,'(X,A10,1PE10.3,X,A2)')  'Y COORD = ',
@@ -322,7 +316,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 90    FORMAT (/,1X,'TIME',4X,1PE12.3, ' YEARS')
 91    FORMAT ((1X,A10),1PE10.3)
                     
-c       END DO
+      END DO
                                    
       CLOSE(UNIT=9)
       CLOSE(UNIT=10)
@@ -337,21 +331,3 @@ C     END OF PROGRAM
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
        END PROGRAM Chemistry
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
