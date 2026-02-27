@@ -249,7 +249,8 @@ def find_grid_point(model_base, particle_id, r_coord_cm):
 
 
 def write_file_params(model_root, model_base, particle_id,
-                      chemistry_type='Crich', phantom=True, ana=False, iana=0):
+                      chemistry_type='Crich', phantom=True, ana=False, iana=0,
+                      output_subdir='output'):
     """Write file_parameters_<particle_id>.txt for the Fortran model."""
     species_filename = get_species_filename(chemistry_type)
     rel_prefix = model_base.relative_to(model_root).as_posix()
@@ -275,15 +276,15 @@ def write_file_params(model_root, model_base, particle_id,
         f.write("! Radiation field parameters file\n")
         f.write("param/radiation_parameters.txt\n")
         f.write("! Output abundances file\n")
-        f.write(f"{rel_prefix}/output/model_output_{particle_id}.dat\n")
+        f.write(f"{rel_prefix}/{output_subdir}/model_output_{particle_id}.dat\n")
         f.write("! Output rates file\n")
-        f.write(f"{rel_prefix}/output/model_rates_{particle_id}.dat\n")
+        f.write(f"{rel_prefix}/{output_subdir}/model_rates_{particle_id}.dat\n")
         f.write("! Call analyse subroutine (T(RUE) or F(ALSE))?\n")
         f.write("T\n" if ana else "F\n")
         f.write("! Grid point to run analyse\n")
         f.write(f"{iana}\n")
         f.write("! Analyse file\n")
-        f.write(f"{rel_prefix}/output/model_analyse_{particle_id}.dat\n")
+        f.write(f"{rel_prefix}/{output_subdir}/model_analyse_{particle_id}.dat\n")
     return file_params_path
 
 
@@ -365,7 +366,7 @@ def run_model(model_root, file_params_path):
 def convert_outmodel_to_evolve_output(model_root, model_base, particle_id,
                                       chemistry_type='Crich', to_cm=True):
     daughters = get_daughters_for_chemistry(chemistry_type)
-    molecules = parents + daughters + daughters_2 + daughters_3 + grains + atoms + atoms_plus
+    molecules = parents + daughters + daughters_2 + daughters_3 + atoms + atoms_plus
     molecule_str = " ".join(molecules)
     rel_prefix = model_base.relative_to(model_root).as_posix()
     os.system(
@@ -377,7 +378,8 @@ def convert_outmodel_to_evolve_output(model_root, model_base, particle_id,
     postprocess_ev_output(ev_file, to_cm=to_cm)
 
 
-def setup_directories(base_path, particle_ids=None, analysis=False, interactive=True):
+def setup_directories(base_path, particle_ids=None, analysis=False,
+                      analysis_params_path=None, interactive=True):
     """Create / clear working directories.
 
     Parameters
@@ -386,8 +388,11 @@ def setup_directories(base_path, particle_ids=None, analysis=False, interactive=
     particle_ids : list of int, optional
         Used to populate the analysis params template when *analysis* is True.
     analysis : bool
-        When True, ensure an analysis_params.txt exists (or create a template
-        and stop so the user can edit it).
+        When True, ensure the analysis parameters file exists (or create a
+        template and stop so the user can edit it).
+    analysis_params_path : Path, optional
+        Explicit path for analysis parameters. If omitted, defaults to
+        ``base_path / 'param' / 'analysis_params.txt'`` for backward compatibility.
     interactive : bool
         When True (local mode), prompt before emptying directories.
         When False (SLURM mode), silently create directories without prompting.
@@ -397,7 +402,7 @@ def setup_directories(base_path, particle_ids=None, analysis=False, interactive=
     bool
         True if setup succeeded, False if the user chose to cancel.
     """
-    directories = ['param/trace_file_param', 'ev_output', 'input', 'output']
+    directories = ['param/trace_file_param', 'ev_output', 'input', 'output', 'analyse_output']
 
     for dir_name in directories:
         dir_path = base_path / dir_name
@@ -426,7 +431,8 @@ def setup_directories(base_path, particle_ids=None, analysis=False, interactive=
                 print(f"✓ Created {dir_name}/")
 
     if analysis:
-        analysis_params_path = base_path / 'param' / 'analysis_params.txt'
+        if analysis_params_path is None:
+            analysis_params_path = base_path / 'param' / 'analysis_params.txt'
         if not analysis_params_path.exists():
             if interactive:
                 write_analysis_params(particle_ids, analysis_params_path)
@@ -462,6 +468,21 @@ def parse_args():
             "selected by SLURM_ARRAY_TASK_ID. Set automatically by the slurm script."
         ),
     )
+    parser.add_argument(
+        "--analysis", action=argparse.BooleanOptionalAction, default=None,
+        help=(
+            "Enable/disable analysis mode (--analysis / --no-analysis). "
+            "Overrides the in-script default and the ANALYSIS env var. "
+            "Can also be set via ANALYSIS=true|false (e.g. ANALYSIS=true sbatch ...)."
+        ),
+    )
+    parser.add_argument(
+        "--chemistry-type", choices=["Crich", "Orich"], default=None,
+        help=(
+            "Chemistry type to run (Crich or Orich). Overrides the in-script "
+            "default and CHEMISTRY_TYPE env var."
+        ),
+    )
     args, _ = parser.parse_known_args()  # parse_known_args ignores Jupyter kernel args
     return args
 
@@ -476,11 +497,25 @@ def main():
 
     pmf            = 'wind_v10'
     mf             = 'evolving_model'
-    chemistry_type = os.environ.get('CHEMISTRY_TYPE', 'Orich')
+    chemistry_type = 'Orich'  # default for interactive use
     phantom        = True
     model_1D       = False
     to_cm          = True   # Convert X/Y/Z/R to cm in ev_output files
-    analysis       = False
+    analysis       = False  # default for interactive use
+    # CLI flag takes highest priority, then CHEMISTRY_TYPE env var, then default above
+    if args.chemistry_type is not None:
+        chemistry_type = args.chemistry_type
+    elif 'CHEMISTRY_TYPE' in os.environ:
+        chemistry_type = os.environ['CHEMISTRY_TYPE']
+        if chemistry_type not in ('Crich', 'Orich'):
+            raise ValueError(
+                f"Invalid CHEMISTRY_TYPE='{chemistry_type}'. Expected 'Crich' or 'Orich'."
+            )
+    # CLI flag takes highest priority, then ANALYSIS env var, then the default above
+    if args.analysis is not None:
+        analysis = args.analysis
+    elif 'ANALYSIS' in os.environ:
+        analysis = os.environ['ANALYSIS'].lower() in ('1', 'true', 'yes')
 
     # 1-D model input (only used when model_1D = True)
     model_1D_output = (f'complete_model_Mdot_Vinf_{chemistry_type}/models/'
@@ -497,6 +532,7 @@ def main():
     model_base = model_root / chemistry_type
     trace_dir  = BASE_PATH / tracesf
     particle_IDs_file = BASE_PATH / 'traces' / pmf / 'particle_IDs.txt'
+    analysis_params_file = model_root / 'param' / f'analysis_params_{chemistry_type}.txt'
 
     # ------------------------------------------------------------------ PARTICLE IDS
     particle_IDs = select_particle_ids(
@@ -518,12 +554,18 @@ def main():
     # ------------------------------------------------------------------ DIRECTORIES
     if parallel:
         # Non-interactive: silently create dirs, no prompts
-        setup_directories(model_base, particle_IDs, analysis=analysis, interactive=False)
+        setup_directories(
+            model_base, particle_IDs, analysis=analysis,
+            analysis_params_path=analysis_params_file, interactive=False,
+        )
     else:
         print("=" * 80)
         print("DIRECTORY SETUP")
         print("=" * 80)
-        if not setup_directories(model_base, particle_IDs, analysis=analysis, interactive=True):
+        if not setup_directories(
+            model_base, particle_IDs, analysis=analysis,
+            analysis_params_path=analysis_params_file, interactive=True,
+        ):
             print("\n✗ Setup cancelled by user")
             return
         print("=" * 80)
@@ -532,8 +574,9 @@ def main():
     # ------------------------------------------------------------------ ANALYSIS PARAMS
     analysis_params = None
     if analysis:
-        analysis_params_file = model_base / 'param' / 'analysis_params.txt'
         analysis_params = load_analysis_params(analysis_params_file)
+
+    output_subdir = 'analyse_output' if analysis else 'output'
 
     # ------------------------------------------------------------------ WHICH PARTICLES TO RUN
     if parallel:
@@ -563,12 +606,14 @@ def main():
             file_params_path = write_file_params(
                 model_root, model_base, i,
                 chemistry_type=chemistry_type, phantom=False,
+                output_subdir=output_subdir,
             )
             run_model(model_root, file_params_path)
-            convert_outmodel_to_evolve_output(
-                model_root, model_base, i,
-                chemistry_type=chemistry_type, to_cm=to_cm,
-            )
+            if not analysis:
+                convert_outmodel_to_evolve_output(
+                    model_root, model_base, i,
+                    chemistry_type=chemistry_type, to_cm=to_cm,
+                )
 
     # ------------------------------------------------------------------ PHANTOM PARTICLES
     if phantom:
@@ -588,18 +633,21 @@ def main():
                 file_params_path = write_file_params(
                     model_root, model_base, particle_ID,
                     chemistry_type=chemistry_type, ana=ana_flag, iana=iana,
+                    output_subdir=output_subdir,
                 )
             else:
                 file_params_path = write_file_params(
                     model_root, model_base, particle_ID,
                     chemistry_type=chemistry_type,
+                    output_subdir=output_subdir,
                 )
 
             run_model(model_root, file_params_path)
-            convert_outmodel_to_evolve_output(
-                model_root, model_base, particle_ID,
-                chemistry_type=chemistry_type, to_cm=to_cm,
-            )
+            if not analysis:
+                convert_outmodel_to_evolve_output(
+                    model_root, model_base, particle_ID,
+                    chemistry_type=chemistry_type, to_cm=to_cm,
+                )
 
 
 if __name__ == '__main__':
