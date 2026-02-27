@@ -372,7 +372,7 @@
             </button>
         </div>
     </div>
-
+    
     <div class="content">
         <div class="image-container">
             <div class="loading-overlay" id="loadingOverlay">
@@ -385,7 +385,7 @@
             <p id="particleCount">Particle 1 of 1</p>
         </div>
     </div>
-
+    
     <div class="navigation">
         <div class="marker-help-text">Click a line to add marker &middot; Click marker to focus/unfocus &middot; Shift+click marker to remove &middot; ⌘+click to copy exact value</div>
         <div class="nav-buttons">
@@ -445,7 +445,7 @@
             void el.offsetWidth;
             el.classList.add('control-tap');
         }
-
+        
         function toggleTheme() {
             const themeBtn = document.querySelector('.theme-toggle');
             popThemeBtn(themeBtn);
@@ -454,20 +454,20 @@
             setTimeout(() => document.body.classList.remove('theme-transitioning'), 500);
             const icon = document.getElementById('themeIcon');
             const isDark = !document.body.classList.contains('light-mode');
-
+            
             if (document.body.classList.contains('light-mode')) {
                 icon.textContent = '☀️';
             } else {
                 icon.textContent = '🌙';
             }
-
+            
             // Notify iframe about theme change
             const iframe = document.getElementById('particleFrame');
             if (iframe && iframe.contentWindow) {
                 iframe.contentWindow.postMessage({ type: 'theme-change', isDark: isDark }, '*');
             }
         }
-
+        
         // Listen for theme requests from iframes
         window.addEventListener('message', function(event) {
             if (event.data && event.data.type === 'request-theme') {
@@ -500,7 +500,7 @@
             const nav = document.querySelector('.navigation');
             const legend = document.getElementById('particleLegend');
             const info = document.getElementById('particleCount');
-
+            
             // Show loading overlay
             iframe.classList.add('loading');
             loadingOverlay.classList.add('active');
@@ -513,16 +513,16 @@
                 legend.style.pointerEvents = is3D ? 'auto' : 'none';
                 legend.style.opacity = is3D ? '1' : '0';
             }
-
+            
             // Wait for fade-out transition to complete, then swap src
             setTimeout(() => {
                 iframe.src = is3D ? `particle_${pid}.html` : 'model_1d_overview.html';
-
+                
                 // Send theme to new iframe after it loads
                 iframe.onload = function() {
                     const isDark = !document.body.classList.contains('light-mode');
                     iframe.contentWindow.postMessage({ type: 'theme-change', isDark: isDark }, '*');
-
+                    
                     // Fade iframe back in smoothly
                     setTimeout(() => {
                         loadingOverlay.classList.remove('active');

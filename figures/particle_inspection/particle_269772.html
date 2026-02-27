@@ -676,7 +676,7 @@ function updatePlotTheme(template, paperBg, plotBg) {
         const isDark = template === 'plotly_dark';
         const textColor = isDark ? '#ffffff' : '#24292f';
         const gridColor = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)';
-
+        
         const update = {
             'paper_bgcolor': paperBg,
             'plot_bgcolor': plotBg,
@@ -686,7 +686,7 @@ function updatePlotTheme(template, paperBg, plotBg) {
             'legend.font.color': isDark ? '#ffffff' : '#24292f',
             'font.color': textColor
         };
-
+        
 
     if (window.__particleApplyMarkerFocus) {
         window.__particleApplyMarkerFocus();
@@ -703,7 +703,7 @@ function updatePlotTheme(template, paperBg, plotBg) {
             axisUpdates[yaxisKey + '.gridcolor'] = gridColor;
             axisUpdates[yaxisKey + '.title.font.color'] = textColor;
         }
-
+        
         Plotly.relayout(plot, Object.assign({}, update, axisUpdates));
     }
 }
