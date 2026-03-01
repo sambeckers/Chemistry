@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 import json
+import sys
 from pathlib import Path
 from tqdm import tqdm
 import shutil
@@ -9,12 +10,13 @@ import html as html_lib
 import matplotlib as mpl
 from astropy import units as u
 from numpy.lib import recfunctions as rfn  # noqa: F401  (kept for potential future use)
-from beckers.Chemistry.code.deprecated.convert_trace__run_models import select_particle_ids
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from run_evolving_models import select_particle_ids
 from n_distinct_colours import generate_colormap
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
 kb_path = Path(__file__).parent.parent / 'KoekenBak'
 if kb_path.exists():
     sys.path.insert(0, str(kb_path))
@@ -25,7 +27,7 @@ except Exception:
     KBCodeIO = None
 
 from config import (BASE_PATH, parents, daughters_Crich, daughters_Orich,
-                    daughters_2, daughters_3, grains, atoms, atoms_plus)
+                    daughters_2, daughters_3, atoms, atoms_plus)
 
 daughters = daughters_Crich
 
@@ -43,7 +45,7 @@ def split_into_panels(items, n_panels=4):
     if n_panels <= 0:
         return []
 
-    q, r = divmod(n_items, n_panels)
+    q, r = divmod(n_items, n_panels) 
     sizes = [q + 1 if i < r else q for i in range(n_panels)]
     groups = []
     start = 0
@@ -72,7 +74,7 @@ def resolve_species_field_name(species_name, available_names):
 
 def find_latest_1d_model_dir(base_path, chemistry_type='Crich'):
     """Find latest complete 1D model directory with chemistry outputs."""
-    models_root = base_path / f'complete_model_Mdot_Vinf_{chemistry_type}' / 'models'
+    models_root = base_path / 'output_1D' / f'complete_1D_model_{chemistry_type}' / 'models'
     if not models_root.exists():
         return None
 
@@ -113,7 +115,7 @@ def parse_full_analysis_output(file_path):
 
 def find_latest_analysis_plot_dir(base_path, chemistry_type='Crich'):
     """Find latest KoekenBak plot_* directory containing Full_analysis folders."""
-    stars_root = base_path / f'complete_model_Mdot_Vinf_{chemistry_type}' / 'stars' / 'cwleo'
+    stars_root = base_path / 'output_1D' / f'complete_1D_model_{chemistry_type}' / 'stars' / 'cwleo'
     if not stars_root.exists():
         return None
 
@@ -311,6 +313,7 @@ def build_interactive_analysis_fig(model_name, species, sections, full_analysis)
     fig.update_xaxes(type='log', title_text='Radius [cm]', row=1, col=2)
     fig.update_yaxes(title_text='Fraction of total produced', row=1, col=1)
     fig.update_yaxes(title_text='Fraction of total destroyed', row=1, col=2)
+    fig.update_yaxes(exponentformat='power', showexponent='all')
 
     fig.update_layout(
         template='plotly_white',
@@ -379,7 +382,7 @@ def load_1d_interface_payload(base_path, chemistry_type='Crich'):
 
     analysis_plot_dir = find_latest_analysis_plot_dir(base_path, chemistry_type=chemistry_type)
     analysis_plot_index = collect_analysis_plot_index(analysis_plot_dir)
-    models_root = base_path / f'complete_model_Mdot_Vinf_{chemistry_type}' / 'models'
+    models_root = base_path / 'output_1D' / f'complete_1D_model_{chemistry_type}' / 'models'
 
     return {
         'model_dir': model_dir,
@@ -465,6 +468,8 @@ def generate_1d_overview_html(payload, save_path, to_cm=True):
         for col in [1, 2]:
             fig.update_xaxes(type='log', row=row, col=col, title_text='Radius [cm]')
             fig.update_yaxes(type='log', row=row, col=col, title_text='Frac. abundance')
+
+    fig.update_yaxes(exponentformat='power', showexponent='all')
 
     fig.update_layout(
         template='plotly_white',
@@ -1003,11 +1008,6 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
             'panel_titles': [f'Daughters 3 {r}' for r in panel_roman],
             'panel_molecules': split_into_panels(daughters_3, 4),
         },
-        'grains': {
-            'label': 'Grains',
-            'panel_titles': [f'Grains {r}' for r in panel_roman],
-            'panel_molecules': split_into_panels(grains, 4),
-        },
         'atoms': {
             'label': 'Atoms + Atoms+',
             'panel_titles': [f'Atoms + Atoms+ {r}' for r in panel_roman],
@@ -1042,26 +1042,40 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
         row_heights=[0.165, 0.165, 0.17, 0.165, 0.165, 0.17],
     )
     
-    r = data['R']
+    # Adaptive downsampling for faster page load and Plotly rendering on long traces.
+    # Keeps first/last points and evenly samples the remainder.
+    max_display_points = 1200
+    n_points = len(data)
+    if n_points > max_display_points:
+        sample_idx = np.unique(np.linspace(0, n_points - 1, max_display_points, dtype=int))
+        data_plot = data[sample_idx]
+    else:
+        data_plot = data
+
+    r = data_plot['R']
     unit_label = 'cm' if to_cm else 'pc'
+
+    def _has_positive_finite(values):
+        arr = np.asarray(values)
+        return bool(np.any(np.isfinite(arr) & (arr > 0.0)))
     
     # Left column: physical properties (no legend interaction)
     fig.add_trace(
-        go.Scatter(x=r, y=data['DENSITY'], mode='lines', name='Density',
-                   line=dict(color='#1f77b4', width=2), showlegend=False,
-                   meta={'isPhysical': True}),
+        go.Scattergl(x=r, y=data_plot['DENSITY'], mode='lines', name='Density',
+                     line=dict(color='#1f77b4', width=2), showlegend=False,
+                     meta={'isPhysical': True}),
         row=1, col=1
     )
     fig.add_trace(
-        go.Scatter(x=r, y=data['TEMP'], mode='lines', name='Temperature',
-                   line=dict(color='#d62728', width=2), showlegend=False,
-                   meta={'isPhysical': True}),
+        go.Scattergl(x=r, y=data_plot['TEMP'], mode='lines', name='Temperature',
+                     line=dict(color='#d62728', width=2), showlegend=False,
+                     meta={'isPhysical': True}),
         row=3, col=1
     )
     fig.add_trace(
-        go.Scatter(x=r, y=data['AV'], mode='lines', name='A_V',
-                   line=dict(color='#2ca02c', width=2), showlegend=False,
-                   meta={'isPhysical': True}),
+        go.Scattergl(x=r, y=data_plot['AV'], mode='lines', name='A_V',
+                     line=dict(color='#2ca02c', width=2), showlegend=False,
+                     meta={'isPhysical': True}),
         row=5, col=1
     )
 
@@ -1083,14 +1097,17 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
         for panel_idx, molecules_in_panel in enumerate(panel_molecules):
             row, col = panel_positions[panel_idx]
             for mol in molecules_in_panel:
-                field_name = resolve_species_field_name(mol, data.dtype.names)
+                field_name = resolve_species_field_name(mol, data_plot.dtype.names)
                 if field_name is None:
+                    continue
+                y_vals = data_plot[field_name]
+                if not _has_positive_finite(y_vals):
                     continue
                 color = color_by_molecule[mol]
                 fig.add_trace(
-                    go.Scatter(
+                    go.Scattergl(
                         x=r,
-                        y=data[field_name],
+                        y=y_vals,
                         mode='lines',
                         name=mol,
                         line=dict(color=color, width=2),
@@ -1157,6 +1174,7 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
     # Keep axis-title fonts compact to avoid cross-panel overlap
     fig.update_xaxes(title_font=dict(size=11))
     fig.update_yaxes(title_font=dict(size=11))
+    fig.update_yaxes(exponentformat='power', showexponent='all')
 
     if save_path:
         plot_div = fig.to_html(
@@ -1175,9 +1193,19 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
     const groupOriginalColors = {group_original_colors};
     const groupPanelTitles = {group_panel_titles};
     const groupTabLabels = {group_tab_labels};
+    const allMoleculeTraceIndices = Array.from(
+        new Set(Object.values(groupTraceIndices).flat())
+    );
     const moleculePanelAnnotationIndices = [1, 2, 4, 5];
     let activeGroup = '{default_group_key}';
-    const markerStorageKey = 'particle-markers::{pid}::' + window.location.pathname;
+    const markerStoragePrefix = 'particle-markers::{pid}::';
+    const markerStoragePath = (function() {{
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        if (parts.length >= 2) return parts.slice(-2).join('/');
+        if (parts.length === 1) return parts[0];
+        return window.location.pathname;
+    }})();
+    const markerStorageKey = markerStoragePrefix + markerStoragePath;
     let selectedTrace = -1;
     let markerTraceIndices = [];
     let focusedMarkerTrace = -1;
@@ -1213,7 +1241,7 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
     function buildTabs() {{
         const tabContainer = document.getElementById('group-tabs');
         if (!tabContainer) return;
-        const orderedKeys = ['parents_daughters', 'daughters_2', 'daughters_3', 'grains', 'atoms'];
+        const orderedKeys = ['parents_daughters', 'daughters_2', 'daughters_3', 'atoms'];
         const keys = orderedKeys.filter((key) => key in groupTabLabels);
         for (const key of keys) {{
             const button = document.createElement('button');
@@ -1233,27 +1261,22 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
         if (!(groupKey in groupTraceIndices)) return;
         activeGroup = groupKey;
         selectedTrace = -1;
-        const visibilityIndices = [];
-        const visibilityValues = [];
-        for (let i = 0; i < plot.data.length; i++) {{
-            const trace = plot.data[i];
-            const isMolecule = trace && trace.meta && trace.meta.isMolecule;
-            const isMarker = trace && trace.meta && trace.meta.isUserMarker;
-            const isPhysical = trace && trace.meta && trace.meta.isPhysical;
-            if (isPhysical) {{
-                // Always keep physical traces visible regardless of active tab
-                visibilityIndices.push(i);
-                visibilityValues.push(true);
-            }}
-            if (isMolecule) {{
-                visibilityIndices.push(i);
-                visibilityValues.push(trace.meta.groupKey === activeGroup);
-            }}
-            if (isMarker) {{
-                visibilityIndices.push(i);
-                visibilityValues.push((trace.meta.groupKey || activeGroup) === activeGroup);
-            }}
+        const visibilityMap = {{}};
+        for (let i = 0; i < allMoleculeTraceIndices.length; i++) {{
+            visibilityMap[allMoleculeTraceIndices[i]] = false;
         }}
+        const activeTraceIndices = getActiveTraceIndices();
+        for (let i = 0; i < activeTraceIndices.length; i++) {{
+            visibilityMap[activeTraceIndices[i]] = true;
+        }}
+        for (let i = 0; i < markerTraceIndices.length; i++) {{
+            const traceIndex = markerTraceIndices[i];
+            const trace = plot.data[traceIndex];
+            const groupKeyForMarker = trace && trace.meta && trace.meta.groupKey ? trace.meta.groupKey : activeGroup;
+            visibilityMap[traceIndex] = (groupKeyForMarker === activeGroup);
+        }}
+        const visibilityIndices = Object.keys(visibilityMap).map((k) => Number(k));
+        const visibilityValues = visibilityIndices.map((idx) => visibilityMap[idx]);
         Plotly.restyle(plot, {{ 'visible': visibilityValues }}, visibilityIndices).then(function() {{
             updateMoleculePanelTitles();
             updateActiveTabButton();
@@ -1277,10 +1300,45 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
     function getStoredMarkers() {{
         if (!canUseStorage()) return [];
         try {{
-            const raw = window.localStorage.getItem(markerStorageKey);
-            if (!raw) return [];
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
+            const legacyPathFlat = window.location.pathname
+                .replace('/Crich/', '/')
+                .replace('/Orich/', '/');
+            const filenameOnly = window.location.pathname.split('/').filter(Boolean).slice(-1)[0] || '';
+            const candidateKeys = [
+                markerStorageKey,
+                markerStoragePrefix + window.location.pathname,
+                markerStoragePrefix + legacyPathFlat,
+                markerStoragePrefix + filenameOnly,
+            ];
+
+            for (let i = 0; i < candidateKeys.length; i++) {{
+                const key = candidateKeys[i];
+                if (!key) continue;
+                const raw = window.localStorage.getItem(key);
+                if (!raw) continue;
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length) {{
+                    if (key !== markerStorageKey) {{
+                        window.localStorage.setItem(markerStorageKey, raw);
+                    }}
+                    return parsed;
+                }}
+            }}
+
+            // Final fallback: scan ALL stored keys with this particle prefix.
+            const prefix = markerStoragePrefix;
+            for (let i = 0; i < window.localStorage.length; i++) {{
+                const key = window.localStorage.key(i);
+                if (!key || !key.startsWith(prefix) || key === markerStorageKey) continue;
+                const legacyRaw = window.localStorage.getItem(key);
+                if (!legacyRaw) continue;
+                const legacyParsed = JSON.parse(legacyRaw);
+                if (Array.isArray(legacyParsed) && legacyParsed.length) {{
+                    window.localStorage.setItem(markerStorageKey, legacyRaw);
+                    return legacyParsed;
+                }}
+            }}
+            return [];
         }} catch (error) {{
             return [];
         }}
@@ -1475,34 +1533,18 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
     function applySelection(targetTrace) {{
         const activeTraceIndices = getActiveTraceIndices();
         const activeColors = getActiveOriginalColors();
+        if (!activeTraceIndices.length) {{
+            applyMarkerFocus();
+            return;
+        }}
+
         const newColors = [];
         const newOpacities = [];
-        for (let i = 0; i < plot.data.length; i++) {{
-            const trace = plot.data[i];
-            const isMolecule = !!(trace && trace.meta && trace.meta.isMolecule);
-            const isMarker = markerTraceIndices.indexOf(i) !== -1 || (trace && trace.meta && trace.meta.isUserMarker);
-            if (isMarker) {{
-                newColors.push(undefined);
-                newOpacities.push(1.0);
-                continue;
-            }}
-            if (!isMolecule) {{
-                const lineColor = trace && trace.line && trace.line.color ? trace.line.color : '#1f77b4';
-                newColors.push(lineColor);
-                newOpacities.push(1.0);
-                continue;
-            }}
-
-            if (!trace.meta || trace.meta.groupKey !== activeGroup) {{
-                const lineColor = trace && trace.line && trace.line.color ? trace.line.color : '#1f77b4';
-                newColors.push(lineColor);
-                newOpacities.push(1.0);
-                continue;
-            }}
-
-            const molIdx = activeTraceIndices.indexOf(i);
-            const origColor = molIdx !== -1 ? activeColors[molIdx] : (trace && trace.line ? trace.line.color : '#1f77b4');
-            if (targetTrace === -1 || i === targetTrace) {{
+        for (let i = 0; i < activeTraceIndices.length; i++) {{
+            const traceIndex = activeTraceIndices[i];
+            const trace = plot.data[traceIndex];
+            const origColor = activeColors[i] || (trace && trace.line ? trace.line.color : '#1f77b4');
+            if (targetTrace === -1 || traceIndex === targetTrace) {{
                 newColors.push(origColor);
                 newOpacities.push(1.0);
             }} else {{
@@ -1510,7 +1552,8 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
                 newOpacities.push(0.2);
             }}
         }}
-        Plotly.restyle(plot, {{'line.color': newColors, 'opacity': newOpacities}}).then(function() {{
+
+        Plotly.restyle(plot, {{'line.color': newColors, 'opacity': newOpacities}}, activeTraceIndices).then(function() {{
             applyMarkerFocus();
         }});
     }}
@@ -1898,9 +1941,10 @@ def generate_html_interface(particle_IDs, output_dir, title="Particle Inspection
         chemistry_type: 'index.html',
         other_chemistry: f'../{other_chemistry}/index.html',
     }
+    # Both chemistry types are always generated together, so both are always available.
     chemistry_available = {
         chemistry_type: True,
-        other_chemistry: (output_dir.parent / other_chemistry / 'index.html').exists(),
+        other_chemistry: True,
     }
 
     html_content = f"""<!DOCTYPE html>
@@ -2334,7 +2378,7 @@ def generate_html_interface(particle_IDs, output_dir, title="Particle Inspection
                 if (!btn) return;
                 const chem = btn.id === 'chemCrichBtn' ? 'Crich' : 'Orich';
                 btn.classList.toggle('active', chem === currentChemistry);
-                btn.disabled = !chemistryAvailable[chem] || chem === currentChemistry;
+                btn.disabled = false;
             });
         }
 
@@ -2542,27 +2586,12 @@ def generate_html_interface(particle_IDs, output_dir, title="Particle Inspection
 
 
 def setup_inspection_directory(dir_path):
-    """Create or clear inspection directory."""
-    
+    """Always recreate inspection directory from scratch (non-interactive)."""
     if dir_path.exists():
-        if any(dir_path.iterdir()):
-            print(f"\nDirectory 'particle_inspection' already exists and contains files.")
-            response = input(f"Empty 'particle_inspection' directory? [y/n]: ").strip().lower()
-            
-            if response in {'y', 'yes'}:
-                print(f"   Removing all files in particle_inspection/...")
-                shutil.rmtree(dir_path)
-                dir_path.mkdir(parents=True, exist_ok=True)
-                print(f"   ✓ particle_inspection/ cleared")
-            else:
-                print(f"✗ Keeping existing files in particle_inspection/")
-                return False
-        else:
-            print(f"✓ particle_inspection/ exists (empty)")
-    else:
-        dir_path.mkdir(parents=True, exist_ok=True)
-        print(f"✓ Created particle_inspection/")
-    
+        shutil.rmtree(dir_path)
+    dir_path.mkdir(parents=True, exist_ok=True)
+    print(f"✓ Fresh inspection directory ready: {dir_path}")
+
     return True
 
 
@@ -2573,28 +2602,20 @@ def parse_args():
     parser.add_argument('--max-particle-id', type=int, default=300000)
     parser.add_argument('--start-index', type=int, default=2)
     parser.add_argument('--n-select', type=int, default=15)
-    return parser.parse_args()
+    args, _ = parser.parse_known_args()  # ignore Jupyter/IPython injected args
+    return args
 
 
 def main():
     global daughters
     args = parse_args()
-    chemistry_type = args.chemistry
-    daughters = daughters_Orich if chemistry_type == 'Orich' else daughters_Crich
 
     to_cm = True
     savedirmain = BASE_PATH
     pmf = args.pmf
-    mf = f'evolving_model/{chemistry_type}'
     of = 'ev_output'
-    
-    # Setup output directory
-    output_dir = savedirmain / 'figures' / 'particle_inspection' / chemistry_type
-    if not setup_inspection_directory(output_dir):
-        print("\n✗ Setup cancelled by user or directory not empty")
-        return
-    
-    # Select particles
+
+    # Select particles once — same trace files for all chemistry types
     particle_IDs_file = savedirmain / 'traces' / pmf / 'particle_IDs.txt'
     tracesf = f'traces/{pmf}/trace_output_with_av'
     trace_dir = savedirmain / tracesf
@@ -2605,51 +2626,84 @@ def main():
         start_index=args.start_index,
         n_select=args.n_select,
     )
-    
+
     print(f"\nSelected particle IDs: {particle_IDs}")
     particle_IDs[1] = 29823
     particle_IDs[2] = 46371
-    
-    # Load all particle data
-    print("\nLoading particle data...")
-    all_data = load_all_particles(particle_IDs, savedirmain, mf, of, to_cm)
-    
-    # Generate plots for each particle
-    print("\nGenerating inspection plots...")
-    for pid in tqdm(particle_IDs, desc="Creating plots"):
-        data = all_data[pid]
-        save_path = output_dir / f'particle_{pid}.html'
-        plot_particle_inspection(pid, data, to_cm, save_path)
 
-    has_1d_model = False
-    print("\nGenerating 1D model overview page...")
-    payload_1d = load_1d_interface_payload(savedirmain, chemistry_type=chemistry_type)
-    if payload_1d is not None:
-        one_d_path = output_dir / 'model_1d_overview.html'
-        has_1d_model = generate_1d_overview_html(payload_1d, one_d_path, to_cm=to_cm)
-        if has_1d_model:
-            print(f"✓ 1D model overview created at: {one_d_path}")
-    else:
-        print("⚠ 1D model overview unavailable (missing model files or CodeIO import)")
-    
-    # Generate HTML interface
-    print("\nGenerating HTML interface...")
-    html_path = generate_html_interface(particle_IDs, output_dir, 
-                                       title="Particle Inspection Interface",
-                                       has_1d_model=has_1d_model,
-                                       chemistry_type=chemistry_type)
-    
-    print(f"\n✓ Complete!")
-    print(f"✓ Generated {len(particle_IDs)} particle inspection plots")
-    print(f"✓ HTML interface created at: {html_path}")
-    print(f"\nOpen the interface by running:")
-    print(f"  open {html_path}")
+    # Determine which chemistry types to run
+    # --chemistry selects which browser tab to open; always generate both
+    chemistry_types = ['Crich', 'Orich']
+    preferred_open = args.chemistry  # open this one in browser at the end
 
-    try:
-        subprocess.run(['open', str(html_path)], check=False)
-        print(f"✓ Opened interface in browser")
-    except Exception as exc:
-        print(f"⚠ Could not open interface automatically: {exc}")
+    generated_paths = {}
+
+    for chemistry_type in chemistry_types:
+        daughters = daughters_Orich if chemistry_type == 'Orich' else daughters_Crich
+        mf = f'evolving_model/{chemistry_type}'
+        output_dir = savedirmain / 'figures' / 'particle_inspection' / chemistry_type
+
+        print(f"\n{'=' * 60}")
+        print(f"Processing {chemistry_type}")
+        print(f"{'=' * 60}")
+
+        if not setup_inspection_directory(output_dir):
+            print(f"✗ Setup cancelled for {chemistry_type}, skipping")
+            continue
+
+        # Load all particle data for this chemistry type
+        print(f"\nLoading {chemistry_type} particle data...")
+        try:
+            all_data = load_all_particles(particle_IDs, savedirmain, mf, of, to_cm)
+        except FileNotFoundError as exc:
+            print(f"⚠ Could not load {chemistry_type} data: {exc}")
+            continue
+
+        # Generate per-particle plots
+        print(f"\nGenerating {chemistry_type} inspection plots...")
+        for pid in tqdm(particle_IDs, desc=f"Creating {chemistry_type} plots"):
+            data = all_data[pid]
+            save_path = output_dir / f'particle_{pid}.html'
+            plot_particle_inspection(pid, data, to_cm, save_path)
+
+        # Generate 1D model overview
+        has_1d_model = False
+        print(f"\nGenerating {chemistry_type} 1D model overview page...")
+        payload_1d = load_1d_interface_payload(savedirmain, chemistry_type=chemistry_type)
+        if payload_1d is not None:
+            one_d_path = output_dir / 'model_1d_overview.html'
+            has_1d_model = generate_1d_overview_html(payload_1d, one_d_path, to_cm=to_cm)
+            if has_1d_model:
+                print(f"✓ 1D model overview created at: {one_d_path}")
+        else:
+            print(f"⚠ 1D model overview unavailable for {chemistry_type} (missing model files or CodeIO import)")
+
+        # Generate HTML navigation interface
+        print(f"\nGenerating {chemistry_type} HTML interface...")
+        html_path = generate_html_interface(
+            particle_IDs,
+            output_dir,
+            title=f"Particle Inspection ({chemistry_type})",
+            has_1d_model=has_1d_model,
+            chemistry_type=chemistry_type,
+        )
+        generated_paths[chemistry_type] = html_path
+        print(f"✓ {chemistry_type} interface: {html_path}")
+
+    print(f"\n✓ Complete! Generated interfaces for: {list(generated_paths.keys())}")
+
+    # Open the preferred (or first available) chemistry type
+    open_chem = (
+        preferred_open
+        if preferred_open in generated_paths
+        else next(iter(generated_paths), None)
+    )
+    if open_chem:
+        try:
+            subprocess.run(['open', str(generated_paths[open_chem])], check=False)
+            print(f"✓ Opened {open_chem} interface in browser")
+        except Exception as exc:
+            print(f"⚠ Could not open interface automatically: {exc}")
 
 
 if __name__ == '__main__':
