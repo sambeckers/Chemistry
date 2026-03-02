@@ -10,7 +10,7 @@ CHEMISTRY=1                         	# Perform Forward Chemistry modelling
 SINGLE_SESSION = 0
 
 #-- Output folder management
-PATH_CHEMISTRY = complete_model_Mdot_Vinf_Orich
+PATH_CHEMISTRY = output_1D/complete_1D_model_Orich
 SRC_CHEMISTRY        = src-includeDust-completeSurfaceChemistry-VR-adjustEbind-IPAP
 
 #-- Various settings for this CC session
@@ -113,11 +113,11 @@ FILEN2                  = n2/Tex_10K_bH2_3km.s-1_bH_5km.s-1_NH_1e+20cm-2.dat
 # Analyse CHEMISTRY output 
 ####################
 #-- ANALYSE SUBROUTINE
-PERFORM_ROUTINE             = 1
+PERFORM_ROUTINE             = 0
 ROUTINE_RADIUS              = 1e15
-FULL_ANALYSIS               = 1
+FULL_ANALYSIS               = 0
 SENSITIVITY                 = 0.01
-PLOT_CHEMISTRY_FULL_ANALYSIS= 1
+PLOT_CHEMISTRY_FULL_ANALYSIS= 0
 CFG_CHEMISTRY_FULL_ANALYSIS=/Users/sam/Documents/GitHub/Chemistry/KoekenBak/config/plot_fullanalysis.cfg
 
 STATISTICS = 0

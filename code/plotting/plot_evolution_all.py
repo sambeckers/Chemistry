@@ -1,4 +1,3 @@
-import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -14,10 +13,13 @@ from tqdm import tqdm
 import shutil
 from astropy import units as u
 from numpy.lib import recfunctions as rfn  # noqa: F401  (kept for potential future use)
-from beckers.Chemistry.code.deprecated.convert_trace__run_models import select_particle_ids
-from n_distinct_colours import generate_colormap
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from run_evolving_models import select_particle_ids
+from n_distinct_colours import generate_colormap
+from plot_utils import apply_abundance_axis_limits, add_log_ticks
 from config import (BASE_PATH, parents, daughters_Crich, daughters_Orich,
                     molecules_plot, pd_parents, pd_daughters)
 
@@ -106,7 +108,10 @@ def plot_all_params_time(all_data, bounds, particle_IDs, save=True):
     axes[2].set_xlabel('Time [yr]', fontsize=16)
     axes[2].set_ylim(bounds['av'])
     axes[2].grid(True, alpha=0.7)
-    
+
+    for ax in axes:
+        add_log_ticks(ax)
+
     plt.tight_layout()
     
     if save:
@@ -177,15 +182,17 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
     axes[3].set_yscale('log')
     axes[3].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=16)
     axes[3].grid(True, alpha=0.7)
-    
+
+    apply_abundance_axis_limits(axes[3])
+    for ax in axes:
+        add_log_ticks(ax)
+
     plt.tight_layout()
     
     if save and normalize_ab:
-        name = 'ev_all_params_radius_normab_cm.pdf' if to_cm else 'ev_all_params_radius_normab.pdf'
-        plt.savefig(savedirmain / ff / name, bbox_inches='tight', dpi=300)
+        plt.savefig(savedirmain / ff / 'ev_all_params_radius_normab.pdf', bbox_inches='tight', dpi=300)
     elif save:
-        name = 'ev_all_params_radius_cm.pdf' if to_cm else 'ev_all_params_radius.pdf'
-        plt.savefig(savedirmain / ff / name, bbox_inches='tight', dpi=300)
+        plt.savefig(savedirmain / ff / 'ev_physics.pdf', bbox_inches='tight', dpi=300)
     plt.show()
 
 def plot_molecules(all_data, bounds, particle_IDs, save=True):
@@ -220,14 +227,15 @@ def plot_molecules(all_data, bounds, particle_IDs, save=True):
         axes[j].grid(True, alpha=0.7)
         if j == 0:
             axes[j].legend(loc='best', fontsize=8, ncol=3)
-    
+        apply_abundance_axis_limits(axes[j])
+        add_log_ticks(axes[j])
+
     axes[-1].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=16)
     
     plt.tight_layout()
     
     if save:
-        name = 'ev_molecules_cm.pdf' if to_cm else 'ev_molecules.pdf'
-        plt.savefig(savedirmain / ff / name, bbox_inches='tight', dpi=300)
+        plt.savefig(savedirmain / ff / 'ev_molecules.pdf', bbox_inches='tight', dpi=300)
     plt.show()
 
 def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
@@ -252,7 +260,7 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
         axes[0].set_title(f'Particle {pid} - Parent Molecules', fontsize=16)
         axes[0].grid(True, alpha=0.7)
         axes[0].legend(loc='best', fontsize=8, ncol=3)
-        
+
         # Daughters
         for imol, mol in enumerate(daughters):
             if mol not in data.dtype.names:
@@ -265,12 +273,15 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
         axes[1].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=14)
         axes[1].grid(True, alpha=0.7)
         axes[1].legend(loc='best', fontsize=8, ncol=3)
-        
+
+        for ax in axes:
+            apply_abundance_axis_limits(ax)
+            add_log_ticks(ax)
+
         plt.tight_layout()
         
         if save:
-            suffix = '_cm' if to_cm else ''
-            outpath = savedirmain / ff / 'abundances' / f'ev_{pid}_abundances{suffix}.pdf'
+            outpath = savedirmain / ff / 'abundances' / f'ev_{pid}_abundances.pdf'
             plt.savefig(outpath, bbox_inches='tight', dpi=300)
         # plt.show()
 
@@ -320,12 +331,13 @@ def plot_parent_daughter(all_data, bounds, particle_IDs, save=True):
         axes[j].set_title(f'{par} - {dau}', fontsize=16)
         if j==0:
             axes[j].set_ylabel('Abundance (wrt H$_{nuc}$)', fontsize=16)
-    
+        apply_abundance_axis_limits(axes[j])
+        add_log_ticks(axes[j])
+
     plt.tight_layout()
     
     if save:
-        name = 'ev_parent_daughter_cm.pdf' if to_cm else 'ev_parent_daughter.pdf'
-        plt.savefig(savedirmain / ff / name, bbox_inches='tight', dpi=300)
+        plt.savefig(savedirmain / ff / 'ev_pd.pdf', bbox_inches='tight', dpi=300)
     plt.show()
 
 
@@ -481,26 +493,20 @@ def setup_figure_directories(base_path, figure_folder):
 
     return True
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Plot evolution traces for Crich/Orich chemistry outputs.')
-    parser.add_argument('--chemistry', default='Crich', choices=['Crich', 'Orich'])
-    parser.add_argument('--pmf', default='wind_v10')
-    parser.add_argument('--max-particle-id', type=int, default=300000)
-    parser.add_argument('--start-index', type=int, default=2)
-    parser.add_argument('--n-select', type=int, default=15)
-    return parser.parse_args()
-
-
 def main():
     global savedirmain, mf, of, ff, to_cm
     global daughters
-    args = parse_args()
-    chemistry_type = args.chemistry
+
+    chemistry_type = 'Orich'  # 'Crich' or 'Orich'
+    pmf = 'wind_v10'
+    max_particle_id = 300000
+    start_index = 2
+    n_select = 15
+
     daughters = daughters_Orich if chemistry_type == 'Orich' else daughters_Crich
 
     to_cm = True
     savedirmain = BASE_PATH
-    pmf = args.pmf
     mf = f'evolving_model/{chemistry_type}'
     of = 'ev_output'
     ff = f'figures/Evolution_traces/{chemistry_type}'
@@ -515,9 +521,9 @@ def main():
     particle_IDs = select_particle_ids(
         particle_IDs_file,
         trace_dir,
-        max_particle_id=args.max_particle_id,
-        start_index=args.start_index,
-        n_select=args.n_select,
+        max_particle_id=max_particle_id,
+        start_index=start_index,
+        n_select=n_select,
     )
     print(f"Selected particle IDs: {particle_IDs}")
     particle_IDs[1] = 29823
@@ -530,7 +536,7 @@ def main():
     all_data, bounds = load_all_particles(particle_IDs)
     
     # Plot n, T, and A_V for all particles
-    plot_all_params_time(all_data, bounds, particle_IDs, save=True)
+    # plot_all_params_time(all_data, bounds, particle_IDs, save=True)
 
     # Plot n, T, A_V, and C2H2 abundance vs radius for all particles
     plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
@@ -545,7 +551,7 @@ def main():
     plot_parent_daughter(all_data, bounds, particle_IDs, save=True)
 
     # # Create and save animation (faster: max_frames=200, fps=30)
-    create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
+    # create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
 
 if __name__ == '__main__':
     main()

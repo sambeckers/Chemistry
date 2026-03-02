@@ -1,0 +1,160 @@
+"""Shared matplotlib utilities for abundance plots.
+
+Provides importable helpers that can be called after lines are plotted:
+
+    apply_abundance_axis_limits(ax)
+        Inspects all Line2D objects on *ax* and sets:
+          - x-axis  : [min_r, max_r]  (initial → final radius)
+          - y-axis  : [upper / 1e10, upper]  where *upper* is the next full
+                      decade above the plotted maximum abundance
+
+    apply_abundance_axis_limits_shared(axes)
+        Same as above but collects data across ALL provided axes first, then
+        applies a single consistent limit to every axis.  Use this whenever
+        axes share a y-axis (sharey=True) so that limits are computed from
+        all species together (e.g. CO in panel 0 won't be clipped by the
+        lower maximum of the daughters panel 1).
+
+    add_log_ticks(ax)
+        Adds logarithmic minor ticks (10 sub-divisions per decade) on every
+        axis that is already in log scale, and shows ticks on all four edges
+        directed outward.  Also applies a dashed grid and tick label size 16.
+        Safe to call on linear-scale axes too.
+
+Both limit functions are no-ops when the axes contain no valid data or the
+relevant scale is not 'log'.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+from matplotlib.ticker import LogLocator, NullFormatter
+
+
+# ---------------------------------------------------------------------------
+# Internal helper
+# ---------------------------------------------------------------------------
+
+def _collect_xy(axes_list) -> tuple[list[float], list[float]]:
+    """Collect all valid positive x and y values from a list of axes."""
+    all_x: list[float] = []
+    all_y: list[float] = []
+    for ax in axes_list:
+        for line in ax.get_lines():
+            xd = np.asarray(line.get_xdata(), dtype=float)
+            yd = np.asarray(line.get_ydata(), dtype=float)
+            all_x.extend(xd[np.isfinite(xd) & (xd > 0)].tolist())
+            all_y.extend(yd[np.isfinite(yd) & (yd > 0)].tolist())
+    return all_x, all_y
+
+
+# ---------------------------------------------------------------------------
+# Abundance axis limits
+# ---------------------------------------------------------------------------
+
+def apply_abundance_axis_limits(ax) -> None:
+    """Set smart axis limits for an abundance plot by inspecting plotted lines.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes that already contain the abundance traces.
+
+    Notes
+    -----
+    X-axis
+        Spanning the full radial range of all plotted data
+        (from the smallest ``r`` to the largest ``r``).
+
+    Y-axis
+        Upper limit = next full order of magnitude above the plotted maximum
+        (e.g. max = 3×10⁻⁵ → upper = 10⁻⁴).
+        Lower limit = upper × 10⁻¹⁰  (10 decades below upper).
+    """
+    all_x, all_y = _collect_xy([ax])
+
+    if all_x:
+        ax.set_xlim(min(all_x), max(all_x))
+
+    if all_y:
+        max_ab = max(all_y)
+        upper_exp = np.ceil(np.log10(max_ab))
+        # Guard: if max_ab is exactly a power of 10, step one decade higher so
+        # the top line is not right at the axis edge.
+        if np.isclose(max_ab, 10.0 ** upper_exp):
+            upper_exp += 1.0
+        upper = 10.0 ** upper_exp
+        lower = upper * 1e-10
+        ax.set_ylim(lower, upper)
+
+
+def apply_abundance_axis_limits_shared(axes) -> None:
+    """Set consistent axis limits across a group of axes sharing x or y.
+
+    Collects all plotted data from every axis in *axes*, computes a single
+    set of limits, then applies them uniformly.  This is the correct function
+    to use when ``sharey=True`` or ``sharex=True``, because calling
+    :func:`apply_abundance_axis_limits` axis-by-axis causes later calls to
+    overwrite limits set by earlier ones.
+
+    Parameters
+    ----------
+    axes : sequence of matplotlib.axes.Axes
+    """
+    axes_list = list(np.asarray(axes).flat)
+    all_x, all_y = _collect_xy(axes_list)
+
+    x_lim = (min(all_x), max(all_x)) if all_x else None
+    if all_y:
+        max_ab = max(all_y)
+        upper_exp = np.ceil(np.log10(max_ab))
+        if np.isclose(max_ab, 10.0 ** upper_exp):
+            upper_exp += 1.0
+        upper = 10.0 ** upper_exp
+        lower = upper * 1e-10
+        y_lim = (lower, upper)
+    else:
+        y_lim = None
+
+    for ax in axes_list:
+        if x_lim is not None:
+            ax.set_xlim(*x_lim)
+        if y_lim is not None:
+            ax.set_ylim(*y_lim)
+
+
+# ---------------------------------------------------------------------------
+# Log minor ticks on all four edges
+# ---------------------------------------------------------------------------
+
+def add_log_ticks(ax) -> None:
+    """Add logarithmic minor ticks on all four edges of *ax*.
+
+    For each axis dimension (x, y) that is in log scale the minor tick
+    locator is set to ``LogLocator(subs='auto')`` which produces the familiar
+    increasing-spacing sub-ticks within each decade.  Ticks are placed on
+    all four sides and directed outward.  Also applies a dashed grid style
+    and sets the tick-label font size to 16.
+
+    Safe to call on linear-scale axes: those dimensions are skipped.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+    """
+    if ax.get_xscale() == "log":
+        ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs="auto", numticks=100))
+        ax.xaxis.set_minor_formatter(NullFormatter())
+
+    if ax.get_yscale() == "log":
+        ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs="auto", numticks=100))
+        ax.yaxis.set_minor_formatter(NullFormatter())
+
+    # Ticks on all four sides, pointing outward, font size 14
+    ax.tick_params(which="both", top=True, right=True, bottom=True, left=True,
+                   direction="out", labelsize=14)
+    ax.tick_params(which="minor", length=3, width=0.6)
+    ax.tick_params(which="major", length=6, width=0.9)
+
+    # Dashed grid
+    ax.grid(True, linestyle="--", alpha=0.8)

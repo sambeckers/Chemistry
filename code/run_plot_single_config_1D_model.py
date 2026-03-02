@@ -10,19 +10,23 @@ from kb.managers import PlottingManager as PlottingManagerModule
 from kb.plotting import plotFunctions as plotFunctionsModule
 from kb.plotting.objects import PlotChem as PlotChemModule
 from kb import path
-from n_distinct_colours import generate_colormap
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent / 'plotting'))
+from n_distinct_colours import generate_colormap
 from config import BASE_PATH, parents, daughters_Crich as daughters, daughters_Orich
 
 # Output folder where the figure will be saved
 savedirmain = BASE_PATH
-model_folder = 'complete_model_Mdot_Vinf_Crich'
-# model_folder = 'complete_model_Mdot_Vinf_Orich'
-
-# Input file for KoekenBak
-inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
-# inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
+CRICH = True
+if CRICH:
+    model_folder = 'output_1D/complete_1D_model_Crich'
+    inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
+    out = 'Crich'
+else:
+    model_folder = 'output_1D/complete_1D_model_Orich'
+    inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
+    out = 'Orich'
 
 # Available model labels (same ordering as model.star_grid)
 MLOSS = [
@@ -143,8 +147,8 @@ def plot_single_configuration():
     fig.suptitle(f"{mloss_label}, {vinf_label}", fontsize=14)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
 
-    outname = f"fracab_{model_folder}_single_config_{idx}.pdf"
-    outpath = savedirmain / 'figures' / 'Mdot_Vinf_model' / outname
+    outname = f"fracab_{out}_{idx}.pdf"
+    outpath = savedirmain / 'figures' / '1D_model' / outname
     plt.savefig(outpath, bbox_inches='tight', dpi=300)
     print(f"Saved: {outpath}")
     plt.show()

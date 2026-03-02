@@ -11,6 +11,9 @@ plt.rcParams.update({
     "font.family": "Times New Roman",
     "font.sans-serif": "helvetica"
 })
+import sys
+sys.path.insert(0, str(Path(__file__).parent))
+from plot_utils import add_log_ticks
 
 def _normalize_name(name: str) -> str:
     return "".join(ch for ch in name.lower() if ch.isalnum() or ch == "_")
@@ -112,6 +115,7 @@ def plot_ratios(
     ax.set_ylabel(r"$A_{UV} / A_V$", fontsize=12)
     # ax.grid(True, alpha=0.4)
     ax.legend(loc="best", fontsize=10)
+    add_log_ticks(ax)
 
     fig.tight_layout()
     outpath.parent.mkdir(parents=True, exist_ok=True)
@@ -127,7 +131,7 @@ def plot_ratios(
 
 
 def main() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
     input_dir = repo_root / "traces" / "wind_v10" / "trace_output_with_av"
     outpath = repo_root / "traces" / "wind_v10" / "auv_av_ratio_over_time.png"
 

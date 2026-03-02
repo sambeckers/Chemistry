@@ -15,18 +15,22 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import BASE_PATH, parents_He_extended as parents, daughters_Crich_no_CN, daughters_Orich
 
-#- Outputfolder where the figure will be saved
+# Output folder where the figure will be saved
 savedirmain = BASE_PATH
-model_folder = 'complete_model_Mdot_Vinf_Crich'
-# model_folder = 'complete_model_Mdot_Vinf_Orich'
+CRICH = False
+if CRICH:
+    model_folder = 'output_1D/complete_1D_model_Crich'
+    inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
+    out = 'Crich'
+else:
+    model_folder = 'output_1D/complete_1D_model_Orich'
+    inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
+    out = 'Orich'
+
 
 # db  = Database.Database(str(savedirmain / model_folder / 'Chemistry_models.db'))
 # db.pop('model_2025-10-17h16-58-20')
 # db.sync() 
-
-#- Inputfile for KoekenBak
-inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
-# inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
 
 ##- Run model
 def run_model(inputfile):
@@ -108,7 +112,7 @@ if handles_bot:
 fig.text(0.52, 1.01, 'Parents', ha='center', va='top', fontsize=14)
 axes[1, 1].text(0.5, 1.01, 'Daughters', transform=axes[1, 1].transAxes, ha='center', va='bottom', fontsize=14)
 fig.tight_layout()
-plt.savefig(savedirmain / 'figures' / f'fracab_{model_folder}_PD.pdf', bbox_inches='tight', dpi=300)
+plt.savefig(savedirmain / 'figures' / '1D_model' / f'fracab_{out}_PD.pdf', bbox_inches='tight', dpi=300)
 plt.show()
 
 # mol = 'C2H2'

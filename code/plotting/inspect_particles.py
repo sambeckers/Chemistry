@@ -1121,16 +1121,37 @@ def plot_particle_inspection(pid, data, to_cm=True, save_path=None):
                 group_trace_indices[group_key].append(len(fig.data) - 1)
                 group_original_colors[group_key].append(color)
 
+    # Compute x-axis limits from all molecule traces
+    _all_ab_x: list[float] = []
+    for trace in fig.data:
+        meta = getattr(trace, 'meta', None) or {}
+        if isinstance(meta, dict) and meta.get('isMolecule'):
+            xd = np.asarray(trace.x, dtype=float)
+            valid_x = xd[np.isfinite(xd) & (xd > 0)]
+            _all_ab_x.extend(valid_x.tolist())
+
+    if _all_ab_x:
+        _ab_xrange = [float(np.log10(min(_all_ab_x))), float(np.log10(max(_all_ab_x)))]
+    else:
+        _ab_xrange = None
+
     # Axis formatting
     for row, col in [(1, 1), (3, 1), (5, 1), (1, 2), (4, 2), (1, 3), (4, 3)]:
         fig.update_xaxes(
             type='log', row=row, col=col, showgrid=True, gridcolor='rgba(0,0,0,0.2)',
-            automargin=True, title_standoff=2, tickfont=dict(size=9)
+            automargin=True, title_standoff=2, tickfont=dict(size=9),
+            mirror=True, ticks='inside',
         )
         fig.update_yaxes(
             type='log', row=row, col=col, showgrid=True, gridcolor='rgba(0,0,0,0.2)',
-            automargin=True, title_standoff=2, tickfont=dict(size=9)
+            automargin=True, title_standoff=2, tickfont=dict(size=9),
+            mirror=True, ticks='inside',
         )
+
+    # Apply x-axis limits to molecule panels (y auto-scales to show all data)
+    if _ab_xrange is not None:
+        for row, col in [(1, 2), (4, 2), (1, 3), (4, 3)]:
+            fig.update_xaxes(range=_ab_xrange, row=row, col=col)
 
     # Hide redundant x tick labels on top panels to reduce clutter/overlap
     for row, col in [(1, 1), (3, 1), (1, 2), (1, 3)]:
