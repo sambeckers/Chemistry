@@ -474,26 +474,46 @@
             el.classList.add('control-tap');
         }
         
+        function applyTheme(isDark) {
+            if (isDark) {
+                document.body.classList.remove('light-mode');
+                document.getElementById('themeIcon').textContent = '🌙';
+            } else {
+                document.body.classList.add('light-mode');
+                document.getElementById('themeIcon').textContent = '☀️';
+            }
+            // Notify iframe about theme change
+            const iframe = document.getElementById('particleFrame');
+            if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'theme-change', isDark: isDark }, '*');
+            }
+        }
+
         function toggleTheme() {
             const themeBtn = document.querySelector('.theme-toggle');
             popThemeBtn(themeBtn);
             document.body.classList.add('theme-transitioning');
             document.body.classList.toggle('light-mode');
             setTimeout(() => document.body.classList.remove('theme-transitioning'), 500);
-            const icon = document.getElementById('themeIcon');
             const isDark = !document.body.classList.contains('light-mode');
-            
-            if (document.body.classList.contains('light-mode')) {
-                icon.textContent = '☀️';
-            } else {
-                icon.textContent = '🌙';
-            }
-            
+            document.getElementById('themeIcon').textContent = isDark ? '🌙' : '☀️';
             // Notify iframe about theme change
             const iframe = document.getElementById('particleFrame');
             if (iframe && iframe.contentWindow) {
                 iframe.contentWindow.postMessage({ type: 'theme-change', isDark: isDark }, '*');
             }
+        }
+
+        function initTheme() {
+            const mq = window.matchMedia('(prefers-color-scheme: dark)');
+            // Apply current system preference immediately
+            applyTheme(mq.matches);
+            // Update dynamically whenever the OS theme changes
+            mq.addEventListener('change', (e) => {
+                document.body.classList.add('theme-transitioning');
+                applyTheme(e.matches);
+                setTimeout(() => document.body.classList.remove('theme-transitioning'), 500);
+            });
         }
         
         // Listen for theme requests from iframes
@@ -619,6 +639,7 @@
         window.addEventListener('resize', resizeFrame);
 
         // Initialize
+        initTheme();
         buildLegend();
         updateChemistryButtons();
         updateModeButtons();
