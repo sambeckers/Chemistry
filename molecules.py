@@ -32,7 +32,7 @@ daughters_2 = ["HCO+", "CH", "CH2", "CH3", "NH", "NH2", "SO", "SO2", "HS", "HCNH
 daughters_3 = ["H2CO", "H2CS", "CH3CN", "SiC", "SiN"]
 grains = ["GSiO", "GH2O", "GC2H2", "GHCN", "GH2S", "GCH4", "GC2H4"]
 atoms = ["C", "N", "H", "O", "S", "Si", "Cl", "F", "P"]
-atoms_plus = ["C+", "N+", "H+", "O+", "S+", "Si+", "Cl+", "F+", "P+"]
+atoms_plus = ["C+", "N+", "H+", "O+", "S+", "Si+", "Cl+", "P+"]
 
 # Molecules for plot_molecules() in plot_evolution_all.py
 molecules_plot = ['CO', 'CH4', 'C2H2', 'HCN', 'C2H4']
