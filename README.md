@@ -1,5 +1,5 @@
-# AGB Wind Chemistry
 
+# 3D chemical modelling of AGB outflows
 Python + Fortran pipeline for running chemistry models on SPH particle traces from AGB stellar wind simulations (Phantom), and comparing them to 1D models via KoekenBak.
 
 ---

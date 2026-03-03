@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=em_parallel
-#SBATCH --output=logs/logs_%A/em_parallel_%A_%a.out
-#SBATCH --error=logs/logs_%A/em_parallel_%A_%a.err
-#SBATCH --time=12:00:00
+#SBATCH --output=logs/logs_%A/em_parallel_%A_%a.out  # overridden by submit_em_parallel.sh
+#SBATCH --error=logs/logs_%A/em_parallel_%A_%a.err   # overridden by submit_em_parallel.sh
+#SBATCH --time=1:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G
-#SBATCH --array=0-14
+#SBATCH --array=0-0  # overridden dynamically by submit_em_parallel.sh
 
 set -euo pipefail
 

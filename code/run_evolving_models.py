@@ -29,11 +29,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (BASE_PATH, parents, daughters_Crich, daughters_Orich,
                     daughters_2, daughters_3, grains, atoms, atoms_plus)
 
-
-# ============================================================
-#  Helper functions (self-contained, no sibling-module import)
-# ============================================================
-
 def get_species_filename(chemistry_type):
     return f"rate12_complex_atomic_{chemistry_type}.specs"
 
@@ -45,18 +40,51 @@ def get_daughters_for_chemistry(chemistry_type):
 
 
 def select_particle_ids(particle_IDs_file, trace_dir,
-                        max_particle_id=300000, start_index=2, n_select=15):
-    """Select particle IDs with optional spacing and file-existence checks."""
+                        max_particle_id=300000, start_index=2, n_select=None,
+                        quiet=False):
+    """Select particle IDs with optional spacing and file-existence checks.
+
+    When *quiet* is True, informational messages go to stderr so that stdout
+    contains only the data (used by --count mode).
+    """
+    import sys
+    def _info(msg):
+        if quiet:
+            print(msg, file=sys.stderr)
+        else:
+            print(msg)
+    def _has_more_than_one_data_row(phys_file):
+        data_rows = 0
+        with open(phys_file, 'r') as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped or stripped.startswith('#'):
+                    continue
+                data_rows += 1
+                if data_rows > 1:
+                    return True
+        return False
+
     with open(particle_IDs_file, 'r') as f:
         particle_IDs = [int(line.strip()) for line in f if line.strip()]
 
     particle_IDs = [pid for pid in particle_IDs if pid <= max_particle_id]
     particle_IDs = [pid for pid in particle_IDs if (trace_dir / f"{pid}.phys").exists()]
-    print(f"Found {len(particle_IDs)} valid particle IDs in {trace_dir} (max ID={max_particle_id})")
+    particle_IDs = [
+        pid for pid in particle_IDs
+        if _has_more_than_one_data_row(trace_dir / f"{pid}.phys")
+    ]
+    _info(f"Found {len(particle_IDs)} valid particle IDs in {trace_dir} (max ID={max_particle_id})")
 
-    n_pick = min(n_select, len(particle_IDs))
-    indices = np.linspace(start_index, len(particle_IDs) - 1, num=n_pick, dtype=int)
-    return [particle_IDs[i] for i in indices]
+    if n_select is None:
+        selected = particle_IDs[start_index:]
+    else:
+        n_pick = min(n_select, len(particle_IDs))
+        indices = np.linspace(start_index, len(particle_IDs) - 1, num=n_pick, dtype=int)
+        selected = [particle_IDs[i] for i in indices]
+
+    _info(f"Returning {len(selected)} particle IDs (after start_index={start_index} offset)")
+    return selected
 
 
 def convert_phys(in_file, out_file) -> None:
@@ -483,6 +511,13 @@ def parse_args():
             "default and CHEMISTRY_TYPE env var."
         ),
     )
+    parser.add_argument(
+        "--count", action="store_true", default=False,
+        help=(
+            "Print the number of selected particle IDs and exit. "
+            "Used by the submission wrapper to set the SLURM array size."
+        ),
+    )
     args, _ = parser.parse_known_args()  # parse_known_args ignores Jupyter kernel args
     return args
 
@@ -522,9 +557,12 @@ def main():
                        f'model_2025-10-22h14-41-04/csphyspar_smooth.out')
 
     # Particle selection
-    max_particle_id = 300000
+    # max_particle_id = 300000
+    # start_index     = 2
+    # n_select        = 15
+    max_particle_id = 1030991
     start_index     = 2
-    n_select        = 15
+    n_select        = None
 
     # ------------------------------------------------------------------ PATHS
     tracesf   = f'traces/{pmf}/trace_output_with_av'
@@ -540,7 +578,13 @@ def main():
         max_particle_id=max_particle_id,
         start_index=start_index,
         n_select=n_select,
+        quiet=args.count,
     )
+
+    if args.count:
+        print(len(particle_IDs))
+        return
+
     # Custom overrides – adjust as needed
     if len(particle_IDs) > 1:
         particle_IDs[1] = 29823

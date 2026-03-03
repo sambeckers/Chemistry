@@ -1,0 +1,25 @@
+! FILE PARAMETERS FOR ENVELOPE MODEL
+! Physical conditions input file
+Orich/input/782767.txt
+! Reaction file
+./rate12_complex.rates
+! Species file
+./rate12_complex_atomic_Orich.specs
+! Binding energies file
+./rate12_binding.dat
+! Reaction parameters file
+param/reaction_parameters.txt
+! Grain parameters file
+param/grain_parameters.txt
+! Radiation field parameters file
+param/radiation_parameters.txt
+! Output abundances file
+Orich/output/model_output_782767.dat
+! Output rates file
+Orich/output/model_rates_782767.dat
+! Call analyse subroutine (T(RUE) or F(ALSE))?
+F
+! Grid point to run analyse
+0
+! Analyse file
+Orich/output/model_analyse_782767.dat

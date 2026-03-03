@@ -1,0 +1,74 @@
+Starting job 10144309, array task 47 on dave82
+Chemistry type: Crich
+Analysis mode: false
+Found 116 valid particle IDs in /fred/oz304/beckers/Chemistry/traces/wind_v10/trace_output_with_av (max ID=1030991)
+Returning 114 particle IDs (after start_index=2 offset)
+SLURM task 47: processing particle 435254
+Running Crich evolving_model on 1 phantom particle trace(s) from wind_v10
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+ +++++        ENVELOPE CHEMICAL MODEL         ++++++
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ Version 1.0 authored by Catherine Walsh and Maria 
+    Drozdovskaya, Leiden Observatory (01/08/2013)
+
+ Version 1.1 amended by Catherine Walsh (18/05/2014)
+
+ Version 1.2 amended by Catherine Walsh (13/08/2015)
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+          Input file =  Crich/param/trace_file_param/file_parameters_435254.txt               
+
+ Physical conditions  = Crich/input/435254.txt                                                
+ Chemical network     = ./rate12_complex.rates                                                
+ Species file         = ./rate12_complex_atomic_Crich.specs                                   
+ Binding energies     = ./rate12_binding.dat                                                  
+ Reaction parameters  = param/reaction_parameters.txt                                         
+ Grain parameters     = param/grain_parameters.txt                                            
+ Radiation parameters = param/radiation_parameters.txt                                        
+
+ Output file          = Crich/output/model_output_435254.dat                                  
+ Rates file           = Crich/output/model_rates_435254.dat                                   
+
+ Opening and reading physical conditions file ...
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+ Beginning to run model ...
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ Preparing output files ...
+
+ Progress = ...
+ ...    1 /   2
+
+ No. steps =    2488   No. f-s =   35779   No. J-s =      48   No. LU-s =     349
+  No. nonlinear iterations =    3714
+  No. nonlinear convergence failures =       0
+  No. error test failures =     126
+  Last step size used =    0.71359E+08
+  Index compenent largest error =        0
+
+ ...    2 /   2
+
+ No. steps =     358   No. f-s =    5112   No. J-s =       7   No. LU-s =      66
+  No. nonlinear iterations =     433
+  No. nonlinear convergence failures =       0
+  No. error test failures =      12
+  Last step size used =    0.29534E+07
+  Index compenent largest error =        0
+
+
+    ... DONE!
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
++------------------ Job Report: 10144358 (COMPLETED) ------------------+
+| Memory (RAM)  No data available                                      |
+| CPU           [###                 ] 18.8% average                   |
+| Time          [>                   ]  0.4% (0-00:00:16 / 0-01:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   No data available                                                  |
++----------------------------------------------------------------------+
