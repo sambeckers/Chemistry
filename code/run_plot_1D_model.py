@@ -17,7 +17,7 @@ from config import BASE_PATH, parents_He_extended as parents, daughters_Crich_no
 
 # Output folder where the figure will be saved
 savedirmain = BASE_PATH
-CRICH = False
+CRICH = True
 if CRICH:
     model_folder = 'output_1D/complete_1D_model_Crich'
     inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')

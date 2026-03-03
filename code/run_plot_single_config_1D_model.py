@@ -41,8 +41,8 @@ VELOCITY = [
 ]
 
 # Choose one configuration here
-TARGET_MLOSS = MLOSS[0]
-TARGET_VELOCITY = VELOCITY[0]
+TARGET_MLOSS = MLOSS[2]
+TARGET_VELOCITY = VELOCITY[2]
 
 # Parent and daughter molecules (loaded from config.py)
 parents = parents
