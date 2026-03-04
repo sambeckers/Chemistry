@@ -1,0 +1,4654 @@
+Starting job 10175762, array task 310 on gina7
+Chemistry type: Orich
+Analysis mode: false
+Found 462 valid particle IDs in /fred/oz304/beckers/Chemistry/traces/wind_v10/trace_output_with_av
+Returning 460 particle IDs (after start_index=2 offset)
+SLURM task 310: processing particle 2818199
+Running Orich evolving_model on 1 phantom particle trace(s) from wind_v10
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+ +++++        ENVELOPE CHEMICAL MODEL         ++++++
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ Version 1.0 authored by Catherine Walsh and Maria 
+    Drozdovskaya, Leiden Observatory (01/08/2013)
+
+ Version 1.1 amended by Catherine Walsh (18/05/2014)
+
+ Version 1.2 amended by Catherine Walsh (13/08/2015)
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+          Input file =  Orich/param/trace_file_param/file_parameters_2818199.txt              
+
+ Physical conditions  = Orich/input/2818199.txt                                               
+ Chemical network     = ./rate12_complex.rates                                                
+ Species file         = ./rate12_complex_atomic_Orich.specs                                   
+ Binding energies     = ./rate12_binding.dat                                                  
+ Reaction parameters  = param/reaction_parameters.txt                                         
+ Grain parameters     = param/grain_parameters.txt                                            
+ Radiation parameters = param/radiation_parameters.txt                                        
+
+ Output file          = Orich/output/model_output_2818199.dat                                 
+ Rates file           = Orich/output/model_rates_2818199.dat                                  
+
+ Opening and reading physical conditions file ...
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+ Beginning to run model ...
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ Preparing output files ...
+
+ Progress = ...
+ ...    1 / 510
+
+ No. steps =    1044   No. f-s =   16269   No. J-s =      22   No. LU-s =     145
+  No. nonlinear iterations =    1572
+  No. nonlinear convergence failures =       0
+  No. error test failures =      35
+  Last step size used =    0.46506E+09
+  Index compenent largest error = ********
+
+ ...    2 / 510
+
+ No. steps =      78   No. f-s =    1430   No. J-s =       2   No. LU-s =      15
+  No. nonlinear iterations =      91
+  No. nonlinear convergence failures =       0
+  No. error test failures =       1
+  Last step size used =    0.23008E+07
+  Index compenent largest error = ********
+
+ ...    3 / 510
+
+ No. steps =      66   No. f-s =    1420   No. J-s =       2   No. LU-s =      14
+  No. nonlinear iterations =      81
+  No. nonlinear convergence failures =       0
+  No. error test failures =       1
+  Last step size used =    0.36641E+07
+  Index compenent largest error = ********
+
+ ...    4 / 510
+
+ No. steps =      61   No. f-s =    1408   No. J-s =       2   No. LU-s =      12
+  No. nonlinear iterations =      69
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.32937E+07
+  Index compenent largest error = ********
+
+ ...    5 / 510
+
+ No. steps =     366   No. f-s =    6556   No. J-s =       9   No. LU-s =      61
+  No. nonlinear iterations =     541
+  No. nonlinear convergence failures =       0
+  No. error test failures =      11
+  Last step size used =    0.10792E+07
+  Index compenent largest error = ********
+
+ ...    6 / 510
+
+ No. steps =     117   No. f-s =    2150   No. J-s =       3   No. LU-s =      24
+  No. nonlinear iterations =     143
+  No. nonlinear convergence failures =       0
+  No. error test failures =       2
+  Last step size used =    0.30297E+07
+  Index compenent largest error = ********
+
+ ...    7 / 510
+
+ No. steps =     110   No. f-s =    2141   No. J-s =       3   No. LU-s =      22
+  No. nonlinear iterations =     134
+  No. nonlinear convergence failures =       0
+  No. error test failures =       2
+  Last step size used =    0.33852E+07
+  Index compenent largest error = ********
+
+ ...    8 / 510
+
+ No. steps =      87   No. f-s =    1444   No. J-s =       2   No. LU-s =      23
+  No. nonlinear iterations =     105
+  No. nonlinear convergence failures =       0
+  No. error test failures =       2
+  Last step size used =    0.48930E+07
+  Index compenent largest error = ********
+
+ ...    9 / 510
+
+ No. steps =      88   No. f-s =    1442   No. J-s =       2   No. LU-s =      18
+  No. nonlinear iterations =     103
+  No. nonlinear convergence failures =       0
+  No. error test failures =       1
+  Last step size used =    0.32851E+07
+  Index compenent largest error = ********
+
+ ...   10 / 510
+
+ No. steps =      79   No. f-s =    1434   No. J-s =       2   No. LU-s =      15
+  No. nonlinear iterations =      95
+  No. nonlinear convergence failures =       0
+  No. error test failures =       1
+  Last step size used =    0.34274E+07
+  Index compenent largest error = ********
+
+ ...   11 / 510
+
+ No. steps =      67   No. f-s =    1419   No. J-s =       2   No. LU-s =      14
+  No. nonlinear iterations =      80
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.36142E+07
+  Index compenent largest error = ********
+
+ ...   12 / 510
+
+ No. steps =      63   No. f-s =    1411   No. J-s =       2   No. LU-s =      13
+  No. nonlinear iterations =      72
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.30501E+07
+  Index compenent largest error = ********
+
+ ...   13 / 510
+
+ No. steps =      56   No. f-s =     737   No. J-s =       1   No. LU-s =      11
+  No. nonlinear iterations =      66
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.27934E+07
+  Index compenent largest error = ********
+
+ ...   14 / 510
+
+ No. steps =      53   No. f-s =    1402   No. J-s =       2   No. LU-s =      12
+  No. nonlinear iterations =      63
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.43878E+07
+  Index compenent largest error = ********
+
+ ...   15 / 510
+
+ No. steps =      52   No. f-s =    1399   No. J-s =       2   No. LU-s =      12
+  No. nonlinear iterations =      60
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.43268E+07
+  Index compenent largest error = ********
+
+ ...   16 / 510
+
+ No. steps =      46   No. f-s =     725   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      54
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.37257E+07
+  Index compenent largest error = ********
+
+ ...   17 / 510
+
+ No. steps =      44   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.33089E+07
+  Index compenent largest error = ********
+
+ ...   18 / 510
+
+ No. steps =      45   No. f-s =     723   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      52
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.30759E+07
+  Index compenent largest error = ********
+
+ ...   19 / 510
+
+ No. steps =      43   No. f-s =     723   No. J-s =       1   No. LU-s =      10
+  No. nonlinear iterations =      52
+  No. nonlinear convergence failures =       0
+  No. error test failures =       1
+  Last step size used =    0.30338E+07
+  Index compenent largest error = ********
+
+ ...   20 / 510
+
+ No. steps =      44   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.38197E+07
+  Index compenent largest error = ********
+
+ ...   21 / 510
+
+ No. steps =      44   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.40185E+07
+  Index compenent largest error = ********
+
+ ...   22 / 510
+
+ No. steps =      43   No. f-s =     721   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      50
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.41847E+07
+  Index compenent largest error = ********
+
+ ...   23 / 510
+
+ No. steps =      43   No. f-s =     721   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      50
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.46181E+07
+  Index compenent largest error = ********
+
+ ...   24 / 510
+
+ No. steps =      41   No. f-s =     719   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      48
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.32968E+07
+  Index compenent largest error = ********
+
+ ...   25 / 510
+
+ No. steps =      40   No. f-s =     719   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      48
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.50526E+07
+  Index compenent largest error = ********
+
+ ...   26 / 510
+
+ No. steps =      40   No. f-s =     718   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.33756E+07
+  Index compenent largest error = ********
+
+ ...   27 / 510
+
+ No. steps =      42   No. f-s =     720   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      49
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.45493E+07
+  Index compenent largest error = ********
+
+ ...   28 / 510
+
+ No. steps =      40   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.50134E+07
+  Index compenent largest error = ********
+
+ ...   29 / 510
+
+ No. steps =      39   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.38162E+07
+  Index compenent largest error = ********
+
+ ...   30 / 510
+
+ No. steps =      39   No. f-s =     717   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      46
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.53203E+07
+  Index compenent largest error = ********
+
+ ...   31 / 510
+
+ No. steps =      36   No. f-s =     713   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      42
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.42169E+07
+  Index compenent largest error = ********
+
+ ...   32 / 510
+
+ No. steps =      38   No. f-s =     716   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      45
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.52155E+07
+  Index compenent largest error = ********
+
+ ...   33 / 510
+
+ No. steps =      39   No. f-s =     717   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      46
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.39546E+07
+  Index compenent largest error = ********
+
+ ...   34 / 510
+
+ No. steps =      39   No. f-s =     718   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.39802E+07
+  Index compenent largest error = ********
+
+ ...   35 / 510
+
+ No. steps =      38   No. f-s =     717   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      46
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.47690E+07
+  Index compenent largest error = ********
+
+ ...   36 / 510
+
+ No. steps =      36   No. f-s =     713   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      42
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.56655E+07
+  Index compenent largest error = ********
+
+ ...   37 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.66311E+07
+  Index compenent largest error = ********
+
+ ...   38 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.56882E+07
+  Index compenent largest error = ********
+
+ ...   39 / 510
+
+ No. steps =      35   No. f-s =     711   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      40
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.40257E+07
+  Index compenent largest error = ********
+
+ ...   40 / 510
+
+ No. steps =      40   No. f-s =     718   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.39019E+07
+  Index compenent largest error = ********
+
+ ...   41 / 510
+
+ No. steps =      41   No. f-s =     719   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      48
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.37189E+07
+  Index compenent largest error = ********
+
+ ...   42 / 510
+
+ No. steps =      41   No. f-s =     719   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      48
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.44220E+07
+  Index compenent largest error = ********
+
+ ...   43 / 510
+
+ No. steps =      43   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.40656E+07
+  Index compenent largest error = ********
+
+ ...   44 / 510
+
+ No. steps =      43   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.41054E+07
+  Index compenent largest error = ********
+
+ ...   45 / 510
+
+ No. steps =      43   No. f-s =     723   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      52
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.41973E+07
+  Index compenent largest error = ********
+
+ ...   46 / 510
+
+ No. steps =      43   No. f-s =     723   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      52
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.40954E+07
+  Index compenent largest error = ********
+
+ ...   47 / 510
+
+ No. steps =      43   No. f-s =     723   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      52
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.41968E+07
+  Index compenent largest error = ********
+
+ ...   48 / 510
+
+ No. steps =      43   No. f-s =     723   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      52
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.41822E+07
+  Index compenent largest error = ********
+
+ ...   49 / 510
+
+ No. steps =      42   No. f-s =     719   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      48
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.44633E+07
+  Index compenent largest error = ********
+
+ ...   50 / 510
+
+ No. steps =      41   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.44769E+07
+  Index compenent largest error = ********
+
+ ...   51 / 510
+
+ No. steps =      42   No. f-s =     719   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      48
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.42513E+07
+  Index compenent largest error = ********
+
+ ...   52 / 510
+
+ No. steps =      41   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.43770E+07
+  Index compenent largest error = ********
+
+ ...   53 / 510
+
+ No. steps =      41   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.43338E+07
+  Index compenent largest error = ********
+
+ ...   54 / 510
+
+ No. steps =      42   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.43856E+07
+  Index compenent largest error = ********
+
+ ...   55 / 510
+
+ No. steps =      42   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.43757E+07
+  Index compenent largest error = ********
+
+ ...   56 / 510
+
+ No. steps =      42   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.45679E+07
+  Index compenent largest error = ********
+
+ ...   57 / 510
+
+ No. steps =      42   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.46404E+07
+  Index compenent largest error = ********
+
+ ...   58 / 510
+
+ No. steps =      41   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.45526E+07
+  Index compenent largest error = ********
+
+ ...   59 / 510
+
+ No. steps =      41   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.45583E+07
+  Index compenent largest error = ********
+
+ ...   60 / 510
+
+ No. steps =      42   No. f-s =     722   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      51
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.47543E+07
+  Index compenent largest error = ********
+
+ ...   61 / 510
+
+ No. steps =      41   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.47722E+07
+  Index compenent largest error = ********
+
+ ...   62 / 510
+
+ No. steps =      40   No. f-s =     717   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      46
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.52916E+07
+  Index compenent largest error = ********
+
+ ...   63 / 510
+
+ No. steps =      40   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.48152E+07
+  Index compenent largest error = ********
+
+ ...   64 / 510
+
+ No. steps =      40   No. f-s =     718   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      47
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.49084E+07
+  Index compenent largest error = ********
+
+ ...   65 / 510
+
+ No. steps =      39   No. f-s =     717   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      46
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.51627E+07
+  Index compenent largest error = ********
+
+ ...   66 / 510
+
+ No. steps =      39   No. f-s =     717   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      46
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.51294E+07
+  Index compenent largest error = ********
+
+ ...   67 / 510
+
+ No. steps =      39   No. f-s =     717   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      46
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.53729E+07
+  Index compenent largest error = ********
+
+ ...   68 / 510
+
+ No. steps =      38   No. f-s =     716   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      45
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.60490E+07
+  Index compenent largest error = ********
+
+ ...   69 / 510
+
+ No. steps =      38   No. f-s =     716   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      45
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63338E+07
+  Index compenent largest error = ********
+
+ ...   70 / 510
+
+ No. steps =      38   No. f-s =     716   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      45
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63904E+07
+  Index compenent largest error = ********
+
+ ...   71 / 510
+
+ No. steps =      37   No. f-s =     714   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      43
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.49326E+07
+  Index compenent largest error = ********
+
+ ...   72 / 510
+
+ No. steps =      37   No. f-s =     714   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      43
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.50007E+07
+  Index compenent largest error = ********
+
+ ...   73 / 510
+
+ No. steps =      36   No. f-s =     713   No. J-s =       1   No. LU-s =       9
+  No. nonlinear iterations =      42
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.52751E+07
+  Index compenent largest error = ********
+
+ ...   74 / 510
+
+ No. steps =      35   No. f-s =     712   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      41
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.41203E+07
+  Index compenent largest error = ********
+
+ ...   75 / 510
+
+ No. steps =      35   No. f-s =     712   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      41
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.43844E+07
+  Index compenent largest error = ********
+
+ ...   76 / 510
+
+ No. steps =      35   No. f-s =     712   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      41
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.43204E+07
+  Index compenent largest error = ********
+
+ ...   77 / 510
+
+ No. steps =      35   No. f-s =     712   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      41
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.42858E+07
+  Index compenent largest error = ********
+
+ ...   78 / 510
+
+ No. steps =      34   No. f-s =     711   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      40
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.47903E+07
+  Index compenent largest error = ********
+
+ ...   79 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.58406E+07
+  Index compenent largest error = ********
+
+ ...   80 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.48037E+07
+  Index compenent largest error = ********
+
+ ...   81 / 510
+
+ No. steps =      31   No. f-s =     708   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      37
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.58645E+07
+  Index compenent largest error = ********
+
+ ...   82 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.45267E+07
+  Index compenent largest error = ********
+
+ ...   83 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.48418E+07
+  Index compenent largest error = ********
+
+ ...   84 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.51804E+07
+  Index compenent largest error = ********
+
+ ...   85 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.54478E+07
+  Index compenent largest error = ********
+
+ ...   86 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.57429E+07
+  Index compenent largest error = ********
+
+ ...   87 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.59526E+07
+  Index compenent largest error = ********
+
+ ...   88 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.57124E+07
+  Index compenent largest error = ********
+
+ ...   89 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.55263E+07
+  Index compenent largest error = ********
+
+ ...   90 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.57320E+07
+  Index compenent largest error = ********
+
+ ...   91 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.61106E+07
+  Index compenent largest error = ********
+
+ ...   92 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.60946E+07
+  Index compenent largest error = ********
+
+ ...   93 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.59258E+07
+  Index compenent largest error = ********
+
+ ...   94 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.57122E+07
+  Index compenent largest error = ********
+
+ ...   95 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.57827E+07
+  Index compenent largest error = ********
+
+ ...   96 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.62063E+07
+  Index compenent largest error = ********
+
+ ...   97 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.55424E+07
+  Index compenent largest error = ********
+
+ ...   98 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.55356E+07
+  Index compenent largest error = ********
+
+ ...   99 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.54462E+07
+  Index compenent largest error = ********
+
+ ...  100 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.50594E+07
+  Index compenent largest error = ********
+
+ ...  101 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.48773E+07
+  Index compenent largest error = ********
+
+ ...  102 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.49791E+07
+  Index compenent largest error = ********
+
+ ...  103 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.49405E+07
+  Index compenent largest error = ********
+
+ ...  104 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.49818E+07
+  Index compenent largest error = ********
+
+ ...  105 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.47004E+07
+  Index compenent largest error = ********
+
+ ...  106 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.44809E+07
+  Index compenent largest error = ********
+
+ ...  107 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.48021E+07
+  Index compenent largest error = ********
+
+ ...  108 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.44599E+07
+  Index compenent largest error = ********
+
+ ...  109 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.44909E+07
+  Index compenent largest error = ********
+
+ ...  110 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.45008E+07
+  Index compenent largest error = ********
+
+ ...  111 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.45121E+07
+  Index compenent largest error = ********
+
+ ...  112 / 510
+
+ No. steps =      31   No. f-s =     708   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      37
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.61701E+07
+  Index compenent largest error = ********
+
+ ...  113 / 510
+
+ No. steps =      30   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.64324E+07
+  Index compenent largest error = ********
+
+ ...  114 / 510
+
+ No. steps =      31   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.46608E+07
+  Index compenent largest error = ********
+
+ ...  115 / 510
+
+ No. steps =      30   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.65174E+07
+  Index compenent largest error = ********
+
+ ...  116 / 510
+
+ No. steps =      30   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.66502E+07
+  Index compenent largest error = ********
+
+ ...  117 / 510
+
+ No. steps =      30   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.68577E+07
+  Index compenent largest error = ********
+
+ ...  118 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.48517E+07
+  Index compenent largest error = ********
+
+ ...  119 / 510
+
+ No. steps =      30   No. f-s =     707   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      36
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.70702E+07
+  Index compenent largest error = ********
+
+ ...  120 / 510
+
+ No. steps =      29   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.72428E+07
+  Index compenent largest error = ********
+
+ ...  121 / 510
+
+ No. steps =      29   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.72819E+07
+  Index compenent largest error = ********
+
+ ...  122 / 510
+
+ No. steps =      30   No. f-s =     706   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      35
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.50906E+07
+  Index compenent largest error = ********
+
+ ...  123 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.51863E+07
+  Index compenent largest error = ********
+
+ ...  124 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.53931E+07
+  Index compenent largest error = ********
+
+ ...  125 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.55512E+07
+  Index compenent largest error = ********
+
+ ...  126 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.56200E+07
+  Index compenent largest error = ********
+
+ ...  127 / 510
+
+ No. steps =      29   No. f-s =     705   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      34
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.57917E+07
+  Index compenent largest error = ********
+
+ ...  128 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.61005E+07
+  Index compenent largest error = ********
+
+ ...  129 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63285E+07
+  Index compenent largest error = ********
+
+ ...  130 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.64814E+07
+  Index compenent largest error = ********
+
+ ...  131 / 510
+
+ No. steps =      28   No. f-s =     704   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      33
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.62319E+07
+  Index compenent largest error = ********
+
+ ...  132 / 510
+
+ No. steps =      27   No. f-s =     703   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      32
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.66177E+07
+  Index compenent largest error = ********
+
+ ...  133 / 510
+
+ No. steps =      27   No. f-s =     703   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      32
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.68635E+07
+  Index compenent largest error = ********
+
+ ...  134 / 510
+
+ No. steps =      27   No. f-s =     703   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      32
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.69880E+07
+  Index compenent largest error = ********
+
+ ...  135 / 510
+
+ No. steps =      27   No. f-s =     703   No. J-s =       1   No. LU-s =       8
+  No. nonlinear iterations =      32
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.72451E+07
+  Index compenent largest error = ********
+
+ ...  136 / 510
+
+ No. steps =      26   No. f-s =     702   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      31
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.47194E+07
+  Index compenent largest error = ********
+
+ ...  137 / 510
+
+ No. steps =      26   No. f-s =     702   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      31
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.47503E+07
+  Index compenent largest error = ********
+
+ ...  138 / 510
+
+ No. steps =      26   No. f-s =     702   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      31
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.48723E+07
+  Index compenent largest error = ********
+
+ ...  139 / 510
+
+ No. steps =      26   No. f-s =     702   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      31
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.50441E+07
+  Index compenent largest error = ********
+
+ ...  140 / 510
+
+ No. steps =      25   No. f-s =     701   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      30
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.53251E+07
+  Index compenent largest error = ********
+
+ ...  141 / 510
+
+ No. steps =      25   No. f-s =     701   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      30
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.54263E+07
+  Index compenent largest error = ********
+
+ ...  142 / 510
+
+ No. steps =      25   No. f-s =     701   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      30
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.55877E+07
+  Index compenent largest error = ********
+
+ ...  143 / 510
+
+ No. steps =      25   No. f-s =     701   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      30
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.58374E+07
+  Index compenent largest error = ********
+
+ ...  144 / 510
+
+ No. steps =      24   No. f-s =     700   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      29
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.59181E+07
+  Index compenent largest error = ********
+
+ ...  145 / 510
+
+ No. steps =      24   No. f-s =     700   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      29
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.59889E+07
+  Index compenent largest error = ********
+
+ ...  146 / 510
+
+ No. steps =      24   No. f-s =     700   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      29
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.62749E+07
+  Index compenent largest error = ********
+
+ ...  147 / 510
+
+ No. steps =      24   No. f-s =     700   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      29
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.64878E+07
+  Index compenent largest error = ********
+
+ ...  148 / 510
+
+ No. steps =      23   No. f-s =     699   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      28
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.66642E+07
+  Index compenent largest error = ********
+
+ ...  149 / 510
+
+ No. steps =      23   No. f-s =     699   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      28
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.67752E+07
+  Index compenent largest error = ********
+
+ ...  150 / 510
+
+ No. steps =      23   No. f-s =     699   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      28
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.69596E+07
+  Index compenent largest error = ********
+
+ ...  151 / 510
+
+ No. steps =      23   No. f-s =     699   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      28
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.72452E+07
+  Index compenent largest error = ********
+
+ ...  152 / 510
+
+ No. steps =      23   No. f-s =     699   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      28
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.74839E+07
+  Index compenent largest error = ********
+
+ ...  153 / 510
+
+ No. steps =      23   No. f-s =     699   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      28
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.75611E+07
+  Index compenent largest error = ********
+
+ ...  154 / 510
+
+ No. steps =      22   No. f-s =     698   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      27
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.76512E+07
+  Index compenent largest error = ********
+
+ ...  155 / 510
+
+ No. steps =      22   No. f-s =     698   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      27
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.80291E+07
+  Index compenent largest error = ********
+
+ ...  156 / 510
+
+ No. steps =      22   No. f-s =     698   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      27
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83252E+07
+  Index compenent largest error = ********
+
+ ...  157 / 510
+
+ No. steps =      22   No. f-s =     698   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      27
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83741E+07
+  Index compenent largest error = ********
+
+ ...  158 / 510
+
+ No. steps =      22   No. f-s =     698   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      27
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.86229E+07
+  Index compenent largest error = ********
+
+ ...  159 / 510
+
+ No. steps =      22   No. f-s =     698   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      27
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.88748E+07
+  Index compenent largest error = ********
+
+ ...  160 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.90431E+07
+  Index compenent largest error = ********
+
+ ...  161 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.90386E+07
+  Index compenent largest error = ********
+
+ ...  162 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.91555E+07
+  Index compenent largest error = ********
+
+ ...  163 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.93439E+07
+  Index compenent largest error = ********
+
+ ...  164 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.96761E+07
+  Index compenent largest error = ********
+
+ ...  165 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.95453E+07
+  Index compenent largest error = ********
+
+ ...  166 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.98353E+07
+  Index compenent largest error = ********
+
+ ...  167 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.99034E+07
+  Index compenent largest error = ********
+
+ ...  168 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.10105E+08
+  Index compenent largest error = ********
+
+ ...  169 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.10215E+08
+  Index compenent largest error = ********
+
+ ...  170 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.10439E+08
+  Index compenent largest error = ********
+
+ ...  171 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.10397E+08
+  Index compenent largest error = ********
+
+ ...  172 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.10476E+08
+  Index compenent largest error = ********
+
+ ...  173 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.10433E+08
+  Index compenent largest error = ********
+
+ ...  174 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.10429E+08
+  Index compenent largest error = ********
+
+ ...  175 / 510
+
+ No. steps =      21   No. f-s =     696   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      25
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.10609E+08
+  Index compenent largest error = ********
+
+ ...  176 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.61441E+07
+  Index compenent largest error = ********
+
+ ...  177 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.61134E+07
+  Index compenent largest error = ********
+
+ ...  178 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.62709E+07
+  Index compenent largest error = ********
+
+ ...  179 / 510
+
+ No. steps =      21   No. f-s =     697   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      26
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.77529E+07
+  Index compenent largest error = ********
+
+ ...  180 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63811E+07
+  Index compenent largest error = ********
+
+ ...  181 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.77892E+07
+  Index compenent largest error = ********
+
+ ...  182 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63972E+07
+  Index compenent largest error = ********
+
+ ...  183 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.78960E+07
+  Index compenent largest error = ********
+
+ ...  184 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.64014E+07
+  Index compenent largest error = ********
+
+ ...  185 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.64943E+07
+  Index compenent largest error = ********
+
+ ...  186 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.64744E+07
+  Index compenent largest error = ********
+
+ ...  187 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.65781E+07
+  Index compenent largest error = ********
+
+ ...  188 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.65858E+07
+  Index compenent largest error = ********
+
+ ...  189 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.66365E+07
+  Index compenent largest error = ********
+
+ ...  190 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82271E+07
+  Index compenent largest error = ********
+
+ ...  191 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82950E+07
+  Index compenent largest error = ********
+
+ ...  192 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82176E+07
+  Index compenent largest error = ********
+
+ ...  193 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84109E+07
+  Index compenent largest error = ********
+
+ ...  194 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.67857E+07
+  Index compenent largest error = ********
+
+ ...  195 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.67864E+07
+  Index compenent largest error = ********
+
+ ...  196 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.68403E+07
+  Index compenent largest error = ********
+
+ ...  197 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83530E+07
+  Index compenent largest error = ********
+
+ ...  198 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.68945E+07
+  Index compenent largest error = ********
+
+ ...  199 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84039E+07
+  Index compenent largest error = ********
+
+ ...  200 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84448E+07
+  Index compenent largest error = ********
+
+ ...  201 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.85709E+07
+  Index compenent largest error = ********
+
+ ...  202 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.86387E+07
+  Index compenent largest error = ********
+
+ ...  203 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.88062E+07
+  Index compenent largest error = ********
+
+ ...  204 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87250E+07
+  Index compenent largest error = ********
+
+ ...  205 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.86570E+07
+  Index compenent largest error = ********
+
+ ...  206 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.86820E+07
+  Index compenent largest error = ********
+
+ ...  207 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.86998E+07
+  Index compenent largest error = ********
+
+ ...  208 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87682E+07
+  Index compenent largest error = ********
+
+ ...  209 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.88872E+07
+  Index compenent largest error = ********
+
+ ...  210 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87774E+07
+  Index compenent largest error = ********
+
+ ...  211 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.88803E+07
+  Index compenent largest error = ********
+
+ ...  212 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.90631E+07
+  Index compenent largest error = ********
+
+ ...  213 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.92976E+07
+  Index compenent largest error = ********
+
+ ...  214 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.91905E+07
+  Index compenent largest error = ********
+
+ ...  215 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.93055E+07
+  Index compenent largest error = ********
+
+ ...  216 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.92577E+07
+  Index compenent largest error = ********
+
+ ...  217 / 510
+
+ No. steps =      20   No. f-s =     695   No. J-s =       1   No. LU-s =       7
+  No. nonlinear iterations =      24
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.92909E+07
+  Index compenent largest error = ********
+
+ ...  218 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.59415E+07
+  Index compenent largest error = ********
+
+ ...  219 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.59313E+07
+  Index compenent largest error = ********
+
+ ...  220 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.60041E+07
+  Index compenent largest error = ********
+
+ ...  221 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.60550E+07
+  Index compenent largest error = ********
+
+ ...  222 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.60476E+07
+  Index compenent largest error = ********
+
+ ...  223 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.61307E+07
+  Index compenent largest error = ********
+
+ ...  224 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63623E+07
+  Index compenent largest error = ********
+
+ ...  225 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.62268E+07
+  Index compenent largest error = ********
+
+ ...  226 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63313E+07
+  Index compenent largest error = ********
+
+ ...  227 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63600E+07
+  Index compenent largest error = ********
+
+ ...  228 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63689E+07
+  Index compenent largest error = ********
+
+ ...  229 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63849E+07
+  Index compenent largest error = ********
+
+ ...  230 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.63560E+07
+  Index compenent largest error = ********
+
+ ...  231 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.64386E+07
+  Index compenent largest error = ********
+
+ ...  232 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.65006E+07
+  Index compenent largest error = ********
+
+ ...  233 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.64901E+07
+  Index compenent largest error = ********
+
+ ...  234 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.65621E+07
+  Index compenent largest error = ********
+
+ ...  235 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.66906E+07
+  Index compenent largest error = ********
+
+ ...  236 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.66907E+07
+  Index compenent largest error = ********
+
+ ...  237 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.67566E+07
+  Index compenent largest error = ********
+
+ ...  238 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.67746E+07
+  Index compenent largest error = ********
+
+ ...  239 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.68367E+07
+  Index compenent largest error = ********
+
+ ...  240 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.69308E+07
+  Index compenent largest error = ********
+
+ ...  241 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.67707E+07
+  Index compenent largest error = ********
+
+ ...  242 / 510
+
+ No. steps =      19   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.68840E+07
+  Index compenent largest error = ********
+
+ ...  243 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.69541E+07
+  Index compenent largest error = ********
+
+ ...  244 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.69286E+07
+  Index compenent largest error = ********
+
+ ...  245 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.70256E+07
+  Index compenent largest error = ********
+
+ ...  246 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.70877E+07
+  Index compenent largest error = ********
+
+ ...  247 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.71100E+07
+  Index compenent largest error = ********
+
+ ...  248 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.71487E+07
+  Index compenent largest error = ********
+
+ ...  249 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.72179E+07
+  Index compenent largest error = ********
+
+ ...  250 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.72840E+07
+  Index compenent largest error = ********
+
+ ...  251 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.73595E+07
+  Index compenent largest error = ********
+
+ ...  252 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.73003E+07
+  Index compenent largest error = ********
+
+ ...  253 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.73285E+07
+  Index compenent largest error = ********
+
+ ...  254 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.73732E+07
+  Index compenent largest error = ********
+
+ ...  255 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.74136E+07
+  Index compenent largest error = ********
+
+ ...  256 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.74055E+07
+  Index compenent largest error = ********
+
+ ...  257 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.74789E+07
+  Index compenent largest error = ********
+
+ ...  258 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.75642E+07
+  Index compenent largest error = ********
+
+ ...  259 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.76238E+07
+  Index compenent largest error = ********
+
+ ...  260 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.76172E+07
+  Index compenent largest error = ********
+
+ ...  261 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.77683E+07
+  Index compenent largest error = ********
+
+ ...  262 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.77665E+07
+  Index compenent largest error = ********
+
+ ...  263 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.77128E+07
+  Index compenent largest error = ********
+
+ ...  264 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.77808E+07
+  Index compenent largest error = ********
+
+ ...  265 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.77800E+07
+  Index compenent largest error = ********
+
+ ...  266 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.78281E+07
+  Index compenent largest error = ********
+
+ ...  267 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.79398E+07
+  Index compenent largest error = ********
+
+ ...  268 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.79276E+07
+  Index compenent largest error = ********
+
+ ...  269 / 510
+
+ No. steps =      18   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.80169E+07
+  Index compenent largest error = ********
+
+ ...  270 / 510
+
+ No. steps =      18   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.80823E+07
+  Index compenent largest error = ********
+
+ ...  271 / 510
+
+ No. steps =      18   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.80823E+07
+  Index compenent largest error = ********
+
+ ...  272 / 510
+
+ No. steps =      18   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82437E+07
+  Index compenent largest error = ********
+
+ ...  273 / 510
+
+ No. steps =      18   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82029E+07
+  Index compenent largest error = ********
+
+ ...  274 / 510
+
+ No. steps =      18   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82058E+07
+  Index compenent largest error = ********
+
+ ...  275 / 510
+
+ No. steps =      18   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82433E+07
+  Index compenent largest error = ********
+
+ ...  276 / 510
+
+ No. steps =      18   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82629E+07
+  Index compenent largest error = ********
+
+ ...  277 / 510
+
+ No. steps =      18   No. f-s =     694   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      23
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83210E+07
+  Index compenent largest error = ********
+
+ ...  278 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83862E+07
+  Index compenent largest error = ********
+
+ ...  279 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83973E+07
+  Index compenent largest error = ********
+
+ ...  280 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.85071E+07
+  Index compenent largest error = ********
+
+ ...  281 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.86013E+07
+  Index compenent largest error = ********
+
+ ...  282 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.86044E+07
+  Index compenent largest error = ********
+
+ ...  283 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.86801E+07
+  Index compenent largest error = ********
+
+ ...  284 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87006E+07
+  Index compenent largest error = ********
+
+ ...  285 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87127E+07
+  Index compenent largest error = ********
+
+ ...  286 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87509E+07
+  Index compenent largest error = ********
+
+ ...  287 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87347E+07
+  Index compenent largest error = ********
+
+ ...  288 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.69108E+07
+  Index compenent largest error = ********
+
+ ...  289 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.68890E+07
+  Index compenent largest error = ********
+
+ ...  290 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.69820E+07
+  Index compenent largest error = ********
+
+ ...  291 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.70994E+07
+  Index compenent largest error = ********
+
+ ...  292 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.71468E+07
+  Index compenent largest error = ********
+
+ ...  293 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.72053E+07
+  Index compenent largest error = ********
+
+ ...  294 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.72514E+07
+  Index compenent largest error = ********
+
+ ...  295 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.72361E+07
+  Index compenent largest error = ********
+
+ ...  296 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.73169E+07
+  Index compenent largest error = ********
+
+ ...  297 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.73365E+07
+  Index compenent largest error = ********
+
+ ...  298 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.73104E+07
+  Index compenent largest error = ********
+
+ ...  299 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.73998E+07
+  Index compenent largest error = ********
+
+ ...  300 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.74622E+07
+  Index compenent largest error = ********
+
+ ...  301 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.74372E+07
+  Index compenent largest error = ********
+
+ ...  302 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.76465E+07
+  Index compenent largest error = ********
+
+ ...  303 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.76495E+07
+  Index compenent largest error = ********
+
+ ...  304 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.77996E+07
+  Index compenent largest error = ********
+
+ ...  305 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.78007E+07
+  Index compenent largest error = ********
+
+ ...  306 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.78440E+07
+  Index compenent largest error = ********
+
+ ...  307 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.77983E+07
+  Index compenent largest error = ********
+
+ ...  308 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.79082E+07
+  Index compenent largest error = ********
+
+ ...  309 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.78930E+07
+  Index compenent largest error = ********
+
+ ...  310 / 510
+
+ No. steps =      17   No. f-s =     693   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      22
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.79560E+07
+  Index compenent largest error = ********
+
+ ...  311 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.81252E+07
+  Index compenent largest error = ********
+
+ ...  312 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.80304E+07
+  Index compenent largest error = ********
+
+ ...  313 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.81414E+07
+  Index compenent largest error = ********
+
+ ...  314 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83003E+07
+  Index compenent largest error = ********
+
+ ...  315 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84559E+07
+  Index compenent largest error = ********
+
+ ...  316 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84476E+07
+  Index compenent largest error = ********
+
+ ...  317 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84946E+07
+  Index compenent largest error = ********
+
+ ...  318 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84497E+07
+  Index compenent largest error = ********
+
+ ...  319 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.85823E+07
+  Index compenent largest error = ********
+
+ ...  320 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.85378E+07
+  Index compenent largest error = ********
+
+ ...  321 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87592E+07
+  Index compenent largest error = ********
+
+ ...  322 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.88169E+07
+  Index compenent largest error = ********
+
+ ...  323 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87982E+07
+  Index compenent largest error = ********
+
+ ...  324 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.87987E+07
+  Index compenent largest error = ********
+
+ ...  325 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.88553E+07
+  Index compenent largest error = ********
+
+ ...  326 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.93078E+07
+  Index compenent largest error = ********
+
+ ...  327 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.91452E+07
+  Index compenent largest error = ********
+
+ ...  328 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.92558E+07
+  Index compenent largest error = ********
+
+ ...  329 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.92492E+07
+  Index compenent largest error = ********
+
+ ...  330 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.92235E+07
+  Index compenent largest error = ********
+
+ ...  331 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.94724E+07
+  Index compenent largest error = ********
+
+ ...  332 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.94987E+07
+  Index compenent largest error = ********
+
+ ...  333 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.94910E+07
+  Index compenent largest error = ********
+
+ ...  334 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.78839E+07
+  Index compenent largest error = ********
+
+ ...  335 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.95275E+07
+  Index compenent largest error = ********
+
+ ...  336 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.79123E+07
+  Index compenent largest error = ********
+
+ ...  337 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.79333E+07
+  Index compenent largest error = ********
+
+ ...  338 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.79958E+07
+  Index compenent largest error = ********
+
+ ...  339 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.80048E+07
+  Index compenent largest error = ********
+
+ ...  340 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.80121E+07
+  Index compenent largest error = ********
+
+ ...  341 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.80780E+07
+  Index compenent largest error = ********
+
+ ...  342 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.80865E+07
+  Index compenent largest error = ********
+
+ ...  343 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.81695E+07
+  Index compenent largest error = ********
+
+ ...  344 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.81247E+07
+  Index compenent largest error = ********
+
+ ...  345 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.81813E+07
+  Index compenent largest error = ********
+
+ ...  346 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82274E+07
+  Index compenent largest error = ********
+
+ ...  347 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82405E+07
+  Index compenent largest error = ********
+
+ ...  348 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.82522E+07
+  Index compenent largest error = ********
+
+ ...  349 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83228E+07
+  Index compenent largest error = ********
+
+ ...  350 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83384E+07
+  Index compenent largest error = ********
+
+ ...  351 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.83962E+07
+  Index compenent largest error = ********
+
+ ...  352 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84051E+07
+  Index compenent largest error = ********
+
+ ...  353 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84470E+07
+  Index compenent largest error = ********
+
+ ...  354 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84935E+07
+  Index compenent largest error = ********
+
+ ...  355 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.84764E+07
+  Index compenent largest error = ********
+
+ ...  356 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.85539E+07
+  Index compenent largest error = ********
+
+ ...  357 / 510
+
+ No. steps =      16   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.85766E+07
+  Index compenent largest error = ********
+
+ ...  358 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13912E+08
+  Index compenent largest error = ********
+
+ ...  359 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13905E+08
+  Index compenent largest error = ********
+
+ ...  360 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13886E+08
+  Index compenent largest error = ********
+
+ ...  361 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13903E+08
+  Index compenent largest error = ********
+
+ ...  362 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13901E+08
+  Index compenent largest error = ********
+
+ ...  363 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13852E+08
+  Index compenent largest error = ********
+
+ ...  364 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13912E+08
+  Index compenent largest error = ********
+
+ ...  365 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13855E+08
+  Index compenent largest error = ********
+
+ ...  366 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13916E+08
+  Index compenent largest error = ********
+
+ ...  367 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13859E+08
+  Index compenent largest error = ********
+
+ ...  368 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13867E+08
+  Index compenent largest error = ********
+
+ ...  369 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13871E+08
+  Index compenent largest error = ********
+
+ ...  370 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13872E+08
+  Index compenent largest error = ********
+
+ ...  371 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13876E+08
+  Index compenent largest error = ********
+
+ ...  372 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13808E+08
+  Index compenent largest error = ********
+
+ ...  373 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13881E+08
+  Index compenent largest error = ********
+
+ ...  374 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13814E+08
+  Index compenent largest error = ********
+
+ ...  375 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13893E+08
+  Index compenent largest error = ********
+
+ ...  376 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13821E+08
+  Index compenent largest error = ********
+
+ ...  377 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13835E+08
+  Index compenent largest error = ********
+
+ ...  378 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13836E+08
+  Index compenent largest error = ********
+
+ ...  379 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13850E+08
+  Index compenent largest error = ********
+
+ ...  380 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13853E+08
+  Index compenent largest error = ********
+
+ ...  381 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13806E+08
+  Index compenent largest error = ********
+
+ ...  382 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13873E+08
+  Index compenent largest error = ********
+
+ ...  383 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13818E+08
+  Index compenent largest error = ********
+
+ ...  384 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13882E+08
+  Index compenent largest error = ********
+
+ ...  385 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13829E+08
+  Index compenent largest error = ********
+
+ ...  386 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13835E+08
+  Index compenent largest error = ********
+
+ ...  387 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13870E+08
+  Index compenent largest error = ********
+
+ ...  388 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13862E+08
+  Index compenent largest error = ********
+
+ ...  389 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13877E+08
+  Index compenent largest error = ********
+
+ ...  390 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13887E+08
+  Index compenent largest error = ********
+
+ ...  391 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13832E+08
+  Index compenent largest error = ********
+
+ ...  392 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13947E+08
+  Index compenent largest error = ********
+
+ ...  393 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13896E+08
+  Index compenent largest error = ********
+
+ ...  394 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13962E+08
+  Index compenent largest error = ********
+
+ ...  395 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13928E+08
+  Index compenent largest error = ********
+
+ ...  396 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13936E+08
+  Index compenent largest error = ********
+
+ ...  397 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13954E+08
+  Index compenent largest error = ********
+
+ ...  398 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.14027E+08
+  Index compenent largest error = ********
+
+ ...  399 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13995E+08
+  Index compenent largest error = ********
+
+ ...  400 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.14020E+08
+  Index compenent largest error = ********
+
+ ...  401 / 510
+
+ No. steps =      15   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13962E+08
+  Index compenent largest error = ********
+
+ ...  402 / 510
+
+ No. steps =      17   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.10992E+08
+  Index compenent largest error = ********
+
+ ...  403 / 510
+
+ No. steps =      17   No. f-s =     692   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      21
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11020E+08
+  Index compenent largest error = ********
+
+ ...  404 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11163E+08
+  Index compenent largest error = ********
+
+ ...  405 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11048E+08
+  Index compenent largest error = ********
+
+ ...  406 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11088E+08
+  Index compenent largest error = ********
+
+ ...  407 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11127E+08
+  Index compenent largest error = ********
+
+ ...  408 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11142E+08
+  Index compenent largest error = ********
+
+ ...  409 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11280E+08
+  Index compenent largest error = ********
+
+ ...  410 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11220E+08
+  Index compenent largest error = ********
+
+ ...  411 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11262E+08
+  Index compenent largest error = ********
+
+ ...  412 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11058E+08
+  Index compenent largest error = ********
+
+ ...  413 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11295E+08
+  Index compenent largest error = ********
+
+ ...  414 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11408E+08
+  Index compenent largest error = ********
+
+ ...  415 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11446E+08
+  Index compenent largest error = ********
+
+ ...  416 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11394E+08
+  Index compenent largest error = ********
+
+ ...  417 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11430E+08
+  Index compenent largest error = ********
+
+ ...  418 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11472E+08
+  Index compenent largest error = ********
+
+ ...  419 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11390E+08
+  Index compenent largest error = ********
+
+ ...  420 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11613E+08
+  Index compenent largest error = ********
+
+ ...  421 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11557E+08
+  Index compenent largest error = ********
+
+ ...  422 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11586E+08
+  Index compenent largest error = ********
+
+ ...  423 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11364E+08
+  Index compenent largest error = ********
+
+ ...  424 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11608E+08
+  Index compenent largest error = ********
+
+ ...  425 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11748E+08
+  Index compenent largest error = ********
+
+ ...  426 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11689E+08
+  Index compenent largest error = ********
+
+ ...  427 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11726E+08
+  Index compenent largest error = ********
+
+ ...  428 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11791E+08
+  Index compenent largest error = ********
+
+ ...  429 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11719E+08
+  Index compenent largest error = ********
+
+ ...  430 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11748E+08
+  Index compenent largest error = ********
+
+ ...  431 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11857E+08
+  Index compenent largest error = ********
+
+ ...  432 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11882E+08
+  Index compenent largest error = ********
+
+ ...  433 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11610E+08
+  Index compenent largest error = ********
+
+ ...  434 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11874E+08
+  Index compenent largest error = ********
+
+ ...  435 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11924E+08
+  Index compenent largest error = ********
+
+ ...  436 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12051E+08
+  Index compenent largest error = ********
+
+ ...  437 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11991E+08
+  Index compenent largest error = ********
+
+ ...  438 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12037E+08
+  Index compenent largest error = ********
+
+ ...  439 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12042E+08
+  Index compenent largest error = ********
+
+ ...  440 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12027E+08
+  Index compenent largest error = ********
+
+ ...  441 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12002E+08
+  Index compenent largest error = ********
+
+ ...  442 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12151E+08
+  Index compenent largest error = ********
+
+ ...  443 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12109E+08
+  Index compenent largest error = ********
+
+ ...  444 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.11985E+08
+  Index compenent largest error = ********
+
+ ...  445 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12101E+08
+  Index compenent largest error = ********
+
+ ...  446 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12225E+08
+  Index compenent largest error = ********
+
+ ...  447 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12261E+08
+  Index compenent largest error = ********
+
+ ...  448 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12227E+08
+  Index compenent largest error = ********
+
+ ...  449 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12315E+08
+  Index compenent largest error = ********
+
+ ...  450 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12337E+08
+  Index compenent largest error = ********
+
+ ...  451 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12267E+08
+  Index compenent largest error = ********
+
+ ...  452 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12491E+08
+  Index compenent largest error = ********
+
+ ...  453 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12274E+08
+  Index compenent largest error = ********
+
+ ...  454 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12237E+08
+  Index compenent largest error = ********
+
+ ...  455 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12375E+08
+  Index compenent largest error = ********
+
+ ...  456 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12410E+08
+  Index compenent largest error = ********
+
+ ...  457 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12520E+08
+  Index compenent largest error = ********
+
+ ...  458 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12476E+08
+  Index compenent largest error = ********
+
+ ...  459 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12512E+08
+  Index compenent largest error = ********
+
+ ...  460 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12524E+08
+  Index compenent largest error = ********
+
+ ...  461 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12551E+08
+  Index compenent largest error = ********
+
+ ...  462 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12663E+08
+  Index compenent largest error = ********
+
+ ...  463 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12772E+08
+  Index compenent largest error = ********
+
+ ...  464 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12503E+08
+  Index compenent largest error = ********
+
+ ...  465 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12622E+08
+  Index compenent largest error = ********
+
+ ...  466 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12601E+08
+  Index compenent largest error = ********
+
+ ...  467 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12787E+08
+  Index compenent largest error = ********
+
+ ...  468 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12656E+08
+  Index compenent largest error = ********
+
+ ...  469 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12771E+08
+  Index compenent largest error = ********
+
+ ...  470 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12804E+08
+  Index compenent largest error = ********
+
+ ...  471 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12852E+08
+  Index compenent largest error = ********
+
+ ...  472 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12777E+08
+  Index compenent largest error = ********
+
+ ...  473 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12880E+08
+  Index compenent largest error = ********
+
+ ...  474 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12883E+08
+  Index compenent largest error = ********
+
+ ...  475 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12808E+08
+  Index compenent largest error = ********
+
+ ...  476 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12895E+08
+  Index compenent largest error = ********
+
+ ...  477 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12922E+08
+  Index compenent largest error = ********
+
+ ...  478 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12985E+08
+  Index compenent largest error = ********
+
+ ...  479 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12960E+08
+  Index compenent largest error = ********
+
+ ...  480 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.12993E+08
+  Index compenent largest error = ********
+
+ ...  481 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13123E+08
+  Index compenent largest error = ********
+
+ ...  482 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13080E+08
+  Index compenent largest error = ********
+
+ ...  483 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13092E+08
+  Index compenent largest error = ********
+
+ ...  484 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13220E+08
+  Index compenent largest error = ********
+
+ ...  485 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13132E+08
+  Index compenent largest error = ********
+
+ ...  486 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13161E+08
+  Index compenent largest error = ********
+
+ ...  487 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13135E+08
+  Index compenent largest error = ********
+
+ ...  488 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13327E+08
+  Index compenent largest error = ********
+
+ ...  489 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13169E+08
+  Index compenent largest error = ********
+
+ ...  490 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13291E+08
+  Index compenent largest error = ********
+
+ ...  491 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13337E+08
+  Index compenent largest error = ********
+
+ ...  492 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13239E+08
+  Index compenent largest error = ********
+
+ ...  493 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13403E+08
+  Index compenent largest error = ********
+
+ ...  494 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13435E+08
+  Index compenent largest error = ********
+
+ ...  495 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13465E+08
+  Index compenent largest error = ********
+
+ ...  496 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13490E+08
+  Index compenent largest error = ********
+
+ ...  497 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13432E+08
+  Index compenent largest error = ********
+
+ ...  498 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13576E+08
+  Index compenent largest error = ********
+
+ ...  499 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13510E+08
+  Index compenent largest error = ********
+
+ ...  500 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13532E+08
+  Index compenent largest error = ********
+
+ ...  501 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13659E+08
+  Index compenent largest error = ********
+
+ ...  502 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13593E+08
+  Index compenent largest error = ********
+
+ ...  503 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13597E+08
+  Index compenent largest error = ********
+
+ ...  504 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13753E+08
+  Index compenent largest error = ********
+
+ ...  505 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13694E+08
+  Index compenent largest error = ********
+
+ ...  506 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13726E+08
+  Index compenent largest error = ********
+
+ ...  507 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13886E+08
+  Index compenent largest error = ********
+
+ ...  508 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13768E+08
+  Index compenent largest error = ********
+
+ ...  509 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13900E+08
+  Index compenent largest error = ********
+
+ ...  510 / 510
+
+ No. steps =      16   No. f-s =     690   No. J-s =       1   No. LU-s =       6
+  No. nonlinear iterations =      19
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.13922E+08
+  Index compenent largest error = ********
+
+
+    ... DONE!
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
++------------------ Job Report: 10176436 (COMPLETED) ------------------+
+| Memory (RAM)  [                    ]  0.0% (0 B peak / 1 GB)         |
+| CPU           [###########         ] 58.1% average                   |
+| Time          [>                   ]  1.7% (0-00:01:02 / 0-01:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   Path    Total Read    Total Write    Total IOPS                    |
+|   ------  ------------  -------------  ------------                  |
+|   /apps   0 B           0 B            18                            |
+|   /fred   52 KB         186 MB         14.5 K                        |
+|                                                                      |
+| Warnings:                                                            |
+|   - Too much memory requested                                        |
+|   - CPU usage is low                                                 |
+|   - Too much time requested                                          |
++----------------------------------------------------------------------+

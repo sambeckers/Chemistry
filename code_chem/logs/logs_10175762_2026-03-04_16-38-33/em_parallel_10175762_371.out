@@ -1,0 +1,83 @@
+Starting job 10175762, array task 371 on dave34
+Chemistry type: Orich
+Analysis mode: false
+Found 462 valid particle IDs in /fred/oz304/beckers/Chemistry/traces/wind_v10/trace_output_with_av
+Returning 460 particle IDs (after start_index=2 offset)
+SLURM task 371: processing particle 3364291
+Running Orich evolving_model on 1 phantom particle trace(s) from wind_v10
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+ +++++        ENVELOPE CHEMICAL MODEL         ++++++
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ Version 1.0 authored by Catherine Walsh and Maria 
+    Drozdovskaya, Leiden Observatory (01/08/2013)
+
+ Version 1.1 amended by Catherine Walsh (18/05/2014)
+
+ Version 1.2 amended by Catherine Walsh (13/08/2015)
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+          Input file =  Orich/param/trace_file_param/file_parameters_3364291.txt              
+
+ Physical conditions  = Orich/input/3364291.txt                                               
+ Chemical network     = ./rate12_complex.rates                                                
+ Species file         = ./rate12_complex_atomic_Orich.specs                                   
+ Binding energies     = ./rate12_binding.dat                                                  
+ Reaction parameters  = param/reaction_parameters.txt                                         
+ Grain parameters     = param/grain_parameters.txt                                            
+ Radiation parameters = param/radiation_parameters.txt                                        
+
+ Output file          = Orich/output/model_output_3364291.dat                                 
+ Rates file           = Orich/output/model_rates_3364291.dat                                  
+
+ Opening and reading physical conditions file ...
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+ Beginning to run model ...
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ Preparing output files ...
+
+ Progress = ...
+ ...    1 /   3
+
+ No. steps =    1040   No. f-s =   17010   No. J-s =      23   No. LU-s =     159
+  No. nonlinear iterations =    1645
+  No. nonlinear convergence failures =       0
+  No. error test failures =      46
+  Last step size used =    0.42004E+09
+  Index compenent largest error = ********
+
+ ...    2 /   3
+
+ No. steps =     183   No. f-s =    3594   No. J-s =       5   No. LU-s =      45
+  No. nonlinear iterations =     251
+  No. nonlinear convergence failures =       0
+  No. error test failures =       8
+  Last step size used =    0.20179E+07
+  Index compenent largest error = ********
+
+ ...    3 /   3
+
+ No. steps =     937   No. f-s =   13428   No. J-s =      18   No. LU-s =     188
+  No. nonlinear iterations =    1401
+  No. nonlinear convergence failures =       0
+  No. error test failures =      89
+  Last step size used =    0.48255E+06
+  Index compenent largest error = ********
+
+
+    ... DONE!
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
++------------------ Job Report: 10176571 (COMPLETED) ------------------+
+| Memory (RAM)  No data available                                      |
+| CPU           [###                 ] 17.6% average                   |
+| Time          [>                   ]  0.5% (0-00:00:17 / 0-01:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   No data available                                                  |
++----------------------------------------------------------------------+

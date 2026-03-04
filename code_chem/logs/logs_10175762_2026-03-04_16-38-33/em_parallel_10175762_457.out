@@ -1,0 +1,146 @@
+Starting job 10175762, array task 457 on dave21
+Chemistry type: Orich
+Analysis mode: false
+Found 462 valid particle IDs in /fred/oz304/beckers/Chemistry/traces/wind_v10/trace_output_with_av
+Returning 460 particle IDs (after start_index=2 offset)
+SLURM task 457: processing particle 4108961
+Running Orich evolving_model on 1 phantom particle trace(s) from wind_v10
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+ +++++        ENVELOPE CHEMICAL MODEL         ++++++
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ Version 1.0 authored by Catherine Walsh and Maria 
+    Drozdovskaya, Leiden Observatory (01/08/2013)
+
+ Version 1.1 amended by Catherine Walsh (18/05/2014)
+
+ Version 1.2 amended by Catherine Walsh (13/08/2015)
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+          Input file =  Orich/param/trace_file_param/file_parameters_4108961.txt              
+
+ Physical conditions  = Orich/input/4108961.txt                                               
+ Chemical network     = ./rate12_complex.rates                                                
+ Species file         = ./rate12_complex_atomic_Orich.specs                                   
+ Binding energies     = ./rate12_binding.dat                                                  
+ Reaction parameters  = param/reaction_parameters.txt                                         
+ Grain parameters     = param/grain_parameters.txt                                            
+ Radiation parameters = param/radiation_parameters.txt                                        
+
+ Output file          = Orich/output/model_output_4108961.dat                                 
+ Rates file           = Orich/output/model_rates_4108961.dat                                  
+
+ Opening and reading physical conditions file ...
+
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+ Beginning to run model ...
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ Preparing output files ...
+
+ Progress = ...
+ ...    1 /  10
+
+ No. steps =    1245   No. f-s =   19825   No. J-s =      27   No. LU-s =     191
+  No. nonlinear iterations =    1788
+  No. nonlinear convergence failures =       0
+  No. error test failures =      54
+  Last step size used =    0.13283E+10
+  Index compenent largest error = ********
+
+ ...    2 /  10
+
+ No. steps =      99   No. f-s =    1453   No. J-s =       2   No. LU-s =      19
+  No. nonlinear iterations =     114
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.33778E+07
+  Index compenent largest error = ********
+
+ ...    3 /  10
+
+ No. steps =      93   No. f-s =    1446   No. J-s =       2   No. LU-s =      19
+  No. nonlinear iterations =     107
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.44174E+07
+  Index compenent largest error = ********
+
+ ...    4 /  10
+
+ No. steps =      99   No. f-s =    1452   No. J-s =       2   No. LU-s =      18
+  No. nonlinear iterations =     113
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.31233E+07
+  Index compenent largest error = ********
+
+ ...    5 /  10
+
+ No. steps =      95   No. f-s =    1451   No. J-s =       2   No. LU-s =      19
+  No. nonlinear iterations =     112
+  No. nonlinear convergence failures =       0
+  No. error test failures =       1
+  Last step size used =    0.34280E+07
+  Index compenent largest error = ********
+
+ ...    6 /  10
+
+ No. steps =      90   No. f-s =    1445   No. J-s =       2   No. LU-s =      19
+  No. nonlinear iterations =     106
+  No. nonlinear convergence failures =       0
+  No. error test failures =       1
+  Last step size used =    0.46314E+07
+  Index compenent largest error = ********
+
+ ...    7 /  10
+
+ No. steps =      86   No. f-s =    1439   No. J-s =       2   No. LU-s =      15
+  No. nonlinear iterations =     100
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.32937E+07
+  Index compenent largest error = ********
+
+ ...    8 /  10
+
+ No. steps =      78   No. f-s =    1428   No. J-s =       2   No. LU-s =      15
+  No. nonlinear iterations =      89
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.44100E+07
+  Index compenent largest error = ********
+
+ ...    9 /  10
+
+ No. steps =      74   No. f-s =    1426   No. J-s =       2   No. LU-s =      14
+  No. nonlinear iterations =      87
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.26837E+07
+  Index compenent largest error = ********
+
+ ...   10 /  10
+
+ No. steps =      69   No. f-s =    1419   No. J-s =       2   No. LU-s =      13
+  No. nonlinear iterations =      80
+  No. nonlinear convergence failures =       0
+  No. error test failures =       0
+  Last step size used =    0.35393E+07
+  Index compenent largest error = ********
+
+
+    ... DONE!
+ +++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
++------------------ Job Report: 10176662 (COMPLETED) ------------------+
+| Memory (RAM)  No data available                                      |
+| CPU           [###                 ] 18.8% average                   |
+| Time          [>                   ]  0.4% (0-00:00:16 / 0-01:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   No data available                                                  |
++----------------------------------------------------------------------+
