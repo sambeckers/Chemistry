@@ -56,12 +56,14 @@ def files_from_particle_ids(source_dir, particle_ids):
     return files
 
 
-def load_particle_data(files):
+def load_particle_data(files, min_rows=10):
     all_data = []
     for filepath in files:
         data = np.genfromtxt(filepath, comments="#", skip_header=4, names=True)
         if data.ndim == 0:
             data = np.array([data])
+        if len(data) < min_rows:
+            continue
         all_data.append(data)
     return all_data
 
@@ -80,13 +82,11 @@ def common_radius_grid(all_data, n_points):
     if not rmins or not rmaxs:
         raise ValueError("No valid positive radius values were found in the input files.")
 
-    rmin = max(rmins)
-    rmax = min(rmaxs)
-    if rmin >= rmax:
-        raise ValueError(
-            "No overlapping radius domain across particles. "
-            "Try a smaller/consistent particle selection."
-        )
+    # Use the union of all radius ranges so that every particle contributes
+    # where it has data; points outside a particle's range are NaN (handled
+    # by np.nanmean in average_species).
+    rmin = min(rmins)
+    rmax = max(rmaxs)
 
     return np.logspace(np.log10(rmin), np.log10(rmax), n_points)
 
@@ -434,14 +434,14 @@ def plot_compare_1d_grid(
 
 
 def main():
-    chemistry = "Orich"  # "Crich" or "Orich"
+    chemistry = "Crich"  # "Crich" or "Orich"
     pmf = "wind_v10"
-    max_particle_id = 300000
+    max_particle_id = 1030991
     start_index = 2
-    n_select = 15
-    n_radius = 300
+    n_select = None
+    n_radius = 1600
     show_plot = True
-    compare_1d = True  # set False to produce the 3-D-only plot
+    compare_1d = False  # set False to produce the 3-D-only plot
 
     use_select_particle_ids = True
     max_particles = None

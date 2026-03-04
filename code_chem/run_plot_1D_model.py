@@ -62,12 +62,12 @@ def phys_params():
 # daughters = daughters_Crich_no_CN  # C-rich (uncomment to use)
 daughters = daughters_Orich  # O-rich
 
-MLOSS = ["$\dot{M}=10^{-5} M_{\odot} \\rm{yr}^{-1}$", 
-         "$\dot{M}=10^{-6} M_{\odot} \\rm{yr}^{-1}$", 
-         "$\dot{M}=10^{-7} M_{\odot} \\rm{yr}^{-1}$"]
-VELOCITY = ["$v_{\infty}=15 \\rm{km\ s}^{-1}$", 
-      "$v_{\infty}=5 \\rm{km\ s}^{-1}$", 
-      "$v_{\infty}=5 \\rm{km\ s}^{-1}$"]
+MLOSS = ["$\dot{M}=10^{-7} M_{\odot} \\rm{yr}^{-1}$", 
+         "$\dot{M}=10^{-7} M_{\odot} \\rm{yr}^{-1}$", 
+         "$\dot{M}=7 \\times 10^{-7} M_{\odot} \\rm{yr}^{-1}$"]
+VELOCITY = ["$v_{\infty}=10 \\rm{km\ s}^{-1}$", 
+      "$v_{\infty}=20 \\rm{km\ s}^{-1}$", 
+      "$v_{\infty}=10 \\rm{km\ s}^{-1}$"]
 
 # Colors
 tab20 = mpl.colormaps['tab20b']
