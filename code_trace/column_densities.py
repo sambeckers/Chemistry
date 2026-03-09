@@ -29,7 +29,7 @@ timer_start = time.time()
 
 # Allow dump number to be set via environment variable (for batch processing)
 # Otherwise use default values
-dump = int(os.environ.get('DUMP_NUM', 40))
+dump = int(os.environ.get('DUMP_NUM', 60))
 
 wdir = Path.cwd()
 
@@ -407,7 +407,7 @@ print(f"Total runtime: {timer_end - timer_start} seconds")
 # if you want to make plots of the column density slices uncomment the following
 
 # n = 600
-# lims = 5000  
+# lims = 1000  
 
 # import plons
 # import plons.SmoothingKernelScript    as sk

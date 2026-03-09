@@ -2,7 +2,7 @@
 #SBATCH --job-name=cd_parallel
 #SBATCH --output=logs/logs_%A/cd_parallel_%A_%a.out  # overridden by process_all_dumps.sh
 #SBATCH --error=logs/logs_%A/cd_parallel_%A_%a.err   # overridden by process_all_dumps.sh
-#SBATCH --time=4:00:00
+#SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
 #SBATCH --array=0-0  # overridden dynamically by process_all_dumps.sh
