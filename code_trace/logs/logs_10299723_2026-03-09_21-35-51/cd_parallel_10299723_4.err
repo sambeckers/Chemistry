@@ -1,0 +1,1131 @@
+Traceback (most recent call last):
+  File "/fred/oz304/beckers/Chemistry/code_trace/column_densities.py", line 117, in <module>
+    delaunay = Delaunay(position)
+  File "scipy/spatial/_qhull.pyx", line 1889, in scipy.spatial._qhull.Delaunay.__init__
+  File "scipy/spatial/_qhull.pyx", line 356, in scipy.spatial._qhull._Qhull.__init__
+scipy.spatial._qhull.QhullError: QH6417 qhull precision error (qh_merge_twisted): twisted facet f4600482 does not contain pinched vertices.  Too wide to merge into neighbor.  mindist -6.4e+02 maxdist  0 vertexdist 2.2e+10 maxpinched 4.6 neighbor f5878789 mindist -8.2 maxdist  0
+ERRONEOUS FACET:
+- f4600482
+    - flags: top tested keepcentrum
+    - merges: 472
+    - normal:  -0.01985  0.03956 2.427e-12   -0.999
+    - offset: -7.460682e+08
+    - center: -161916162938.0565 257418495967.1335 -153130627597.6738 12664647544.92751 
+    - maxoutside:  0.1181583
+    - vertices: p1750(v222586) p1605(v222584) p1624(v222583) p2230(v222421) p1755(v222418) p843(v222012) p1095(v221773) p2149(v219117) p2139(v219097) p2147(v219092) p2164(v219080) p1651(v219079) p2155(v218791) p2169(v218544) p328(v210279) p327(v210278) p515(v210274) p1272(v205887) p1295(v205885) p284(v204990) p297(v204988) p1280(v204584) p878(v200914) p851(v200912) p1052(v200750) p1053(v200749) p1057(v200748) p1067(v200745) p266(v200718) p307(v200717) p319(v200716) p361(v200701) p1259(v200664) p324(v200661) p289(v200659) p1813(v200651) p1830(v200650) p400(v200624) p352(v200603) p368(v200601) p1300(v200589) p2232(v199466) p1763(v199465) p1775(v199464) p1739(v199463) p1730(v199462) p1615(v199459) p1840(v199303) p1863(v199300) p1851(v199299) p854(v198917) p2165(v195894) p2148(v195876) p2144(v195870) p2141(v195868) p1664(v195857) p1662(v195436) p2161(v195353) p404(v185005) p364(v185002) p527(v184998) p1251(v180144) p1294(v180143) p274(v179131) p285(v179130) p839(v174982) p1042(v174856) p1045(v174855) p543(v174854) p505(v174853) p276(v174837) p805(v174835) p807(v174801) p868(v174797) p288(v174795) p1821(v174787) p435(v174765) p386(v174764) p251(v174756) p1711(v174744) p1325(v174742) p1289(v174741) p1712(v173752) p1705(v173751) p1777(v173750) p1762(v173749) p1740(v173748) p2154(v170461) p2145(v170455) p2140(v170454) p2157(v170452) p2162(v170451) p1652(v170443) p1648(v170106) p2167(v170047) p393(v157897) p374(v157895) p268(v157891) p379(v157888) p541(v157887) p403(v156259) p1039(v148115) p544(v148114) p267(v148105) p296(v148103) p822(v148082) p323(v148081) p1250(v148071) p399(v148066) p351(v148058) p1858(v148048) p1312(v148047) p1720(v147322) p1751(v147321) p1626(v147320) p1604(v147319) p1108(v147318) p1063(v147310) p1753(v147234) p2163(v144370) p1650(v144369) p2173(v144367) p2152(v144363) p1636(v144125) p372(v130752) p370(v130749) p528(v130748) p1291(v121723) p864(v121722) p1036(v121667) p1044(v121665) p275(v121662) p258(v121644) p1721(v121128) p1614(v121127) p1064(v121121) p2142(v118495) p1663(v118494) p2166(v118493) p1638(v118486) p2172(v118479) p504(v104714) p377(v104713) p865(v96991) p1256(v96948) p259(v96945) p1871(v96937) p1326(v96935) p2156(v94273) p405(v74334) p277(v74320) p1279(v74314) p369(v74313) p1847(v74306) p2170(v74126) p1635(v74124) p1729(v74109) p2137(v74108) p1241(v55147) p529(v55142) p1649(v55044) p1637(v55036) p1704(v55035) p2171(v55034) p392(v39741) p1313(v39740) p542(v39697) p2138(v38377) p1111(v38358) p1859(v27884) p362(v21441)
+    - neighboring facets: f5784128 f5393432 f5546438 f5404421 f5160745 f4594022 f4596955 f4711181 f4711179 f5290408 f5256836 f5286766 f5160783 f5290409 f5286763 f5286772 f5289879 f5290313 f5289878 f5295667 f5295676 f5288802 f5288714 f5873960 f4868232 f3881273 f5288754 f5288753 f5873739 f5874181 f5873978 f5288684 f5288713 f4868219 f5546552 f5428364 f5862855 f5783739 f5862848 f5288925 f5288665 f5783402 f5784214 f5783399 f5784218 f5775757 f5161678 f5161672 f5784443 f4480229 f5769008 f5784428 f5149614 f4471171 f5149677 f5149679 f5161027 f5783403 f5783400 f5783733 f5775751 f4480230 f5769018 f5769009 f5775753 f5784217 f5781959 f5784223 f5769020 f5874260 f5775724 f5769013 f5874323 f5784120 f5784246 f5784237 f5291443 f5874261 f5546439 f5878635 f5775755 f5784135 f5878726 f5878789 f5775761 f5775760 f5783954 f5784446 f3783764 f5291064 f5783950 f5161044 f5878651 f3777460 f5878641 f5878729 f5874083 f5784444 f5784435 f4143050 f5291250 f4143048 f4868033 f5546327 f5874030 f5547247 f5291267 f5874132 f5291272 f5291179 f5291270 f5546340 f5546338 f5287673 f5295673 f5287670 f5287675 f5291253 f5291284 f5291313 f5291298 f3178936 f5546330 f5291271 f5546450 f5546418 f5291116 f5547251 f5546451 f5287053 f5242163 f5546400 f5482948 f5547267 f5482944 f4598984 f5295677 f5288883 f5404303 f5547290 f5404297 f5404296 f5290312 f5546426 f5290350 f5294017 f5428606 f4598972 f5483895 f5288882 f5290397 f5783903 f5291314 f4596925 f5404402 f5393455 f5862852 f5547292 f5546169 f5295704 f5515109 f5428598 f5393443 f5295711 f5515114 f5295833 f4598977 f5286832 f5862842 f5288877 f5546430 f5404298 f5293987 f5291210 f5291330 f4593694 f5159087 f5783887 f4593696 f5286835 f5256917 f4914972 f5783378 f5783904 f5878654 f5291456 f5286743 f5783760 f5295700 f5404410 f5160727 f5783902 f5404395 f4597067 f5290406 f5293986 f5291285 f5295773 f4711165 f5289870 f5289426 f5784131 f5404406 f5783888 f4480411 f5783392 f5161040 f3861590 f5784429 f5783373 f4480332 f4567677 f5783732 f5256895 f5256927 f5878680 f5783735 f5256921 f5256904 f5160930 f5878724 f5878673 f4567642 f5783748 f5256932 f5783703 f5235618 f5546449 f5546405 f5287101 f5878653 f5878647 f5878636 f5878638 f5878659 f5878668
+    - ridges:
+     - r23293 tested simplicialbot
+           vertices: p1775(v199464) p2148(v195876) p1777(v173750)
+           between f4600482 and f5784128
+     - r15146 tested simplicialbot
+           vertices: p1300(v200589) p1256(v96948) p1279(v74314)
+           between f4600482 and f5393432
+     - r15147 tested
+           vertices: p1300(v200589) p1289(v174741) p1279(v74314)
+           between f5393432 and f4600482
+     - r17569 tested simplicialtop
+           vertices: p1280(v204584) p1300(v200589) p1256(v96948)
+           between f5393432 and f4600482
+     - r19388 tested simplicialtop
+           vertices: p328(v210279) p251(v174756) p351(v148058)
+           between f5546438 and f4600482
+     - r17727 tested simplicialtop
+           vertices: p284(v204990) p319(v200716) p839(v174982)
+           between f5404421 and f4600482
+     - r6318 tested
+           vertices: p544(v148114) p2137(v74108) p2138(v38377)
+           between f5160745 and f4600482
+     - r6320 tested
+           vertices: p544(v148114) p2137(v74108) p1704(v55035)
+           between f4600482 and f5160745
+     - r8146 tested
+           vertices: p1652(v170443) p544(v148114) p2138(v38377)
+           between f5160745 and f4600482
+     - r11072 tested
+           vertices: p839(v174982) p544(v148114) p1704(v55035)
+           between f4600482 and f5160745
+     - r11077 tested
+           vertices: p839(v174982) p544(v148114) p351(v148058)
+           between f5160745 and f4600482
+     - r11611 tested simplicialbot
+           vertices: p274(v179131) p839(v174982) p351(v148058)
+           between f5160745 and f4600482
+     - r14290 tested
+           vertices: p1615(v199459) p544(v148114) p1036(v121667)
+           between f4600482 and f5160745
+     - r14291 tested
+           vertices: p1615(v199459) p1652(v170443) p544(v148114)
+           between f4600482 and f5160745
+     - r13317 tested simplicialtop
+           vertices: p1711(v174744) p2137(v74108) p1704(v55035)
+           between f5160745 and f4600482
+     - r14331 tested
+           vertices: p1711(v174744) p1762(v173749) p2137(v74108)
+           between f5160745 and f4600482
+     - r10548 tested
+           vertices: p505(v174853) p544(v148114) p362(v21441)
+           between f4600482 and f4594022
+     - r6328 tested simplicialbot
+           vertices: p544(v148114) p351(v148058) p362(v21441)
+           between f4600482 and f4594022
+     - r15196 tested
+           vertices: p352(v200603) p351(v148058) p362(v21441)
+           between f4594022 and f4600482
+     - r10567 tested simplicialbot
+           vertices: p543(v174854) p544(v148114) p529(v55142)
+           between f4600482 and f4596955
+     - r11612 tested simplicialtop
+           vertices: p274(v179131) p251(v174756) p258(v121644)
+           between f4711181 and f4600482
+     - r11613 tested simplicialbot
+           vertices: p274(v179131) p251(v174756) p351(v148058)
+           between f4600482 and f4711179
+     - r17736 tested simplicialtop
+           vertices: p266(v200718) p274(v179131) p258(v121644)
+           between f5290408 and f4600482
+     - r14292 tested simplicialtop
+           vertices: p1615(v199459) p1652(v170443) p1626(v147320)
+           between f5256836 and f4600482
+     - r15143 tested
+           vertices: p1300(v200589) p1858(v148048) p1871(v96937)
+           between f5286766 and f4600482
+     - r15144 tested simplicialtop
+           vertices: p1300(v200589) p1871(v96937) p1704(v55035)
+           between f5286766 and f4600482
+     - r17726 tested
+           vertices: p284(v204990) p274(v179131) p839(v174982)
+           between f4600482 and f5160783
+     - r17019 tested simplicialtop
+           vertices: p851(v200912) p839(v174982) p1279(v74314)
+           between f4600482 and f5160783
+     - r11101 tested
+           vertices: p839(v174982) p1289(v174741) p1279(v74314)
+           between f4600482 and f5160783
+     - r23384 tested simplicialbot
+           vertices: p266(v200718) p274(v179131) p275(v121662)
+           between f4600482 and f5290409
+     - r15152 tested
+           vertices: p1300(v200589) p839(v174982) p1289(v174741)
+           between f5286763 and f4600482
+     - r15145 tested simplicialbot
+           vertices: p1300(v200589) p839(v174982) p1704(v55035)
+           between f4600482 and f5286763
+     - r15148 tested
+           vertices: p1300(v200589) p1325(v174742) p1312(v148047)
+           between f4600482 and f5286772
+     - r15149 tested simplicialtop
+           vertices: p1300(v200589) p1325(v174742) p1858(v148048)
+           between f5286772 and f4600482
+     - r23394 tested simplicialbot
+           vertices: p361(v200701) p352(v200603) p368(v200601)
+           between f4600482 and f5289879
+     - r23365 tested simplicialbot
+           vertices: p319(v200716) p839(v174982) p822(v148082)
+           between f4600482 and f5290313
+     - r16055 tested simplicialtop
+           vertices: p361(v200701) p352(v200603) p362(v21441)
+           between f5289878 and f4600482
+     - r17055 tested
+           vertices: p851(v200912) p1250(v148071) p1256(v96948)
+           between f5295667 and f4600482
+     - r17022 tested
+           vertices: p851(v200912) p1256(v96948) p1279(v74314)
+           between f5295667 and f4600482
+     - r17021 tested
+           vertices: p851(v200912) p864(v121722) p1241(v55147)
+           between f5295667 and f4600482
+     - r17033 tested
+           vertices: p851(v200912) p1250(v148071) p1241(v55147)
+           between f4600482 and f5295667
+     - r23363 tested simplicialtop
+           vertices: p851(v200912) p839(v174982) p822(v148082)
+           between f5295676 and f4600482
+     - r17783 tested
+           vertices: p1295(v205885) p807(v174801) p868(v174797)
+           between f4600482 and f5288802
+     - r23020 tested simplicialtop
+           vertices: p289(v200659) p807(v174801) p288(v174795)
+           between f5288714 and f4600482
+     - r23071 tested simplicialbot
+           vertices: p2230(v222421) p1295(v205885) p868(v174797)
+           between f4600482 and f5873960
+     - r23268 tested
+           vertices: p2230(v222421) p1295(v205885) p1294(v180143)
+           between f5873960 and f4600482
+     - r23070 tested simplicialtop
+           vertices: p2230(v222421) p1259(v200664) p868(v174797)
+           between f5873960 and f4600482
+     - r22765 tested simplicialbot
+           vertices: p404(v185005) p393(v157897) p392(v39741)
+           between f4600482 and f4868232
+     - r22368 tested
+           vertices: p1755(v222418) p1295(v205885) p807(v174801)
+           between f3881273 and f4600482
+     - r21751 tested
+           vertices: p1095(v221773) p403(v156259) p323(v148081)
+           between f4600482 and f3881273
+     - r22192 tested
+           vertices: p1755(v222418) p1095(v221773) p807(v174801)
+           between f4600482 and f3881273
+     - r21879 tested
+           vertices: p1095(v221773) p807(v174801) p323(v148081)
+           between f3881273 and f4600482
+     - r22237 tested
+           vertices: p1755(v222418) p1095(v221773) p405(v74334)
+           between f3881273 and f4600482
+     - r21724 tested
+           vertices: p1095(v221773) p403(v156259) p405(v74334)
+           between f3881273 and f4600482
+     - r22961 tested simplicialtop
+           vertices: p324(v200661) p403(v156259) p323(v148081)
+           between f5288754 and f4600482
+     - r22594 tested simplicialbot
+           vertices: p324(v200661) p403(v156259) p392(v39741)
+           between f4600482 and f5288753
+     - r22176 tested simplicialbot
+           vertices: p1755(v222418) p1295(v205885) p1813(v200651)
+           between f4600482 and f5873739
+     - r22174 tested
+           vertices: p1755(v222418) p1813(v200651) p1821(v174787)
+           between f4600482 and f5873739
+     - r22280 tested
+           vertices: p1755(v222418) p1830(v200650) p1840(v199303)
+           between f4600482 and f5873739
+     - r22282 tested
+           vertices: p1755(v222418) p1840(v199303) p1851(v199299)
+           between f4600482 and f5873739
+     - r22279 tested
+           vertices: p1755(v222418) p1830(v200650) p1821(v174787)
+           between f5873739 and f4600482
+     - r22298 tested
+           vertices: p1755(v222418) p1863(v199300) p1851(v199299)
+           between f5873739 and f4600482
+     - r22595 tested
+           vertices: p2230(v222421) p324(v200661) p392(v39741)
+           between f4600482 and f5874181
+     - r22476 tested
+           vertices: p2230(v222421) p1755(v222418) p405(v74334)
+           between f5874181 and f4600482
+     - r22766 tested
+           vertices: p2230(v222421) p393(v157897) p392(v39741)
+           between f5874181 and f4600482
+     - r22838 tested
+           vertices: p2230(v222421) p393(v157897) p405(v74334)
+           between f4600482 and f5874181
+     - r23022 tested
+           vertices: p2230(v222421) p289(v200659) p288(v174795)
+           between f5874181 and f4600482
+     - r23196 tested
+           vertices: p2230(v222421) p324(v200661) p289(v200659)
+           between f5874181 and f4600482
+     - r22983 tested
+           vertices: p2230(v222421) p2164(v219080) p2165(v195894)
+           between f5874181 and f4600482
+     - r19832 tested
+           vertices: p2169(v218544) p2167(v170047) p2166(v118493)
+           between f4600482 and f5874181
+     - r22746 tested
+           vertices: p2230(v222421) p2165(v195894) p2166(v118493)
+           between f5874181 and f4600482
+     - r23205 tested
+           vertices: p2230(v222421) p2169(v218544) p2166(v118493)
+           between f4600482 and f5874181
+     - r22878 tested
+           vertices: p2230(v222421) p1648(v170106) p1635(v74124)
+           between f4600482 and f5874181
+     - r22935 tested
+           vertices: p2230(v222421) p1662(v195436) p1648(v170106)
+           between f4600482 and f5874181
+     - r22985 tested
+           vertices: p2230(v222421) p2164(v219080) p2173(v144367)
+           between f4600482 and f5874181
+     - r23000 tested
+           vertices: p2230(v222421) p1662(v195436) p2173(v144367)
+           between f5874181 and f4600482
+     - r23091 tested
+           vertices: p2230(v222421) p1108(v147318) p1635(v74124)
+           between f5874181 and f4600482
+     - r22932 tested
+           vertices: p2230(v222421) p1063(v147310) p1064(v121121)
+           between f5874181 and f4600482
+     - r22851 tested
+           vertices: p2230(v222421) p1067(v200745) p1064(v121121)
+           between f4600482 and f5874181
+     - r23143 tested
+           vertices: p2230(v222421) p527(v184998) p435(v174765)
+           between f4600482 and f5874181
+     - r22507 tested
+           vertices: p2230(v222421) p400(v200624) p399(v148066)
+           between f4600482 and f5874181
+     - r22505 tested
+           vertices: p2230(v222421) p400(v200624) p435(v174765)
+           between f5874181 and f4600482
+     - r23117 tested
+           vertices: p2230(v222421) p399(v148066) p377(v104713)
+           between f4600482 and f5874181
+     - r22949 tested
+           vertices: p2230(v222421) p268(v157891) p277(v74320)
+           between f4600482 and f5874181
+     - r23041 tested
+           vertices: p2230(v222421) p288(v174795) p277(v74320)
+           between f5874181 and f4600482
+     - r22894 tested
+           vertices: p2230(v222421) p374(v157895) p372(v130752)
+           between f4600482 and f5874181
+     - r23186 tested
+           vertices: p2230(v222421) p386(v174764) p377(v104713)
+           between f5874181 and f4600482
+     - r22793 tested
+           vertices: p2230(v222421) p268(v157891) p372(v130752)
+           between f5874181 and f4600482
+     - r23123 tested
+           vertices: p2230(v222421) p386(v174764) p374(v157895)
+           between f4600482 and f5874181
+     - r22714 tested
+           vertices: p2230(v222421) p1755(v222418) p1863(v199300)
+           between f4600482 and f5873978
+     - r22587 tested
+           vertices: p2230(v222421) p1813(v200651) p1821(v174787)
+           between f5873978 and f4600482
+     - r22713 tested
+           vertices: p2230(v222421) p1863(v199300) p1851(v199299)
+           between f4600482 and f5873978
+     - r22585 tested
+           vertices: p2230(v222421) p1830(v200650) p1840(v199303)
+           between f5873978 and f4600482
+     - r22582 tested
+           vertices: p2230(v222421) p1830(v200650) p1821(v174787)
+           between f4600482 and f5873978
+     - r22641 tested
+           vertices: p2230(v222421) p1840(v199303) p1851(v199299)
+           between f5873978 and f4600482
+     - r23038 tested simplicialbot
+           vertices: p2230(v222421) p1813(v200651) p1294(v180143)
+           between f4600482 and f5873978
+     - r23058 tested
+           vertices: p2230(v222421) p2232(v199466) p1753(v147234)
+           between f5873978 and f4600482
+     - r12388 tested
+           vertices: p404(v185005) p403(v156259) p405(v74334)
+           between f4600482 and f5288684
+     - r15780 tested
+           vertices: p324(v200661) p807(v174801) p323(v148081)
+           between f4600482 and f5288713
+     - r18487 tested
+           vertices: p324(v200661) p289(v200659) p807(v174801)
+           between f4600482 and f5288713
+     - r22839 tested simplicialtop
+           vertices: p404(v185005) p393(v157897) p405(v74334)
+           between f4868219 and f4600482
+     - r22591 tested simplicialtop
+           vertices: p404(v185005) p403(v156259) p392(v39741)
+           between f5546552 and f4600482
+     - r23291 tested simplicialtop
+           vertices: p1295(v205885) p1813(v200651) p1294(v180143)
+           between f5428364 and f4600482
+     - r23262 tested simplicialtop
+           vertices: p843(v222012) p807(v174801) p868(v174797)
+           between f5862855 and f4600482
+     - r23375 tested simplicialbot
+           vertices: p2147(v219092) p2141(v195868) p2152(v144363)
+           between f4600482 and f5783739
+     - r23149 tested simplicialbot
+           vertices: p843(v222012) p807(v174801) p822(v148082)
+           between f4600482 and f5862848
+     - r23147 tested simplicialtop
+           vertices: p805(v174835) p807(v174801) p822(v148082)
+           between f5288925 and f4600482
+     - r23024 tested simplicialbot
+           vertices: p805(v174835) p807(v174801) p288(v174795)
+           between f4600482 and f5288665
+     - r23004 tested simplicialbot
+           vertices: p2164(v219080) p2165(v195894) p2156(v94273)
+           between f4600482 and f5783402
+     - r23296 tested simplicialbot
+           vertices: p2144(v195870) p2157(v170452) p2167(v170047)
+           between f4600482 and f5784214
+     - r23014 tested simplicialtop
+           vertices: p2164(v219080) p1664(v195857) p2156(v94273)
+           between f5783399 and f4600482
+     - r22741 tested simplicialtop
+           vertices: p2157(v170452) p2167(v170047) p2166(v118493)
+           between f5784218 and f4600482
+     - r23176 tested simplicialbot
+           vertices: p2155(v218791) p2148(v195876) p2154(v170461)
+           between f4600482 and f5775757
+     - r23001 tested simplicialbot
+           vertices: p2165(v195894) p2157(v170452) p2156(v94273)
+           between f4600482 and f5161678
+     - r22745 tested simplicialtop
+           vertices: p2165(v195894) p2157(v170452) p2166(v118493)
+           between f5161672 and f4600482
+     - r21443 tested simplicialtop
+           vertices: p2149(v219117) p2144(v195870) p2157(v170452)
+           between f5784443 and f4600482
+     - r23213 tested simplicialbot
+           vertices: p2162(v170451) p2170(v74126) p2171(v55034)
+           between f4600482 and f4480229
+     - r23207 tested simplicialtop
+           vertices: p2169(v218544) p2167(v170047) p2152(v144363)
+           between f5769008 and f4600482
+     - r21436 tested simplicialbot
+           vertices: p2149(v219117) p1664(v195857) p2156(v94273)
+           between f4600482 and f5784428
+     - r22913 tested simplicialbot
+           vertices: p1648(v170106) p1636(v144125) p1635(v74124)
+           between f4600482 and f5149614
+     - r22909 tested simplicialtop
+           vertices: p1648(v170106) p1636(v144125) p1649(v55044)
+           between f4471171 and f4600482
+     - r22933 tested simplicialtop
+           vertices: p1662(v195436) p1648(v170106) p1649(v55044)
+           between f5149677 and f4600482
+     - r23245 tested simplicialbot
+           vertices: p1662(v195436) p1663(v118494) p1649(v55044)
+           between f4600482 and f5149679
+     - r23012 tested simplicialbot
+           vertices: p1662(v195436) p2173(v144367) p1663(v118494)
+           between f4600482 and f5161027
+     - r23009 tested simplicialtop
+           vertices: p2164(v219080) p2173(v144367) p1663(v118494)
+           between f5783403 and f4600482
+     - r23016 tested simplicialbot
+           vertices: p2164(v219080) p1664(v195857) p1663(v118494)
+           between f4600482 and f5783400
+     - r21341 tested simplicialtop
+           vertices: p2147(v219092) p2148(v195876) p2154(v170461)
+           between f5783733 and f4600482
+     - r22671 tested simplicialbot
+           vertices: p2155(v218791) p2162(v170451) p2163(v144370)
+           between f4600482 and f5775751
+     - r22721 tested simplicialtop
+           vertices: p2162(v170451) p2163(v144370) p2171(v55034)
+           between f4480230 and f4600482
+     - r22657 tested simplicialtop
+           vertices: p2161(v195353) p2154(v170461) p2162(v170451)
+           between f5769018 and f4600482
+     - r23151 tested simplicialbot
+           vertices: p2169(v218544) p2161(v195353) p2152(v144363)
+           between f4600482 and f5769009
+     - r22675 tested simplicialbot
+           vertices: p2155(v218791) p2154(v170461) p2162(v170451)
+           between f4600482 and f5775753
+     - r23103 tested simplicialbot
+           vertices: p2144(v195870) p2167(v170047) p2152(v144363)
+           between f4600482 and f5784217
+     - r23315 tested simplicialtop
+           vertices: p1712(v173752) p1705(v173751) p1721(v121128)
+           between f5781959 and f4600482
+     - r23099 tested simplicialtop
+           vertices: p2144(v195870) p2145(v170455) p2152(v144363)
+           between f5784223 and f4600482
+     - r22898 tested simplicialtop
+           vertices: p2169(v218544) p2161(v195353) p2170(v74126)
+           between f5769020 and f4600482
+     - r22720 tested simplicialbot
+           vertices: p2230(v222421) p2163(v144370) p2172(v118479)
+           between f4600482 and f5874260
+     - r22717 tested simplicialtop
+           vertices: p2163(v144370) p2172(v118479) p2171(v55034)
+           between f5775724 and f4600482
+     - r22895 tested simplicialtop
+           vertices: p2161(v195353) p2162(v170451) p2170(v74126)
+           between f5769013 and f4600482
+     - r23214 tested
+           vertices: p2230(v222421) p2170(v74126) p2171(v55034)
+           between f5874323 and f4600482
+     - r22899 tested
+           vertices: p2230(v222421) p2169(v218544) p2170(v74126)
+           between f5874323 and f4600482
+     - r22718 tested
+           vertices: p2230(v222421) p2172(v118479) p2171(v55034)
+           between f4600482 and f5874323
+     - r23292 tested simplicialtop
+           vertices: p1775(v199464) p2148(v195876) p2142(v118495)
+           between f5784120 and f4600482
+     - r23330 tested simplicialbot
+           vertices: p2147(v219092) p2161(v195353) p2154(v170461)
+           between f4600482 and f5784246
+     - r23329 tested simplicialtop
+           vertices: p2147(v219092) p2161(v195353) p2152(v144363)
+           between f5784237 and f4600482
+     - r16556 tested simplicialbot
+           vertices: p1057(v200748) p1042(v174856) p1039(v148115)
+           between f4600482 and f5291443
+     - r23231 tested simplicialbot
+           vertices: p2230(v222421) p2232(v199466) p2163(v144370)
+           between f4600482 and f5874261
+     - r23392 tested simplicialbot
+           vertices: p328(v210279) p364(v185002) p351(v148058)
+           between f4600482 and f5546439
+     - r23704 tested simplicialtop
+           vertices: p1624(v222583) p1626(v147320) p1636(v144125)
+           between f5878635 and f4600482
+     - r23230 tested simplicialtop
+           vertices: p2155(v218791) p2232(v199466) p2163(v144370)
+           between f5775755 and f4600482
+     - r14350 tested simplicialtop
+           vertices: p1763(v199465) p1775(v199464) p1762(v173749)
+           between f5784135 and f4600482
+     - r23733 tested simplicialtop
+           vertices: p1750(v222586) p1763(v199465) p1762(v173749)
+           between f5878726 and f4600482
+     - r23054 nonconvex simplicialtop
+           vertices: p2232(v199466) p1763(v199465) p1751(v147321)
+           between f5878789 and f4600482
+     - r22992 nonconvex
+           vertices: p2232(v199466) p1763(v199465) p1777(v173750)
+           between f4600482 and f5878789
+     - r23056 nonconvex
+           vertices: p2232(v199466) p1751(v147321) p1753(v147234)
+           between f5878789 and f4600482
+     - r23006 tested simplicialbot
+           vertices: p2155(v218791) p2232(v199466) p1777(v173750)
+           between f4600482 and f5775761
+     - r23052 tested simplicialtop
+           vertices: p2155(v218791) p2148(v195876) p1777(v173750)
+           between f5775760 and f4600482
+     - r21444 tested simplicialtop
+           vertices: p1651(v219079) p1664(v195857) p1650(v144369)
+           between f5783954 and f4600482
+     - r21442 tested simplicialtop
+           vertices: p2149(v219117) p2157(v170452) p2156(v94273)
+           between f5784446 and f4600482
+     - r22990 tested simplicialtop
+           vertices: p1650(v144369) p1663(v118494) p1649(v55044)
+           between f3783764 and f4600482
+     - r10570 tested simplicialtop
+           vertices: p505(v174853) p544(v148114) p529(v55142)
+           between f5291064 and f4600482
+     - r22987 tested simplicialbot
+           vertices: p1664(v195857) p1650(v144369) p1663(v118494)
+           between f4600482 and f5783950
+     - r22953 tested simplicialtop
+           vertices: p1650(v144369) p1649(v55044) p1637(v55036)
+           between f5161044 and f4600482
+     - r23697 tested simplicialbot
+           vertices: p1624(v222583) p1604(v147319) p1108(v147318)
+           between f4600482 and f5878651
+     - r23153 tested simplicialbot
+           vertices: p1636(v144125) p1649(v55044) p1637(v55036)
+           between f4600482 and f3777460
+     - r23700 tested simplicialtop
+           vertices: p1624(v222583) p1636(v144125) p1635(v74124)
+           between f5878641 and f4600482
+     - r23732 tested simplicialbot
+           vertices: p1750(v222586) p1763(v199465) p1751(v147321)
+           between f4600482 and f5878729
+     - r23057 tested
+           vertices: p2230(v222421) p1751(v147321) p1753(v147234)
+           between f4600482 and f5874083
+     - r22526 tested
+           vertices: p2230(v222421) p1259(v200664) p1251(v180144)
+           between f4600482 and f5874083
+     - r22751 tested
+           vertices: p2230(v222421) p1705(v173751) p1859(v27884)
+           between f5874083 and f4600482
+     - r22758 tested
+           vertices: p2230(v222421) p1705(v173751) p1751(v147321)
+           between f4600482 and f5874083
+     - r22580 tested
+           vertices: p2230(v222421) p1291(v121723) p1313(v39740)
+           between f4600482 and f5874083
+     - r358 tested
+           vertices: p1847(v74306) p1313(v39740) p1859(v27884)
+           between f5874083 and f4600482
+     - r22820 tested simplicialbot
+           vertices: p2230(v222421) p1272(v205887) p1291(v121723)
+           between f4600482 and f5874083
+     - r1122 tested
+           vertices: p1326(v96935) p1847(v74306) p1313(v39740)
+           between f4600482 and f5874083
+     - r22499 tested
+           vertices: p2230(v222421) p1272(v205887) p1251(v180144)
+           between f5874083 and f4600482
+     - r22748 tested
+           vertices: p2230(v222421) p1313(v39740) p1859(v27884)
+           between f4600482 and f5874083
+     - r17585 tested
+           vertices: p1251(v180144) p1250(v148071) p1256(v96948)
+           between f4600482 and f5874083
+     - r20976 tested
+           vertices: p1272(v205887) p1251(v180144) p1256(v96948)
+           between f4600482 and f5874083
+     - r14315 tested
+           vertices: p1730(v199462) p1705(v173751) p1740(v173748)
+           between f5874083 and f4600482
+     - r22964 tested
+           vertices: p1730(v199462) p1705(v173751) p1721(v121128)
+           between f4600482 and f5874083
+     - r8913 tested
+           vertices: p1705(v173751) p1740(v173748) p1751(v147321)
+           between f4600482 and f5874083
+     - r21439 tested simplicialbot
+           vertices: p2149(v219117) p2144(v195870) p2138(v38377)
+           between f4600482 and f5784444
+     - r21438 tested simplicialtop
+           vertices: p2149(v219117) p1652(v170443) p2138(v38377)
+           between f5784435 and f4600482
+     - r22867 tested simplicialtop
+           vertices: p541(v157887) p528(v130748) p542(v39697)
+           between f4143050 and f4600482
+     - r16555 tested simplicialtop
+           vertices: p1057(v200748) p1045(v174855) p1039(v148115)
+           between f5291250 and f4600482
+     - r22978 tested simplicialbot
+           vertices: p541(v157887) p1063(v147310) p542(v39697)
+           between f4600482 and f4143048
+     - r22863 tested simplicialbot
+           vertices: p527(v184998) p541(v157887) p528(v130748)
+           between f4600482 and f4868033
+     - r23246 tested simplicialbot
+           vertices: p515(v210274) p527(v184998) p528(v130748)
+           between f4600482 and f5546327
+     - r22866 tested
+           vertices: p2230(v222421) p527(v184998) p541(v157887)
+           between f5874030 and f4600482
+     - r22980 tested simplicialtop
+           vertices: p2230(v222421) p541(v157887) p1063(v147310)
+           between f5874030 and f4600482
+     - r23116 tested simplicialtop
+           vertices: p379(v157888) p399(v148066) p377(v104713)
+           between f5547247 and f4600482
+     - r23258 tested simplicialtop
+           vertices: p1053(v200749) p1063(v147310) p542(v39697)
+           between f5291267 and f4600482
+     - r22622 tested
+           vertices: p2230(v222421) p1057(v200748) p1067(v200745)
+           between f4600482 and f5874132
+     - r23048 tested
+           vertices: p2230(v222421) p1052(v200750) p1057(v200748)
+           between f4600482 and f5874132
+     - r22960 tested
+           vertices: p2230(v222421) p1052(v200750) p1108(v147318)
+           between f5874132 and f4600482
+     - r23162 tested simplicialbot
+           vertices: p1053(v200749) p1063(v147310) p1064(v121121)
+           between f4600482 and f5291272
+     - r23110 tested simplicialbot
+           vertices: p1067(v200745) p1045(v174855) p1064(v121121)
+           between f4600482 and f5291179
+     - r23106 tested simplicialtop
+           vertices: p1053(v200749) p1045(v174855) p1064(v121121)
+           between f5291270 and f4600482
+     - r23279 tested simplicialtop
+           vertices: p515(v210274) p527(v184998) p435(v174765)
+           between f5546340 and f4600482
+     - r23277 tested simplicialtop
+           vertices: p515(v210274) p435(v174765) p504(v104714)
+           between f5546338 and f4600482
+     - r23062 tested simplicialtop
+           vertices: p400(v200624) p379(v157888) p504(v104714)
+           between f5287673 and f4600482
+     - r23324 tested simplicialtop
+           vertices: p851(v200912) p854(v198917) p865(v96991)
+           between f5295673 and f4600482
+     - r23114 tested simplicialbot
+           vertices: p400(v200624) p379(v157888) p399(v148066)
+           between f4600482 and f5287670
+     - r23059 tested simplicialbot
+           vertices: p400(v200624) p435(v174765) p504(v104714)
+           between f4600482 and f5287675
+     - r23297 tested simplicialtop
+           vertices: p1057(v200748) p1067(v200745) p1045(v174855)
+           between f5291253 and f4600482
+     - r23359 tested simplicialbot
+           vertices: p1053(v200749) p543(v174854) p542(v39697)
+           between f4600482 and f5291284
+     - r16560 tested simplicialtop
+           vertices: p1052(v200750) p1057(v200748) p1042(v174856)
+           between f5291313 and f4600482
+     - r16551 tested simplicialtop
+           vertices: p1052(v200750) p1042(v174856) p1111(v38358)
+           between f5291298 and f4600482
+     - r10563 tested
+           vertices: p543(v174854) p1044(v121665) p542(v39697)
+           between f4600482 and f3178936
+     - r3735 tested
+           vertices: p528(v130748) p504(v104714) p542(v39697)
+           between f3178936 and f4600482
+     - r10564 tested
+           vertices: p543(v174854) p1044(v121665) p529(v55142)
+           between f3178936 and f4600482
+     - r3213 tested simplicialbot
+           vertices: p1044(v121665) p504(v104714) p542(v39697)
+           between f4600482 and f3178936
+     - r3224 tested simplicialtop
+           vertices: p1044(v121665) p504(v104714) p529(v55142)
+           between f3178936 and f4600482
+     - r23219 tested simplicialbot
+           vertices: p515(v210274) p528(v130748) p504(v104714)
+           between f4600482 and f5546330
+     - r23261 tested simplicialbot
+           vertices: p1053(v200749) p1045(v174855) p1044(v121665)
+           between f4600482 and f5291271
+     - r19382 tested simplicialtop
+           vertices: p328(v210279) p327(v210278) p259(v96945)
+           between f5546450 and f4600482
+     - r22923 tested simplicialtop
+           vertices: p327(v210278) p268(v157891) p259(v96945)
+           between f5546418 and f4600482
+     - r23286 tested simplicialtop
+           vertices: p379(v157888) p370(v130749) p504(v104714)
+           between f5291116 and f4600482
+     - r23270 tested simplicialtop
+           vertices: p379(v157888) p377(v104713) p369(v74313)
+           between f5547251 and f4600482
+     - r19383 tested simplicialbot
+           vertices: p328(v210279) p327(v210278) p364(v185002)
+           between f4600482 and f5546451
+     - r23017 tested simplicialbot
+           vertices: p368(v200601) p377(v104713) p369(v74313)
+           between f4600482 and f5287053
+     - r23198 tested simplicialtop
+           vertices: p854(v198917) p868(v174797) p865(v96991)
+           between f5242163 and f4600482
+     - r23402 tested simplicialbot
+           vertices: p364(v185002) p374(v157895) p351(v148058)
+           between f4600482 and f5546400
+     - r23266 tested simplicialtop
+           vertices: p268(v157891) p267(v148105) p259(v96945)
+           between f5482948 and f4600482
+     - r23285 tested simplicialbot
+           vertices: p379(v157888) p370(v130749) p369(v74313)
+           between f4600482 and f5547267
+     - r22948 tested simplicialbot
+           vertices: p268(v157891) p267(v148105) p277(v74320)
+           between f4600482 and f5482944
+     - r22945 tested simplicialtop
+           vertices: p276(v174837) p267(v148105) p277(v74320)
+           between f4598984 and f4600482
+     - r23325 tested simplicialbot
+           vertices: p851(v200912) p854(v198917) p822(v148082)
+           between f4600482 and f5295677
+     - r23274 tested simplicialbot
+           vertices: p1259(v200664) p868(v174797) p865(v96991)
+           between f4600482 and f5288883
+     - r23193 tested simplicialbot
+           vertices: p297(v204988) p805(v174835) p288(v174795)
+           between f4600482 and f5404303
+     - r23200 tested simplicialtop
+           vertices: p368(v200601) p386(v174764) p374(v157895)
+           between f5547290 and f4600482
+     - r23189 tested simplicialtop
+           vertices: p297(v204988) p276(v174837) p288(v174795)
+           between f5404297 and f4600482
+     - r22782 tested simplicialbot
+           vertices: p297(v204988) p285(v179130) p296(v148103)
+           between f4600482 and f5404296
+     - r23321 tested simplicialtop
+           vertices: p319(v200716) p805(v174835) p822(v148082)
+           between f5290312 and f4600482
+     - r22789 tested simplicialtop
+           vertices: p327(v210278) p364(v185002) p372(v130752)
+           between f5546426 and f4600482
+     - r23322 tested simplicialbot
+           vertices: p307(v200717) p319(v200716) p805(v174835)
+           between f4600482 and f5290350
+     - r23275 tested simplicialbot
+           vertices: p276(v174837) p288(v174795) p277(v74320)
+           between f4600482 and f5294017
+     - r21002 tested simplicialtop
+           vertices: p1272(v205887) p1280(v204584) p1256(v96948)
+           between f5428606 and f4600482
+     - r23341 tested simplicialtop
+           vertices: p267(v148105) p258(v121644) p259(v96945)
+           between f4598972 and f4600482
+     - r23241 tested simplicialtop
+           vertices: p364(v185002) p374(v157895) p372(v130752)
+           between f5483895 and f4600482
+     - r22522 tested simplicialbot
+           vertices: p1259(v200664) p865(v96991) p1241(v55147)
+           between f4600482 and f5288882
+     - r23342 tested simplicialbot
+           vertices: p266(v200718) p267(v148105) p258(v121644)
+           between f4600482 and f5290397
+     - r21407 tested simplicialbot
+           vertices: p2139(v219097) p2140(v170454) p2137(v74108)
+           between f4600482 and f5783903
+     - r16550 tested simplicialbot
+           vertices: p1052(v200750) p1604(v147319) p1111(v38358)
+           between f4600482 and f5291314
+     - r10560 tested simplicialtop
+           vertices: p505(v174853) p529(v55142) p362(v21441)
+           between f4596925 and f4600482
+     - r3749 tested
+           vertices: p370(v130749) p504(v104714) p529(v55142)
+           between f4600482 and f4596925
+     - r16046 tested
+           vertices: p361(v200701) p370(v130749) p529(v55142)
+           between f4600482 and f4596925
+     - r16044 tested simplicialbot
+           vertices: p361(v200701) p529(v55142) p362(v21441)
+           between f4600482 and f4596925
+     - r16048 tested
+           vertices: p361(v200701) p370(v130749) p362(v21441)
+           between f4596925 and f4600482
+     - r23310 tested simplicialbot
+           vertices: p284(v204990) p307(v200717) p296(v148103)
+           between f4600482 and f5404402
+     - r17588 tested
+           vertices: p1280(v204584) p1312(v148047) p1313(v39740)
+           between f5393455 and f4600482
+     - r17539 tested
+           vertices: p1280(v204584) p1325(v174742) p1858(v148048)
+           between f4600482 and f5393455
+     - r17537 tested
+           vertices: p1280(v204584) p1325(v174742) p1312(v148047)
+           between f5393455 and f4600482
+     - r17550 tested
+           vertices: p1280(v204584) p1705(v173751) p1720(v147322)
+           between f5393455 and f4600482
+     - r17571 tested
+           vertices: p1280(v204584) p1847(v74306) p1859(v27884)
+           between f5393455 and f4600482
+     - r17547 tested
+           vertices: p1280(v204584) p1326(v96935) p1847(v74306)
+           between f5393455 and f4600482
+     - r17544 tested
+           vertices: p1280(v204584) p1326(v96935) p1313(v39740)
+           between f4600482 and f5393455
+     - r17553 tested simplicialbot
+           vertices: p1280(v204584) p1705(v173751) p1859(v27884)
+           between f4600482 and f5393455
+     - r17541 tested
+           vertices: p1280(v204584) p1720(v147322) p1871(v96937)
+           between f5393455 and f4600482
+     - r17540 tested
+           vertices: p1280(v204584) p1858(v148048) p1871(v96937)
+           between f4600482 and f5393455
+     - r8903 tested
+           vertices: p1705(v173751) p1720(v147322) p1871(v96937)
+           between f4600482 and f5393455
+     - r22664 tested simplicialbot
+           vertices: p843(v222012) p854(v198917) p868(v174797)
+           between f4600482 and f5862852
+     - r23276 tested simplicialbot
+           vertices: p368(v200601) p386(v174764) p377(v104713)
+           between f4600482 and f5547292
+     - r19390 tested simplicialbot
+           vertices: p361(v200701) p368(v200601) p369(v74313)
+           between f4600482 and f5546169
+     - r17099 tested simplicialtop
+           vertices: p878(v200914) p864(v121722) p865(v96991)
+           between f5295704 and f4600482
+     - r17594 tested simplicialbot
+           vertices: p307(v200717) p805(v174835) p296(v148103)
+           between f4600482 and f5515109
+     - r20968 tested simplicialbot
+           vertices: p1272(v205887) p1280(v204584) p1291(v121723)
+           between f4600482 and f5428598
+     - r20999 tested simplicialbot
+           vertices: p1280(v204584) p1300(v200589) p1313(v39740)
+           between f4600482 and f5393443
+     - r20967 tested
+           vertices: p1280(v204584) p1291(v121723) p1313(v39740)
+           between f5393443 and f4600482
+     - r17584 tested simplicialtop
+           vertices: p878(v200914) p865(v96991) p1241(v55147)
+           between f5295711 and f4600482
+     - r17592 tested simplicialtop
+           vertices: p297(v204988) p805(v174835) p296(v148103)
+           between f5515114 and f4600482
+     - r17558 tested simplicialtop
+           vertices: p1251(v180144) p1250(v148071) p1241(v55147)
+           between f5295833 and f4600482
+     - r23397 tested simplicialbot
+           vertices: p251(v174756) p258(v121644) p259(v96945)
+           between f4600482 and f4598977
+     - r23411 tested simplicialtop
+           vertices: p1711(v174744) p1720(v147322) p1729(v74109)
+           between f5286832 and f4600482
+     - r22668 tested simplicialtop
+           vertices: p843(v222012) p854(v198917) p822(v148082)
+           between f5862842 and f4600482
+     - r22525 tested simplicialtop
+           vertices: p1259(v200664) p1251(v180144) p1241(v55147)
+           between f5288877 and f4600482
+     - r22792 tested simplicialbot
+           vertices: p327(v210278) p268(v157891) p372(v130752)
+           between f4600482 and f5546430
+     - r23228 tested simplicialtop
+           vertices: p297(v204988) p285(v179130) p276(v174837)
+           between f5404298 and f4600482
+     - r23233 tested simplicialbot
+           vertices: p285(v179130) p276(v174837) p275(v121662)
+           between f4600482 and f5293987
+     - r23351 tested simplicialbot
+           vertices: p1045(v174855) p1036(v121667) p1044(v121665)
+           between f4600482 and f5291210
+     - r23345 tested simplicialtop
+           vertices: p1052(v200750) p1604(v147319) p1108(v147318)
+           between f5291330 and f4600482
+     - r23413 tested simplicialtop
+           vertices: p1711(v174744) p1712(v173752) p1720(v147322)
+           between f4593694 and f4600482
+     - r8918 tested simplicialbot
+           vertices: p1712(v173752) p1705(v173751) p1704(v55035)
+           between f4600482 and f5159087
+     - r23367 tested simplicialbot
+           vertices: p2139(v219097) p2145(v170455) p2140(v170454)
+           between f4600482 and f5783887
+     - r23412 tested simplicialbot
+           vertices: p1711(v174744) p1712(v173752) p1704(v55035)
+           between f4600482 and f4593696
+     - r23409 tested simplicialtop
+           vertices: p1739(v199463) p1711(v174744) p1729(v74109)
+           between f5286835 and f4600482
+     - r14330 tested simplicialbot
+           vertices: p1739(v199463) p1711(v174744) p1762(v173749)
+           between f4600482 and f5256917
+     - r23729 tested
+           vertices: p1750(v222586) p1739(v199463) p1762(v173749)
+           between f4600482 and f5256917
+     - r23395 tested simplicialtop
+           vertices: p544(v148114) p1036(v121667) p1044(v121665)
+           between f4914972 and f4600482
+     - r21209 tested simplicialbot
+           vertices: p1651(v219079) p1652(v170443) p1638(v118486)
+           between f4600482 and f5783378
+     - r21412 tested simplicialtop
+           vertices: p2139(v219097) p2144(v195870) p2138(v38377)
+           between f5783904 and f4600482
+     - r23707 tested simplicialtop
+           vertices: p1605(v222584) p1615(v199459) p1614(v121127)
+           between f5878654 and f4600482
+     - r23714 tested
+           vertices: p1605(v222584) p1615(v199459) p1039(v148115)
+           between f4600482 and f5291456
+     - r14289 tested simplicialtop
+           vertices: p1615(v199459) p1039(v148115) p1036(v121667)
+           between f5291456 and f4600482
+     - r23405 tested simplicialbot
+           vertices: p1300(v200589) p1312(v148047) p1313(v39740)
+           between f4600482 and f5286743
+     - r14338 tested
+           vertices: p1775(v199464) p1762(v173749) p2137(v74108)
+           between f4600482 and f5783760
+     - r17069 tested simplicialbot
+           vertices: p878(v200914) p864(v121722) p1241(v55147)
+           between f4600482 and f5295700
+     - r17730 tested simplicialtop
+           vertices: p284(v204990) p307(v200717) p319(v200716)
+           between f5404410 and f4600482
+     - r21214 tested simplicialbot
+           vertices: p1652(v170443) p1626(v147320) p1638(v118486)
+           between f4600482 and f5160727
+     - r21405 tested simplicialbot
+           vertices: p2139(v219097) p2137(v74108) p2138(v38377)
+           between f4600482 and f5783902
+     - r23388 tested simplicialtop
+           vertices: p284(v204990) p274(v179131) p285(v179130)
+           between f5404395 and f4600482
+     - r23352 tested simplicialbot
+           vertices: p1045(v174855) p1039(v148115) p1036(v121667)
+           between f4600482 and f4597067
+     - r23354 tested simplicialbot
+           vertices: p266(v200718) p276(v174837) p267(v148105)
+           between f4600482 and f5290406
+     - r23353 tested simplicialtop
+           vertices: p266(v200718) p276(v174837) p275(v121662)
+           between f5293986 and f4600482
+     - r23360 tested simplicialtop
+           vertices: p1053(v200749) p543(v174854) p1044(v121665)
+           between f5291285 and f4600482
+     - r23355 tested simplicialbot
+           vertices: p851(v200912) p864(v121722) p865(v96991)
+           between f4600482 and f5295773
+     - r23387 tested simplicialbot
+           vertices: p274(v179131) p285(v179130) p275(v121662)
+           between f4600482 and f4711165
+     - r23358 tested simplicialbot
+           vertices: p361(v200701) p369(v74313) p362(v21441)
+           between f4600482 and f5289870
+     - r23357 tested simplicialtop
+           vertices: p370(v130749) p369(v74313) p362(v21441)
+           between f5289426 and f4600482
+     - r23288 tested simplicialbot
+           vertices: p1763(v199465) p1775(v199464) p1777(v173750)
+           between f4600482 and f5784131
+     - r23309 tested simplicialtop
+           vertices: p284(v204990) p285(v179130) p296(v148103)
+           between f5404406 and f4600482
+     - r23368 tested simplicialbot
+           vertices: p2139(v219097) p2144(v195870) p2145(v170455)
+           between f4600482 and f5783888
+     - r23369 tested simplicialtop
+           vertices: p1626(v147320) p1638(v118486) p1637(v55036)
+           between f4480411 and f4600482
+     - r23373 tested simplicialtop
+           vertices: p1651(v219079) p1650(v144369) p1638(v118486)
+           between f5783392 and f4600482
+     - r23372 tested simplicialbot
+           vertices: p1650(v144369) p1638(v118486) p1637(v55036)
+           between f4600482 and f5161040
+     - r23304 tested simplicialbot
+           vertices: p1626(v147320) p1636(v144125) p1637(v55036)
+           between f4600482 and f3861590
+     - r23371 tested simplicialtop
+           vertices: p2149(v219117) p1664(v195857) p1652(v170443)
+           between f5784429 and f4600482
+     - r23370 tested simplicialbot
+           vertices: p1651(v219079) p1664(v195857) p1652(v170443)
+           between f4600482 and f5783373
+     - r23376 tested simplicialtop
+           vertices: p2145(v170455) p2140(v170454) p2152(v144363)
+           between f4480332 and f4600482
+     - r23317 tested simplicialbot
+           vertices: p1712(v173752) p1720(v147322) p1721(v121128)
+           between f4600482 and f4567677
+     - r21333 tested simplicialbot
+           vertices: p2147(v219092) p2148(v195876) p2142(v118495)
+           between f4600482 and f5783732
+     - r23318 tested simplicialtop
+           vertices: p1730(v199462) p1720(v147322) p1721(v121128)
+           between f5256895 and f4600482
+     - r23313 tested simplicialbot
+           vertices: p1739(v199463) p1740(v173748) p1729(v74109)
+           between f4600482 and f5256927
+     - r23283 tested simplicialtop
+           vertices: p1730(v199462) p1740(v173748) p1729(v74109)
+           between f5878680 and f4600482
+     - r21336 tested simplicialtop
+           vertices: p2147(v219092) p2141(v195868) p2142(v118495)
+           between f5783735 and f4600482
+     - r23314 tested simplicialtop
+           vertices: p1739(v199463) p1740(v173748) p1751(v147321)
+           between f5256921 and f4600482
+     - r23282 tested simplicialbot
+           vertices: p1730(v199462) p1720(v147322) p1729(v74109)
+           between f4600482 and f5256904
+     - r23377 tested simplicialbot
+           vertices: p2141(v195868) p2140(v170454) p2152(v144363)
+           between f4600482 and f5160930
+     - r23731 tested simplicialtop
+           vertices: p1750(v222586) p1739(v199463) p1751(v147321)
+           between f5878724 and f4600482
+     - r23711 tested simplicialtop
+           vertices: p1605(v222584) p1042(v174856) p1111(v38358)
+           between f4600482 and f5878673
+     - r23713 tested simplicialtop
+           vertices: p1605(v222584) p1042(v174856) p1039(v148115)
+           between f5878673 and f4600482
+     - r8920 tested simplicialbot
+           vertices: p1705(v173751) p1871(v96937) p1704(v55035)
+           between f4600482 and f4567642
+     - r23380 tested simplicialtop
+           vertices: p2141(v195868) p2140(v170454) p2137(v74108)
+           between f5783748 and f4600482
+     - r23383 tested simplicialtop
+           vertices: p1775(v199464) p2142(v118495) p2137(v74108)
+           between f5256932 and f4600482
+     - r23382 tested simplicialbot
+           vertices: p2141(v195868) p2142(v118495) p2137(v74108)
+           between f4600482 and f5783703
+     - r23396 tested simplicialtop
+           vertices: p543(v174854) p544(v148114) p1044(v121665)
+           between f5235618 and f4600482
+     - r23398 tested simplicialbot
+           vertices: p328(v210279) p251(v174756) p259(v96945)
+           between f4600482 and f5546449
+     - r23403 tested simplicialtop
+           vertices: p352(v200603) p374(v157895) p351(v148058)
+           between f5546405 and f4600482
+     - r23400 tested simplicialtop
+           vertices: p352(v200603) p368(v200601) p374(v157895)
+           between f5287101 and f4600482
+     - r23696 tested simplicialtop
+           vertices: p1624(v222583) p1604(v147319) p1614(v121127)
+           between f5878653 and f4600482
+     - r23699 tested simplicialbot
+           vertices: p1624(v222583) p1108(v147318) p1635(v74124)
+           between f4600482 and f5878647
+     - r23705 tested simplicialtop
+           vertices: p1624(v222583) p1615(v199459) p1626(v147320)
+           between f5878636 and f4600482
+     - r23702 tested simplicialbot
+           vertices: p1624(v222583) p1615(v199459) p1614(v121127)
+           between f4600482 and f5878638
+     - r23706 tested simplicialbot
+           vertices: p1605(v222584) p1604(v147319) p1614(v121127)
+           between f4600482 and f5878659
+     - r23709 tested simplicialtop
+           vertices: p1605(v222584) p1604(v147319) p1111(v38358)
+           between f5878668 and f4600482
+ERRONEOUS OTHER FACET:
+- f5878789
+    - flags: top newfacet keepcentrum newmerge
+    - merges: 2
+    - normal:  -0.01985  0.03956 3.58e-10   -0.999
+    - offset: -7.460686e+08
+    - maxoutside:   1.188644
+    - vertices: p1765(v222589) p2232(v199466) p1763(v199465) p1777(v173750) p1751(v147321) p1753(v147234)
+    - neighboring facets: f4600482 f5878790 f5878774 f5878785 f5878793 f5878792
+    - ridges:
+     - r23054 nonconvex simplicialtop
+           vertices: p2232(v199466) p1763(v199465) p1751(v147321)
+           between f5878789 and f4600482
+     - r22992 nonconvex
+           vertices: p2232(v199466) p1763(v199465) p1777(v173750)
+           between f4600482 and f5878789
+     - r23056 nonconvex
+           vertices: p2232(v199466) p1751(v147321) p1753(v147234)
+           between f5878789 and f4600482
+     - r23752 simplicialtop simplicialbot
+           vertices: p1765(v222589) p1763(v199465) p1751(v147321)
+           between f5878790 and f5878789
+     - r23750 simplicialbot
+           vertices: p1765(v222589) p2232(v199466) p1753(v147234)
+           between f5878789 and f5878774
+     - r23749 simplicialtop
+           vertices: p1765(v222589) p1751(v147321) p1753(v147234)
+           between f5878785 and f5878789
+     - r23755 simplicialtop
+           vertices: p1765(v222589) p2232(v199466) p1777(v173750)
+           between f5878793 and f5878789
+     - r23754 simplicialbot
+           vertices: p1765(v222589) p1763(v199465) p1777(v173750)
+           between f5878789 and f5878792
+
+While executing:  | qhull d Qc Qbb Qt Q12 Qz
+Options selected for Qhull 2020.2.r 2020/08/31:
+  run-id 1225777782  delaunay  Qcoplanar-keep  Qbbound-last  Qtriangulate
+  Q12-allow-wide  Qz-infinity-point  _pre-merge  _zero-centrum  Qinterior-keep
+  Pgood  _max-width 1.7e+13  Error-roundoff 0.025  _one-merge 0.23
+  Visible-distance 0.15  U-max-coplanar 0.15  Width-outside 0.3
+  _wide-facet 0.91  _maxoutside 16
+Last point added to hull was p1765.  Last merge was #9062.
+
+At error exit:
+
+Delaunay triangulation by the convex hull of 273836 points in 4-d:
+
+  Number of input sites and at-infinity: 222589
+  Total number of nearly incident points: 51247
+  Number of Delaunay regions: 1495050
+  Number of non-simplicial Delaunay regions: 416
+
+Statistics for:  | qhull d Qc Qbb Qt Q12 Qz
+
+  Number of points processed: 222589
+  Number of hyperplanes created: 5875144
+  Number of facets in hull: 1496729
+  Number of distance tests for qhull: 41284978
+  Number of distance tests for merging: 30302324
+  Number of distance tests for checking: 0
+  Number of merged facets: 9749
+  Maximum distance of point above facet: 16 (63.3x)
+  Maximum distance of vertex below facet: -54 (211.5x)
+
+
+precision problems (corrected unless 'Q0' or an error)
+    392 flipped facets
+   2263 coplanar horizon facets for new vertices
+     33 degenerate hyperplanes recomputed with gaussian elimination
+     16 dupridges with flip facet into good neighbor
+
+A wide merge error has occurred.  Qhull has produced a wide facet due to facet merges and vertex merges.
+This usually occurs when the input is nearly degenerate and substantial merging has occurred.
+See http://www.qhull.org/html/qh-impre.htm#limit
+

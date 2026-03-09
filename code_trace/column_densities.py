@@ -27,25 +27,32 @@ import os
 
 timer_start = time.time()
 
-# Allow dump number and map to be set via environment variables (for batch processing)
+# Allow dump number to be set via environment variable (for batch processing)
 # Otherwise use default values
-dump = int(os.environ.get('DUMP_NUM', 1600))
-map = os.environ.get('MAP_NAME', 'v10_a09')
+dump = int(os.environ.get('DUMP_NUM', 40))
 
 wdir = Path.cwd()
-pdir = wdir.parent
+
+# Working directory where phantomanalysis runs (contains trace_output/ and PhotoData/)
+work_dir = Path(os.environ.get('WORK_DIR', '/fred/oz304/beckers/pigru'))
+av_output_dir = work_dir / 'AV'
+av_output_dir.mkdir(exist_ok=True)
+
+# Data directory and file prefix (e.g. 'pigru' or 'wind')
+data_dir = Path(os.environ.get('DATA_DIR', '/fred/oz304/tdanilov/pigru'))
+prefix   = os.environ.get('PREFIX', 'pigru')
 
 Output = "PhotoData" 
 
 # Depending on where you put the data, you might need to change the paths here
-dump_file  = Path(pdir / f'{map}/wind_{dump:05d}')
+dump_file  = data_dir / f'{prefix}_{dump:05d}'
 print(dump_file)
-setup_file = Path(pdir / f'{map}/wind.setup')
+setup_file = data_dir / f'{prefix}.setup'
 print(setup_file)
-input_file = Path(pdir / f'{map}/wind.in')
+input_file = data_dir / f'{prefix}.in'
 
 # Loading the data
-setupData = plons.LoadSetup(pdir, f"{map}/wind")
+setupData = plons.LoadSetup(data_dir.parent, f'{data_dir.name}/{prefix}')
 dumpData  = plons.LoadFullDump(str(dump_file), setupData)
 print(dumpData.keys())
 
@@ -90,7 +97,7 @@ print('')
 
 ########################################################################################################################
 
-Output = Path('PhotoData')
+Output = work_dir / 'PhotoData'
 Output.mkdir(exist_ok=True)
 
 target = Output / f'boundary{dump}.txt'
@@ -98,16 +105,16 @@ target2 = Output / f'neighbors{dump}.pkl'
 
 if target.exists() and target2.exists():
     print(f'File {target} and {target2} exists, skipping computation.')
-    with open(f'PhotoData/neighbors{dump}.pkl', 'rb') as f:
+    with open(Output / f'neighbors{dump}.pkl', 'rb') as f:
         neighbors = pickle.load(f)
         
-    boundary = np.loadtxt(f'PhotoData/boundary{dump}.txt', dtype=int)
+    boundary = np.loadtxt(Output / f'boundary{dump}.txt', dtype=int)
     nbs       = [n for sublist in neighbors for n in sublist]
     n_nbs     = [len(sublist) for sublist in neighbors]
     
 else:
     print(f'Computing and saving to {target}.')
-    delaunay = Delaunay(position)
+    delaunay = Delaunay(position, qhull_options='QJ')
     indptr, indices = delaunay.vertex_neighbor_vertices
     neighbors = [indices[indptr[k]:indptr[k+1]] for k in range(npoints)]
     
@@ -274,7 +281,7 @@ print('')
 
 ########################################################################################################################
 
-models_dir = Path('Models')
+models_dir = work_dir / 'Models'
 if not models_dir.exists():
     models_dir.mkdir()
 
@@ -377,55 +384,20 @@ x_vals = rtf.do_calculate_x(res, new_distances, 2)
 dumpData['x_vals'] = x_vals
 
 # Get particle IDs
-particle_ids = dumpData['iorig'].astype(int)
+particle_ids = np.array(dumpData['iorig'], dtype=np.int32)
 
 # Convert column density to A_V
-# x_vals is mass column density, convert to number density by dividing by mass_per_H
-# n_H2 = x_vals / mass_per_H  # number density [cm^-2]
 A_V = 2*x_vals / (1.87e21)  # Visual extinction [mag]
 
-# Load the list of particle IDs we're interested in from the model directory
-particle_ids_file = Path(pdir / f'{map}/particle_IDs.txt')
-if particle_ids_file.exists():
-    print(f"\nFiltering output to particles in {particle_ids_file}")
-    with open(particle_ids_file, 'r') as f:
-        interested_ids = set(int(line.strip()) for line in f if line.strip())
-    
-    # Create mask for particles we're interested in
-    # np.isin() will only match particles that exist in BOTH this dump AND interested_ids
-    mask = np.isin(particle_ids, list(interested_ids))
-    
-    print(f"Total particles in dump {dump}: {len(particle_ids)}")
-    print(f"  Particle ID range: {particle_ids.min()} to {particle_ids.max()}")
-    print(f"Particles in interest list: {len(interested_ids)}")
-    print(f"  Particle ID range: {min(interested_ids)} to {max(interested_ids)}")
-    print(f"Particles to export (intersection): {np.sum(mask)}")
-    
-    if np.sum(mask) == 0:
-        print(f"  ⚠ WARNING: No particles from interest list found in this dump!")
-        print(f"  This is expected for early dumps where tracked particles haven't formed yet.")
-    
-    # Filter to only interested particles
-    particle_ids_filtered = particle_ids[mask]
-    A_V_filtered = A_V[mask]
-else:
-    print(f"\nWarning: {particle_ids_file} not found, exporting all particles")
-    particle_ids_filtered = particle_ids
-    A_V_filtered = A_V
-
-# Create output array: Particle ID, A_V (mag)
-# Time is stored in header only to save memory
-output_data = np.column_stack([
-    particle_ids_filtered,
-    A_V_filtered
-])
-
-# np.savetxt(f'PhotoData/ColumnDensityH2_{dump}_nrays{nrays}_nside{nside_interp}.txt', x_vals)
-
-# Save with header containing time
-header = f'Time(s): {real_time:.8e}\nDump: {dump}\nParticleID  A_V(mag)'
-np.savetxt(f'PhotoData/AV_{dump}_nrays{nrays}_nside{nside_interp}.txt', 
-           output_data, header=header, fmt='%d %.16f')
+# Save all particles as a Fortran-readable flat binary (no extension, like phantom dumps):
+# int32: number of particles | int32[n]: particle IDs (iorig) | float64[n]: A_V values
+av_file = av_output_dir / f'AV_{dump:05d}'
+n = len(particle_ids)
+with open(av_file, 'wb') as f:
+    np.array([n], dtype=np.int32).tofile(f)
+    particle_ids.tofile(f)
+    A_V.astype(np.float64).tofile(f)
+print(f'Saved A_V binary for {n} particles to {av_file}')
 
 timer_end = time.time()
 
@@ -434,150 +406,150 @@ print(f"Total runtime: {timer_end - timer_start} seconds")
 
 # if you want to make plots of the column density slices uncomment the following
 
-n = 600
-lims = 5000  
+# n = 600
+# lims = 5000  
 
-import plons
-import plons.SmoothingKernelScript    as sk
-import plons.PhysicalQuantities       as pq
-import plons.ConversionFactors_cgs    as cgs
-import plons.Plotting                 as plot
+# import plons
+# import plons.SmoothingKernelScript    as sk
+# import plons.PhysicalQuantities       as pq
+# import plons.ConversionFactors_cgs    as cgs
+# import plons.Plotting                 as plot
 
-import numpy.typing as npt
-import matplotlib
-from typing import Dict, Tuple, Any, Optional
+# import numpy.typing as npt
+# import matplotlib
+# from typing import Dict, Tuple, Any, Optional
 
-def plotSlice(ax: plt.Axes,
-            X: npt.NDArray[np.single],
-            Y: npt.NDArray[np.single],
-            smooth: Dict[str, npt.NDArray[np.single]],
-            observable: str,
-            logplot: bool = False,
-            fs : int = 16,
-            cbar : bool = False,
-            cmap: matplotlib.colors.Colormap = plt.cm.get_cmap('inferno'),
-            clim: Tuple[Optional[float], Optional[float]] = (None, None)) -> matplotlib.colorbar.Colorbar:
-    """Plot a property given a grid and smoothed data ontop of the grid
+# def plotSlice(ax: plt.Axes,
+#             X: npt.NDArray[np.single],
+#             Y: npt.NDArray[np.single],
+#             smooth: Dict[str, npt.NDArray[np.single]],
+#             observable: str,
+#             logplot: bool = False,
+#             fs : int = 16,
+#             cbar : bool = False,
+#             cmap: matplotlib.colors.Colormap = plt.cm.get_cmap('inferno'),
+#             clim: Tuple[Optional[float], Optional[float]] = (None, None)) -> matplotlib.colorbar.Colorbar:
+#     """Plot a property given a grid and smoothed data ontop of the grid
 
-    Args:
-        ax (plt.Axes): axis of figure on which you want to plot the slice
-        X (npt.NDArray[np.single]): X values in meshgrid which you want to plot
-        Y (npt.NDArray[np.single]): Y values in meshgrid which you want to plot
-        smooth (Dict[str, npt.NDArray[np.single]]): Dictionary pointing at smoothed values in meshgrid which you want to plot
-        observable (str): Name of the observable you want to plot, corresponding to the name in the smooth directory
-        logplot (bool, optional): plot in log scale?. Defaults to False.
-        cmap (matplotlib.colors.Colormap, optional): Colormap to use. Defaults to cm.get_cmap('inferno').
-        clim (Tuple[Optional[float], Optional[float]], optional): limits for the colorbar. Defaults to (None, None).
+#     Args:
+#         ax (plt.Axes): axis of figure on which you want to plot the slice
+#         X (npt.NDArray[np.single]): X values in meshgrid which you want to plot
+#         Y (npt.NDArray[np.single]): Y values in meshgrid which you want to plot
+#         smooth (Dict[str, npt.NDArray[np.single]]): Dictionary pointing at smoothed values in meshgrid which you want to plot
+#         observable (str): Name of the observable you want to plot, corresponding to the name in the smooth directory
+#         logplot (bool, optional): plot in log scale?. Defaults to False.
+#         cmap (matplotlib.colors.Colormap, optional): Colormap to use. Defaults to cm.get_cmap('inferno').
+#         clim (Tuple[Optional[float], Optional[float]], optional): limits for the colorbar. Defaults to (None, None).
 
-    Returns:
-        colorbar.Colorbar: Colorbar
-    """
+#     Returns:
+#         colorbar.Colorbar: Colorbar
+#     """
 
-    ax.set_aspect('equal')
-    ax.set_facecolor('k')
+#     ax.set_aspect('equal')
+#     ax.set_facecolor('k')
 
-    if logplot:
-        obs = np.log10(smooth[observable]+1e-99)
-    else:
-        obs = smooth[observable]
-    axPlot = ax.pcolormesh(X/cgs.au, Y/cgs.au, obs, cmap=cmap, vmin=clim[0], vmax = clim[1])
+#     if logplot:
+#         obs = np.log10(smooth[observable]+1e-99)
+#     else:
+#         obs = smooth[observable]
+#     axPlot = ax.pcolormesh(X/cgs.au, Y/cgs.au, obs, cmap=cmap, vmin=clim[0], vmax = clim[1])
     
-    if cbar == True:
-        cbar = plt.colorbar(axPlot, ax = ax, location='right', fraction=0.0471, pad=0.01)  
-        cbar.ax.tick_params(labelsize=fs-4)          
-        return cbar
+#     if cbar == True:
+#         cbar = plt.colorbar(axPlot, ax = ax, location='right', fraction=0.0471, pad=0.01)  
+#         cbar.ax.tick_params(labelsize=fs-4)          
+#         return cbar
     
-def get_smooth(dumpData, X, Y, Z, key):
-    smooth = sk.smoothMesh(X, Y, Z, dumpData, [f'{key}'])
-    return remove_nans(smooth)
+# def get_smooth(dumpData, X, Y, Z, key):
+#     smooth = sk.smoothMesh(X, Y, Z, dumpData, [f'{key}'])
+#     return remove_nans(smooth)
 
-def remove_nans(smooth):
-    for key in smooth.keys():
-        smooth[key][np.isnan(smooth[key])] = 0
-    return smooth
+# def remove_nans(smooth):
+#     for key in smooth.keys():
+#         smooth[key][np.isnan(smooth[key])] = 0
+#     return smooth
 
-x = np.linspace(-lims, lims, n)*cgs.au
-y = np.linspace(-lims, lims, n)*cgs.au
-X, Y = np.meshgrid(x, y)
-Z = np.zeros_like(X)
+# x = np.linspace(-lims, lims, n)*cgs.au
+# y = np.linspace(-lims, lims, n)*cgs.au
+# X, Y = np.meshgrid(x, y)
+# Z = np.zeros_like(X)
 
-N_z = get_smooth(dumpData, X, Y, Z, 'x_vals')
+# N_z = get_smooth(dumpData, X, Y, Z, 'x_vals')
 
-fig, ax = plt.subplots(1, 1, figsize=(8,6))
+# fig, ax = plt.subplots(1, 1, figsize=(8,6))
 
-cbar = plotSlice(ax, X, Y, N_z, f'x_vals', logplot = True, cmap = plt.colormaps['inferno'], cbar = True, 
-        clim=(np.log10( min(np.array(dumpData['x_vals'][ np.array(dumpData['x_vals']) > 0 ])) ), np.log10( np.amax(N_z['x_vals']) ) ) )
+# cbar = plotSlice(ax, X, Y, N_z, f'x_vals', logplot = True, cmap = plt.colormaps['inferno'], cbar = True, 
+#         clim=(np.log10( min(np.array(dumpData['x_vals'][ np.array(dumpData['x_vals']) > 0 ])) ), np.log10( np.amax(N_z['x_vals']) ) ) )
 
-cbar.set_label('log N [cm$^{-2}$]', fontsize=13)
+# cbar.set_label('log N [cm$^{-2}$]', fontsize=13)
 
-ax.set_xlabel('x [au]', fontsize=13)
-ax.set_ylabel('y [au]', fontsize=13)
+# ax.set_xlabel('x [au]', fontsize=13)
+# ax.set_ylabel('y [au]', fontsize=13)
 
-fig.savefig(f'ColumnDensity_xy_{dump}_nrays{nrays}_nside{nside_interp}.png', dpi=300)
-plt.close()
+# fig.savefig(f'ColumnDensity_xy_{dump}_nrays{nrays}_nside{nside_interp}.png', dpi=300)
+# plt.close()
 
-# Plot density projections (x-z plane)
-x = np.linspace(-lims, lims, n)*cgs.au
-z = np.linspace(-lims, lims, n)*cgs.au
-X, Z = np.meshgrid(x, z)
-Y = np.zeros_like(X)
+# # Plot density projections (x-z plane)
+# x = np.linspace(-lims, lims, n)*cgs.au
+# z = np.linspace(-lims, lims, n)*cgs.au
+# X, Z = np.meshgrid(x, z)
+# Y = np.zeros_like(X)
 
-N_x = get_smooth(dumpData, X, Y, Z, 'x_vals')
+# N_x = get_smooth(dumpData, X, Y, Z, 'x_vals')
 
-fig, ax = plt.subplots(1, 1, figsize=(8,6))
+# fig, ax = plt.subplots(1, 1, figsize=(8,6))
 
-cbar = plotSlice(ax, X, Z, N_x, f'x_vals', logplot = True, cmap = plt.colormaps['inferno'], cbar = True, 
-        clim=(np.log10( 4.163480925788e+16 ), np.log10( np.amax(N_x['x_vals']) ) ) )
+# cbar = plotSlice(ax, X, Z, N_x, f'x_vals', logplot = True, cmap = plt.colormaps['inferno'], cbar = True, 
+#         clim=(np.log10( 4.163480925788e+16 ), np.log10( np.amax(N_x['x_vals']) ) ) )
 
-cbar.set_label('log N [cm$^{-2}$]', fontsize=13)
+# cbar.set_label('log N [cm$^{-2}$]', fontsize=13)
 
-ax.set_xlabel('x [au]', fontsize=13)
-ax.set_ylabel('z [au]', fontsize=13)
+# ax.set_xlabel('x [au]', fontsize=13)
+# ax.set_ylabel('z [au]', fontsize=13)
 
-fig.savefig(f'ColumnDensity_xz_{dump}_nrays{nrays}_nside{nside_interp}.png', dpi=300)
-plt.close()
+# fig.savefig(f'ColumnDensity_xz_{dump}_nrays{nrays}_nside{nside_interp}.png', dpi=300)
+# plt.close()
 
-# Plot density projections (x-y plane)
-x = np.linspace(-lims, lims, n)*cgs.au
-y = np.linspace(-lims, lims, n)*cgs.au
-X, Y = np.meshgrid(x, y)
-Z = np.zeros_like(X)
+# # Plot density projections (x-y plane)
+# x = np.linspace(-lims, lims, n)*cgs.au
+# y = np.linspace(-lims, lims, n)*cgs.au
+# X, Y = np.meshgrid(x, y)
+# Z = np.zeros_like(X)
 
-rho_z = get_smooth(dumpData, X, Y, Z, 'rho')
+# rho_z = get_smooth(dumpData, X, Y, Z, 'rho')
 
-fig, ax = plt.subplots(1, 1, figsize=(8,6))
+# fig, ax = plt.subplots(1, 1, figsize=(8,6))
 
-cbar = plotSlice(ax, X, Y, rho_z, 'rho', logplot=True, cmap=plt.colormaps['inferno'], cbar=True,
-        clim=(np.log10(min(np.array(dumpData['rho'][np.array(dumpData['rho']) > 0]))), 
-              np.log10(np.amax(rho_z['rho']))))
+# cbar = plotSlice(ax, X, Y, rho_z, 'rho', logplot=True, cmap=plt.colormaps['inferno'], cbar=True,
+#         clim=(np.log10(min(np.array(dumpData['rho'][np.array(dumpData['rho']) > 0]))), 
+#               np.log10(np.amax(rho_z['rho']))))
 
-cbar.set_label('log $\\rho$ [g / cm$^{3}$]', fontsize=13)
+# cbar.set_label('log $\\rho$ [g / cm$^{3}$]', fontsize=13)
 
-ax.set_xlabel('x [au]', fontsize=13)
-ax.set_ylabel('y [au]', fontsize=13)
+# ax.set_xlabel('x [au]', fontsize=13)
+# ax.set_ylabel('y [au]', fontsize=13)
 
-fig.savefig(f'Density_xy_{dump}.png', dpi=300)
-plt.close()
+# fig.savefig(f'Density_xy_{dump}.png', dpi=300)
+# plt.close()
 
-# Plot density projections (x-z plane)
-x = np.linspace(-lims, lims, n)*cgs.au
-z = np.linspace(-lims, lims, n)*cgs.au
-X, Z = np.meshgrid(x, z)
-Y = np.zeros_like(X)
+# # Plot density projections (x-z plane)
+# x = np.linspace(-lims, lims, n)*cgs.au
+# z = np.linspace(-lims, lims, n)*cgs.au
+# X, Z = np.meshgrid(x, z)
+# Y = np.zeros_like(X)
 
-rho_x = get_smooth(dumpData, X, Y, Z, 'rho')
+# rho_x = get_smooth(dumpData, X, Y, Z, 'rho')
 
-fig, ax = plt.subplots(1, 1, figsize=(8,6))
+# fig, ax = plt.subplots(1, 1, figsize=(8,6))
 
-cbar = plotSlice(ax, X, Z, rho_x, 'rho', logplot=True, cmap=plt.colormaps['inferno'], cbar=True,
-        clim=(np.log10(min(np.array(dumpData['rho'][np.array(dumpData['rho']) > 0]))), 
-              np.log10(np.amax(rho_x['rho']))))
+# cbar = plotSlice(ax, X, Z, rho_x, 'rho', logplot=True, cmap=plt.colormaps['inferno'], cbar=True,
+#         clim=(np.log10(min(np.array(dumpData['rho'][np.array(dumpData['rho']) > 0]))), 
+#               np.log10(np.amax(rho_x['rho']))))
 
-cbar.set_label('log $\\rho$ [g / cm$^{3}$]', fontsize=13)
+# cbar.set_label('log $\\rho$ [g / cm$^{3}$]', fontsize=13)
 
-ax.set_xlabel('x [au]', fontsize=13)
-ax.set_ylabel('z [au]', fontsize=13)
+# ax.set_xlabel('x [au]', fontsize=13)
+# ax.set_ylabel('z [au]', fontsize=13)
 
-fig.savefig(f'Density_xz_{dump}.png', dpi=300)
-plt.close()
+# fig.savefig(f'Density_xz_{dump}.png', dpi=300)
+# plt.close()
 

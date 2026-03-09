@@ -1,0 +1,122 @@
+Traceback (most recent call last):
+  File "/fred/oz304/beckers/Chemistry/code_trace/column_densities.py", line 117, in <module>
+    delaunay = Delaunay(position)
+  File "scipy/spatial/_qhull.pyx", line 1889, in scipy.spatial._qhull.Delaunay.__init__
+  File "scipy/spatial/_qhull.pyx", line 356, in scipy.spatial._qhull._Qhull.__init__
+scipy.spatial._qhull.QhullError: QH6417 qhull precision error (qh_merge_twisted): twisted facet f3824643 does not contain pinched vertices.  Too wide to merge into neighbor.  mindist -5.4 maxdist  0 vertexdist 2.2e+10 maxpinched 3.4 neighbor f4437262 mindist  0 maxdist 5.4
+ERRONEOUS FACET:
+- f3824643
+    - flags: top tested
+    - merges: 1
+    - normal:   0.02533   0.0286 8.789e-09  -0.9993
+    - offset: 3.841904e+09
+    - center: 122092537965.1746 -86238025860.68884 193849913586.2101 4471440358.729097 
+    - vertices: p671(v147882) p588(v145284) p575(v123552) p589(v121162) p97(v97468)
+    - neighboring facets: f4437262 f3824561 f3824644 f4277949 f4277959
+    - ridges:
+     - r44958 nonconvex simplicialtop simplicialbot
+           vertices: p575(v123552) p589(v121162) p97(v97468)
+           between f3824643 and f4437262
+     - r44959 nonconvex
+           vertices: p671(v147882) p575(v123552) p97(v97468)
+           between f3824643 and f4437262
+     - r16472 tested simplicialbot
+           vertices: p588(v145284) p589(v121162) p97(v97468)
+           between f3824561 and f3824643
+     - r45006 tested simplicialtop simplicialbot
+           vertices: p588(v145284) p575(v123552) p589(v121162)
+           between f3824644 and f3824643
+     - r45005 tested simplicialbot
+           vertices: p671(v147882) p588(v145284) p575(v123552)
+           between f3824643 and f4277949
+     - r45004 tested simplicialtop
+           vertices: p671(v147882) p588(v145284) p97(v97468)
+           between f4277959 and f3824643
+ERRONEOUS OTHER FACET:
+- f4437262
+    - flags: bottom newfacet keepcentrum newmerge
+    - merges: 5
+    - normal:   0.02533   0.0286 -3.463e-11  -0.9993
+    - offset: 3.841907e+09
+    - maxoutside:   2.247004
+    - vertices: p363(v167681) p671(v147882) p71(v145285) p575(v123552) p589(v121162) p97(v97468) p582(v63255) p85(v46761)
+    - neighboring facets: f3824643 f4437245 f4437292 f4437290 f4277947 f3240682 f4437205 f4277944 f4437046
+    - ridges:
+     - r44958 nonconvex simplicialtop simplicialbot
+           vertices: p575(v123552) p589(v121162) p97(v97468)
+           between f3824643 and f4437262
+     - r44959 nonconvex
+           vertices: p671(v147882) p575(v123552) p97(v97468)
+           between f3824643 and f4437262
+     - r45238 nonconvex
+           vertices: p363(v167681) p71(v145285) p589(v121162)
+           between f4437245 and f4437262
+     - r16475 nonconvex
+           vertices: p71(v145285) p589(v121162) p97(v97468)
+           between f4437262 and f4437245
+     - r45765 simplicialbot
+           vertices: p363(v167681) p671(v147882) p575(v123552)
+           between f4437262 and f4437292
+     - r45761
+           vertices: p363(v167681) p671(v147882) p85(v46761)
+           between f4437292 and f4437262
+     - r45801
+           vertices: p363(v167681) p575(v123552) p582(v63255)
+           between f4437262 and f4437290
+     - r45230 simplicialbot
+           vertices: p71(v145285) p97(v97468) p85(v46761)
+           between f4437262 and f4277947
+     - r45992 simplicialbot
+           vertices: p575(v123552) p589(v121162) p582(v63255)
+           between f4437262 and f3240682
+     - r45232 nonconvex simplicialbot
+           vertices: p363(v167681) p71(v145285) p85(v46761)
+           between f4437262 and f4437205
+     - r45971 nonconvex simplicialtop
+           vertices: p671(v147882) p97(v97468) p85(v46761)
+           between f4277944 and f4437262
+     - r45993
+           vertices: p363(v167681) p589(v121162) p582(v63255)
+           between f4437046 and f4437262
+
+While executing:  | qhull d Qc Qt Q12 Qbb Qz
+Options selected for Qhull 2020.2.r 2020/08/31:
+  run-id 1224634906  delaunay  Qcoplanar-keep  Qtriangulate  Q12-allow-wide
+  Qbbound-last  Qz-infinity-point  _pre-merge  _zero-centrum  Qinterior-keep
+  Pgood  _max-width 1.3e+13  Error-roundoff 0.019  _one-merge 0.17
+  Visible-distance 0.11  U-max-coplanar 0.11  Width-outside 0.23
+  _wide-facet 0.68  _maxoutside 1.5e+02
+Last point added to hull was p363.  Last merge was #18760.
+
+At error exit:
+
+Delaunay triangulation by the convex hull of 220773 points in 4-d:
+
+  Number of input sites and at-infinity: 167681
+  Total number of nearly incident points: 53092
+  Number of Delaunay regions: 1125422
+  Number of non-simplicial Delaunay regions: 354
+
+Statistics for:  | qhull d Qc Qt Q12 Qbb Qz
+
+  Number of points processed: 167681
+  Number of hyperplanes created: 4434083
+  Number of facets in hull: 1127369
+  Number of distance tests for qhull: 34478873
+  Number of distance tests for merging: 24757655
+  Number of distance tests for checking: 0
+  Number of merged facets: 19324
+  Maximum distance of point above facet: 1.5e+02 (787.7x)
+  Maximum distance of vertex below facet: -1.9e+02 (1021.2x)
+
+
+precision problems (corrected unless 'Q0' or an error)
+    780 flipped facets
+   2026 coplanar horizon facets for new vertices
+     32 degenerate hyperplanes recomputed with gaussian elimination
+     21 dupridges with flip facet into good neighbor
+
+A wide merge error has occurred.  Qhull has produced a wide facet due to facet merges and vertex merges.
+This usually occurs when the input is nearly degenerate and substantial merging has occurred.
+See http://www.qhull.org/html/qh-impre.htm#limit
+
