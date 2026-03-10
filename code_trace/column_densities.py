@@ -246,7 +246,7 @@ all_positions = np.zeros((num_rays, max_points, 3))
 all_r = np.zeros((num_rays, max_points))
 
 # change max_workers based on your CPU cores (if running on mac, use ThreadPoolExecutor)
-with ProcessPoolExecutor(max_workers=16) as executor:
+with ProcessPoolExecutor(max_workers=1) as executor:
 # with ThreadPoolExecutor(max_workers=12) as executor:
     futures = {executor.submit(process_ray, start_points[i], ray): i 
             for i, ray in enumerate(rays)}
