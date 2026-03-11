@@ -29,18 +29,18 @@ timer_start = time.time()
 
 # Allow dump number to be set via environment variable (for batch processing)
 # Otherwise use default values
-dump = int(os.environ.get('DUMP_NUM', 60))
+dump = int(os.environ.get('DUMP_NUM', 1200))
 
 wdir = Path.cwd()
 
 # Working directory where phantomanalysis runs (contains trace_output/ and PhotoData/)
-work_dir = Path(os.environ.get('WORK_DIR', '/fred/oz304/beckers/pigru'))
+work_dir = Path(os.environ.get('WORK_DIR', '/fred/oz304/beckers/v20a25_out'))
 av_output_dir = work_dir / 'AV'
 av_output_dir.mkdir(exist_ok=True)
 
 # Data directory and file prefix (e.g. 'pigru' or 'wind')
-data_dir = Path(os.environ.get('DATA_DIR', '/fred/oz304/tdanilov/pigru'))
-prefix   = os.environ.get('PREFIX', 'pigru')
+data_dir = Path(os.environ.get('DATA_DIR', '/fred/oz304/beckers/v20a25'))
+prefix   = os.environ.get('PREFIX', 'wind')
 
 Output = "PhotoData" 
 
@@ -407,7 +407,7 @@ print(f"Total runtime: {timer_end - timer_start} seconds")
 # if you want to make plots of the column density slices uncomment the following
 
 # n = 600
-# lims = 1000  
+# lims = 5000  
 
 # import plons
 # import plons.SmoothingKernelScript    as sk

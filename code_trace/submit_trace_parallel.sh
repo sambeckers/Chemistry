@@ -1,14 +1,14 @@
 #!/bin/bash
 # Submit phantomanalysis as a SLURM array job.
-# Each task processes one pair of consecutive dumps:
-#   ./phantomanalysis PREFIX_N PREFIX_{N+1}
+# Each task processes one pair of dumps separated by STEP:
+#   ./phantomanalysis PREFIX_N PREFIX_{N+STEP}
 # The first dump is used for initialisation only (no .phys output).
 # The second dump writes one line per tracked particle.
 #
 # Usage:
 #   ./submit_trace_parallel.sh
 #   ./submit_trace_parallel.sh --start 100 --end 500
-#   ./submit_trace_parallel.sh --step 10          # pairs (0,1),(10,11),(20,21),...
+#   ./submit_trace_parallel.sh --step 10          # pairs (0,10),(10,20),(20,30),...
 #   ./submit_trace_parallel.sh --prefix wind      # for wind_NNNNN dumps
 #   ./submit_trace_parallel.sh --max-concurrent 64
 #   (no limit on concurrent tasks by default)
@@ -20,8 +20,8 @@ DATA_DIR="/fred/oz304/tdanilov/pigru"  # Phantom dump directory
 WORK_DIR="/fred/oz304/beckers/pigru"   # Working dir (phantomanalysis binary, trace.cfg, trace_output/)
 PREFIX="pigru"                         # Dump file prefix
 START_DUMP=0
-END_DUMP=710          # Last first-of-pair (second will be END_DUMP+1)
-STEP=1                # Stride between first dumps of consecutive pairs
+END_DUMP=700          # Last first-of-pair (second will be END_DUMP+STEP)
+STEP=10               # Gap between the two dumps in each pair
 
 # ── Parse optional arguments ──────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -41,8 +41,13 @@ SLURM="$SCRIPT_DIR/run_trace_parallel.slurm"
 # ── Find unprocessed pairs ─────────────────────────────────────────────────────
 UNPROCESSED=()
 
+if (( STEP <= 0 )); then
+    echo "Error: --step must be a positive integer"
+    exit 1
+fi
+
 for (( N=START_DUMP; N<=END_DUMP; N+=STEP )); do
-    SECOND=$(( N + 1 ))
+    SECOND=$(( N + STEP ))
     DUMP1="${DATA_DIR}/${PREFIX}_$(printf '%05d' "${N}")"
     DUMP2="${DATA_DIR}/${PREFIX}_$(printf '%05d' "${SECOND}")"
 
@@ -90,5 +95,5 @@ sbatch \
     --array="0-${ARRAY_MAX}" \
     --output="${LOG_DIR}/trace_%A_%a.out" \
     --error="${LOG_DIR}/trace_%A_%a.err" \
-    --export="DATA_DIR=${DATA_DIR},WORK_DIR=${WORK_DIR},PREFIX=${PREFIX}" \
+    --export="DATA_DIR=${DATA_DIR},WORK_DIR=${WORK_DIR},PREFIX=${PREFIX},STEP=${STEP}" \
     "${SLURM}"

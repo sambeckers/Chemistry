@@ -2,12 +2,12 @@
 #SBATCH --job-name=trace_parallel
 #SBATCH --output=logs/logs_%A/trace_%A_%a.out  # overridden by submit_trace_parallel.sh
 #SBATCH --error=logs/logs_%A/trace_%A_%a.err   # overridden by submit_trace_parallel.sh
-#SBATCH --time=2:00:00
+#SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=8G
+#SBATCH --mem-per-cpu=16G
 #SBATCH --array=0-0  # overridden dynamically by submit_trace_parallel.sh
 
-# Runs phantomanalysis on one pair of consecutive dumps.
+# Runs phantomanalysis on one pair of dumps separated by STEP.
 # The first dump is used for initialisation only (no output).
 # The second dump produces one line per tracked particle in trace_output/*.phys.
 #
@@ -20,6 +20,7 @@ set -euo pipefail
 WORK_DIR="${WORK_DIR:-/fred/oz304/beckers/pigru}"
 DATA_DIR="${DATA_DIR:-/fred/oz304/tdanilov/pigru}"
 PREFIX="${PREFIX:-pigru}"
+STEP="${STEP:-10}"
 
 # Read the first dump of this task's pair from the list written by submit_trace_parallel.sh
 PAIR_LIST="${WORK_DIR}/trace_pair_list.txt"
@@ -30,7 +31,7 @@ if [[ -z "$FIRST" ]]; then
     exit 1
 fi
 
-SECOND=$(( FIRST + 1 ))
+SECOND=$(( FIRST + STEP ))
 DUMP1="${DATA_DIR}/${PREFIX}_$(printf '%05d' "${FIRST}")"
 DUMP2="${DATA_DIR}/${PREFIX}_$(printf '%05d' "${SECOND}")"
 

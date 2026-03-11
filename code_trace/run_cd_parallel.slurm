@@ -4,7 +4,7 @@
 #SBATCH --error=logs/logs_%A/cd_parallel_%A_%a.err   # overridden by process_all_dumps.sh
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=32G
+#SBATCH --mem-per-cpu=64G
 #SBATCH --array=0-0  # overridden dynamically by process_all_dumps.sh
 
 set -euo pipefail
@@ -12,9 +12,9 @@ set -euo pipefail
 WORKDIR="/fred/oz304/beckers/Chemistry/code_trace"
 cd "$WORKDIR"
 
-DATA_DIR="${DATA_DIR:-/fred/oz304/tdanilov/pigru}"
-WORK_DIR="${WORK_DIR:-/fred/oz304/beckers/pigru}"
-PREFIX="${PREFIX:-pigru}"
+DATA_DIR="${DATA_DIR:-/fred/oz304/beckers/v20a25}"
+WORK_DIR="${WORK_DIR:-/fred/oz304/beckers/v20a25_out}"
+PREFIX="${PREFIX:-wind}"
 
 # Read the dump number for this array task from the list written by process_all_dumps.sh
 DUMP_LIST="${WORK_DIR}/dump_list.txt"

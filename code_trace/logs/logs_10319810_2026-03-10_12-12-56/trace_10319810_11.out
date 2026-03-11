@@ -1,0 +1,198 @@
+Starting job 10319810, array task 11 on dave72
+Processing pair: pigru_00110  pigru_00120
+
+ Phantom analysis (trace): You data, we analyse
+
+ opening database from /fred/oz304/tdanilov/pigru/pigru.in with 50 entries
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00110 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 06/09/2024 14:54:52.0
+ npart =       591139
+ npart(total) =                591139
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    110.00000000000000     
+
+--> ALLOCATING ALL ARRAYS
+------------------------------------------------------------
+ Total memory allocated to arrays:    4.966 GB n =      5200000
+------------------------------------------------------------
+ reading particles          1:    591139, from block     1 lims=         1-    591139
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 2.56E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00110
+ Reading config from trace.cfg
+   Tracking particle ID range:        10000  to        10100  (         101  particles)
+   Skipping first         5000  particles (boundary)
+ Creating trace_output directory in: /fred/oz304/beckers/pigru/trace_output/
+ Tracking          101  particles
+ === Initialisation complete: tracking          101  particles (IDs        10000 -       10100 ) ===
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00120 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 06/09/2024 15:30:45.5
+ npart =       643785
+ npart(total) =                643785
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    120.00000000000000     
+ reading particles          1:    643785, from block     1 lims=         1-    643785
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 2.85E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00120
+ /fred/oz304/tdanilov/pigru/pigru_00120: not first step data, timestep =    602727454.80988002      npart =       643785 nprev =       591139
+   Loaded A_V for       643785  particles from AV/AV_00120
+ Creating new file for particle                 10000
+ Creating new file for particle                 10001
+ Creating new file for particle                 10002
+ Creating new file for particle                 10003
+ Creating new file for particle                 10004
+ Creating new file for particle                 10005
+ Creating new file for particle                 10006
+ Creating new file for particle                 10007
+ Creating new file for particle                 10008
+ Creating new file for particle                 10009
+ Creating new file for particle                 10010
+ Creating new file for particle                 10011
+ Creating new file for particle                 10012
+ Creating new file for particle                 10013
+ Creating new file for particle                 10014
+ Creating new file for particle                 10015
+ Creating new file for particle                 10016
+ Creating new file for particle                 10017
+ Creating new file for particle                 10018
+ Creating new file for particle                 10019
+ Creating new file for particle                 10020
+ Creating new file for particle                 10021
+ Creating new file for particle                 10022
+ Creating new file for particle                 10023
+ Creating new file for particle                 10024
+ Creating new file for particle                 10025
+ Creating new file for particle                 10026
+ Creating new file for particle                 10027
+ Creating new file for particle                 10028
+ Creating new file for particle                 10029
+ Creating new file for particle                 10030
+ Creating new file for particle                 10031
+ Creating new file for particle                 10032
+ Creating new file for particle                 10033
+ Creating new file for particle                 10034
+ Creating new file for particle                 10035
+ Creating new file for particle                 10036
+ Creating new file for particle                 10037
+ Creating new file for particle                 10038
+ Creating new file for particle                 10039
+ Creating new file for particle                 10040
+ Creating new file for particle                 10041
+ Creating new file for particle                 10042
+ Creating new file for particle                 10043
+ Creating new file for particle                 10044
+ Creating new file for particle                 10045
+ Creating new file for particle                 10046
+ Filling empty file for particle                 10047
+ Filling empty file for particle                 10050
+ Filling empty file for particle                 10052
+ Filling empty file for particle                 10053
+ Filling empty file for particle                 10054
+ Filling empty file for particle                 10055
+ Filling empty file for particle                 10064
+ Filling empty file for particle                 10068
+ Filling empty file for particle                 10069
+ Filling empty file for particle                 10070
+ Filling empty file for particle                 10072
+ Filling empty file for particle                 10074
+ Filling empty file for particle                 10083
+ Filling empty file for particle                 10084
+ Filling empty file for particle                 10087
+ Filling empty file for particle                 10088
+ Creating new file for particle                 10089
+ Creating new file for particle                 10090
+ Creating new file for particle                 10091
+ Creating new file for particle                 10092
+ Creating new file for particle                 10093
+ Creating new file for particle                 10094
+ Creating new file for particle                 10095
+ Creating new file for particle                 10096
+ Creating new file for particle                 10097
+ Creating new file for particle                 10098
+ Creating new file for particle                 10099
+ Creating new file for particle                 10100
+ === Analysis of /fred/oz304/tdanilov/pigru/pigru_00120 complete ===
+
+ Phantom analysis: may your paper be a happy one
+
+Pair (110, 120) complete.
+
++------------------ Job Report: 10319823 (COMPLETED) ------------------+
+| Memory (RAM)  No data available                                      |
+| CPU           No data available                                      |
+| Time          [>                   ]  0.0% (0-00:00:07 / 0-12:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   No data available                                                  |
++----------------------------------------------------------------------+

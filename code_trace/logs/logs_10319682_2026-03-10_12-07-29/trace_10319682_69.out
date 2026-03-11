@@ -1,0 +1,147 @@
+Starting job 10319682, array task 69 on dave82
+Processing pair: pigru_00690  pigru_00691
+
+ Phantom analysis (trace): You data, we analyse
+
+ opening database from /fred/oz304/tdanilov/pigru/pigru.in with 50 entries
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00690 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 13/09/2024 06:44:13.3
+ npart =      3581851
+ npart(total) =               3581851
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    690.00000000000000     
+
+--> ALLOCATING ALL ARRAYS
+------------------------------------------------------------
+ Total memory allocated to arrays:    4.966 GB n =      5200000
+------------------------------------------------------------
+ reading particles          1:   3581851, from block     1 lims=         1-   3581851
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 3.09E-06 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00690
+ Reading config from trace.cfg
+   Tracking particle ID range:        10000  to        10100  (         101  particles)
+   Skipping first         5000  particles (boundary)
+ Creating trace_output directory in: /fred/oz304/beckers/pigru/trace_output/
+ Tracking          101  particles
+ === Initialisation complete: tracking          101  particles (IDs        10000 -       10100 ) ===
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00691 on unit   9
+
+ ERROR! read_dump: file is not a Phantom full dump
+
+
+ >>> reading small dump file: /fred/oz304/tdanilov/pigru/pigru_00691 on unit   9
+ ST:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 13/09/2024 07:07:12.5
+
+ WARNING! read_smalldump: *** VELOCITY WILL BE MISSING FROM SMALL DUMP FILES ***
+
+ npart =      3586224
+ npart(total) =               3586224
+ adiabatic eos: gamma =    1.2000000476837158     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    691.00000000000000     
+ reading particles          1:   3586224, from block     1 lims=         1-   3586224
+ ERROR: missing velocity information from file
+
+WARNING: u not in file but setting u = (K*rho**(gamma-1))/(gamma-1)
+
+
+WARNING: missing dust temperature information from file
+
+
+WARNING: alpha not found in file
+
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+
+WARNING! sink particle velocities not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 3.10E-06 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+ WARNING: Particle IDs not in dump; resetting IDs
+
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00691
+ /fred/oz304/tdanilov/pigru/pigru_00691: not first step data, timestep =    3470705593.9468927      npart =      3586224 nprev =      3581851
+ WARNING: Could not open A_V file AV/AV_00691, using A_V = 0
+ === Analysis of /fred/oz304/tdanilov/pigru/pigru_00691 complete ===
+
+ Phantom analysis: may your paper be a happy one
+
+Pair (690, 691) complete.
+
++------------------ Job Report: 10319752 (COMPLETED) ------------------+
+| Memory (RAM)  No data available                                      |
+| CPU           No data available                                      |
+| Time          [>                   ]  0.0% (0-00:00:10 / 0-12:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   No data available                                                  |
++----------------------------------------------------------------------+

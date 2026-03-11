@@ -1,0 +1,16 @@
+At line 171 of file ../src/utils/analysis_trace.f90 (unit = 10)
+Fortran runtime error: Cannot open file 'trace_output/2348830.phys': File exists
+
+Error termination. Backtrace:
+#0  0x145d8d9bf3fd in already_open
+	at ../../../libgfortran/io/open.c:742
+#1  0x41d1b8 in __analysis_MOD_do_analysis._omp_fn.0
+	at ../src/utils/analysis_trace.f90:171
+#2  0x145d8d60c735 in GOMP_parallel
+	at ../../../libgomp/parallel.c:178
+#3  0x41eedb in __analysis_MOD_do_analysis
+	at ../src/utils/analysis_trace.f90:145
+#4  0x41f8bc in phantomanalysis
+	at ../src/utils/phantomanalysis.f90:135
+#5  0x403618 in main
+	at ../src/utils/phantomanalysis.f90:20

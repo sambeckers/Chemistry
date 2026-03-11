@@ -1,0 +1,171 @@
+Starting job 10319483, array task 16 on dave72
+Processing pair: pigru_00160  pigru_00161
+
+ Phantom analysis (trace): You data, we analyse
+
+ opening database from /fred/oz304/tdanilov/pigru/pigru.in with 50 entries
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00160 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 06/09/2024 17:44:55.0
+ npart =       857168
+ npart(total) =                857168
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    160.00000000000000     
+
+--> ALLOCATING ALL ARRAYS
+------------------------------------------------------------
+ Total memory allocated to arrays:    4.966 GB n =      5200000
+------------------------------------------------------------
+ reading particles          1:    857168, from block     1 lims=         1-    857168
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 3.43E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00160
+ Reading particle IDs from particle_IDs.txt
+ Creating directory for tracked particles output in trace_output/                                                                                                                                                                                                                                                   
+ Tracking          500  particles
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00161 on unit   9
+
+ ERROR! read_dump: file is not a Phantom full dump
+
+
+ >>> reading small dump file: /fred/oz304/tdanilov/pigru/pigru_00161 on unit   9
+ ST:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 06/09/2024 17:51:10.4
+
+ WARNING! read_smalldump: *** VELOCITY WILL BE MISSING FROM SMALL DUMP FILES ***
+
+ npart =       861539
+ npart(total) =                861539
+ adiabatic eos: gamma =    1.2000000476837158     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    161.00000000000000     
+ reading particles          1:    861539, from block     1 lims=         1-    861539
+ ERROR: missing velocity information from file
+
+WARNING: u not in file but setting u = (K*rho**(gamma-1))/(gamma-1)
+
+
+WARNING: missing dust temperature information from file
+
+
+WARNING: alpha not found in file
+
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+
+WARNING! sink particle velocities not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 3.46E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+ WARNING: Particle IDs not in dump; resetting IDs
+
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00161
+ /fred/oz304/tdanilov/pigru/pigru_00161: not first step data, timestep =    808659335.20325565      npart =       861539 nprev =       857168
+ Creating new file for particle                650514
+ Creating new file for particle                658199
+ Creating new file for particle                665884
+ Creating new file for particle                673568
+ Creating new file for particle                681253
+ Creating new file for particle                688938
+ Creating new file for particle                696622
+ Creating new file for particle                704307
+ Creating new file for particle                706223
+ Creating new file for particle                711992
+ Creating new file for particle                719676
+ Creating new file for particle                727361
+ Creating new file for particle                735046
+ Creating new file for particle                742730
+ Creating new file for particle                750415
+ Creating new file for particle                758100
+ Creating new file for particle                765785
+ Creating new file for particle                773469
+ Creating new file for particle                781154
+ Creating new file for particle                788839
+ Creating new file for particle                796523
+ Creating new file for particle                804208
+ Creating new file for particle                811893
+ Creating new file for particle                819577
+ Creating new file for particle                827262
+ Creating new file for particle                834947
+ Creating new file for particle                842631
+ Creating new file for particle                850316
+ Creating new file for particle                858001
+
+ Phantom analysis: may your paper be a happy one
+
+Pair (160, 161) complete.
+
++------------------ Job Report: 10319506 (COMPLETED) ------------------+
+| Memory (RAM)  No data available                                      |
+| CPU           [#######             ] 38.9% average                   |
+| Time          [>                   ]  0.0% (0-00:00:18 / 0-12:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   No data available                                                  |
++----------------------------------------------------------------------+

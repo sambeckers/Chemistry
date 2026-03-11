@@ -1,0 +1,124 @@
+Starting job 10319926, array task 27 on dave4
+Processing pair: pigru_00270  pigru_00280
+
+ Phantom analysis (trace): You data, we analyse
+
+ opening database from /fred/oz304/tdanilov/pigru/pigru.in with 50 entries
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00270 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 07/09/2024 07:14:19.7
+ npart =      1427062
+ npart(total) =               1427062
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    270.00000000000000     
+
+--> ALLOCATING ALL ARRAYS
+------------------------------------------------------------
+ Total memory allocated to arrays:    4.966 GB n =      5200000
+------------------------------------------------------------
+ reading particles          1:   1427062, from block     1 lims=         1-   1427062
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 8.06E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00270
+ Reading config from trace.cfg
+   Tracking particle ID range:        10000  to        10100  (         101  particles)
+   Skipping first         5000  particles (boundary)
+ Creating trace_output directory in: /fred/oz304/beckers/pigru/trace_output/
+ Tracking          101  particles
+ === Initialisation complete: tracking          101  particles (IDs        10000 -       10100 ) ===
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00280 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 07/09/2024 08:01:34.1
+ npart =      1480768
+ npart(total) =               1480768
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    280.00000000000000     
+ reading particles          1:   1480768, from block     1 lims=         1-   1480768
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 8.13E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00280
+ /fred/oz304/tdanilov/pigru/pigru_00280: not first step data, timestep =    1406364061.2230535      npart =      1480768 nprev =      1427062
+   Loaded A_V for      1480767  particles from AV/AV_00280
+ Creating new file for particle               1353116
+ === Analysis of /fred/oz304/tdanilov/pigru/pigru_00280 complete ===
+
+ Phantom analysis: may your paper be a happy one
+
+Pair (270, 280) complete.
+
++------------------ Job Report: 10319957 (COMPLETED) ------------------+
+| Memory (RAM)  No data available                                      |
+| CPU           No data available                                      |
+| Time          [>                   ]  0.0% (0-00:00:11 / 0-12:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   No data available                                                  |
++----------------------------------------------------------------------+

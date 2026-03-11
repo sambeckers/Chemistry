@@ -11,12 +11,12 @@
 set -euo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
-DATA_DIR="/fred/oz304/tdanilov/pigru"  # Phantom dump directory
-WORK_DIR="/fred/oz304/beckers/pigru"   # Working dir (AV/, PhotoData/, Models/ live here)
-PREFIX="pigru"                         # Dump file prefix (e.g. pigru or wind)
+DATA_DIR="/fred/oz304/beckers/v20a25"  # Phantom dump directory
+WORK_DIR="/fred/oz304/beckers/v20a25_out"   # Working dir (AV/, PhotoData/, Models/ live here)
+PREFIX="wind"                         # Dump file prefix (e.g. pigru or wind)
 START_DUMP=0
-END_DUMP=711
-STEP=10                                # Process every Nth dump (1 = all, 10 = every 10th)
+END_DUMP=1200
+STEP=1                                # Process every Nth dump (1 = all, 10 = every 10th)
 
 # ── Parse optional arguments ─────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
