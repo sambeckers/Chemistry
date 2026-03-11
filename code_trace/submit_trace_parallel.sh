@@ -17,7 +17,7 @@ set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 DATA_DIR="/fred/oz304/tdanilov/pigru"  # Phantom dump directory
-WORK_DIR="/fred/oz304/beckers/pigru"   # Working dir (phantomanalysis binary, trace.cfg, trace_output/)
+WORK_DIR="/fred/oz304/beckers/pigru_out"   # Working dir (phantomanalysis binary, trace.cfg, trace_output/)
 PREFIX="pigru"                         # Dump file prefix
 START_DUMP=0
 END_DUMP=700          # Last first-of-pair (second will be END_DUMP+STEP)

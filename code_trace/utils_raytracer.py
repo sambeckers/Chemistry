@@ -98,9 +98,11 @@ def get_next(start_point:np.ndarray, index:int, neighbors:np.ndarray, position:n
     
     return next_point, next_index
 
-def get_all_points(start_point_ray:np.ndarray, direction:np.ndarray, neighbors:np.ndarray, position:np.ndarray, boundary:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def get_all_points(start_point_ray:np.ndarray, direction:np.ndarray, neighbors:np.ndarray, position:np.ndarray, boundary:np.ndarray) -> Tuple[np.ndarray, np.ndarray, bool]:
     """  
-    Calculates all the points on a ray in a certain direction, and the indices of the projected points
+    Calculates all the points on a ray in a certain direction, and the indices
+    of the projected points. Returns (points, indices, is_short) where
+    is_short=True when the ray fails on the very first step.
     """
     points, indices = np.zeros((500, 3)), np.zeros(500, dtype=np.int32)
     
@@ -116,7 +118,7 @@ def get_all_points(start_point_ray:np.ndarray, direction:np.ndarray, neighbors:n
     
     if next_index == -1:
         print(" WARNING: Ray is too short")
-        return points, indices
+        return points, indices, True
     
     points [1] = next_point
     indices[1] = next_index
@@ -131,12 +133,12 @@ def get_all_points(start_point_ray:np.ndarray, direction:np.ndarray, neighbors:n
         next_point, next_index = get_next(next_point, next_index, neighbors, position, unit_vector, some_point)
         
         if next_index == -1:
-            return points, indices
+            return points, indices, False
         
         points [c] = next_point
         indices[c] = next_index
             
-    return points[:c], indices[:c]
+    return points[:c], indices[:c], False
     
 
 #####################################################################################################################

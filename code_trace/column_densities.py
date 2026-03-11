@@ -29,18 +29,24 @@ timer_start = time.time()
 
 # Allow dump number to be set via environment variable (for batch processing)
 # Otherwise use default values
-dump = int(os.environ.get('DUMP_NUM', 1200))
+dump = int(os.environ.get('DUMP_NUM', 500))
 
 wdir = Path.cwd()
 
 # Working directory where phantomanalysis runs (contains trace_output/ and PhotoData/)
-work_dir = Path(os.environ.get('WORK_DIR', '/fred/oz304/beckers/v20a25_out'))
+work_dir = Path(os.environ.get('WORK_DIR', '/fred/oz304/beckers/pigru_out'))
 av_output_dir = work_dir / 'AV'
 av_output_dir.mkdir(exist_ok=True)
 
 # Data directory and file prefix (e.g. 'pigru' or 'wind')
-data_dir = Path(os.environ.get('DATA_DIR', '/fred/oz304/beckers/v20a25'))
-prefix   = os.environ.get('PREFIX', 'wind')
+data_dir = Path(os.environ.get('DATA_DIR', '/fred/oz304/tdanilov/pigru'))
+prefix   = os.environ.get('PREFIX', 'pigru')
+# Use the QJ joggle option in Delaunay triangulation to handle particles at
+# extreme distances. Set USE_QJ=0 for models that don't need it (e.g. v10a09,
+# v20a25) to avoid spurious short rays. When True and short rays are detected,
+# the code falls back to standard Delaunay automatically and overwrites the
+# cached mesh files. Note: setting USE_QJ=0 bypasses the mesh cache.
+USE_QJ   = bool(int(os.environ.get('USE_QJ', '0')))
 
 Output = "PhotoData" 
 
@@ -103,7 +109,7 @@ Output.mkdir(exist_ok=True)
 target = Output / f'boundary{dump}.txt'
 target2 = Output / f'neighbors{dump}.pkl'
 
-if target.exists() and target2.exists():
+if USE_QJ and target.exists() and target2.exists():
     print(f'File {target} and {target2} exists, skipping computation.')
     with open(Output / f'neighbors{dump}.pkl', 'rb') as f:
         neighbors = pickle.load(f)
@@ -114,7 +120,7 @@ if target.exists() and target2.exists():
     
 else:
     print(f'Computing and saving to {target}.')
-    delaunay = Delaunay(position, qhull_options='QJ')
+    delaunay = Delaunay(position, qhull_options='QJ') if USE_QJ else Delaunay(position)
     indptr, indices = delaunay.vertex_neighbor_vertices
     neighbors = [indices[indptr[k]:indptr[k+1]] for k in range(npoints)]
     
@@ -228,11 +234,11 @@ start_points = (start_points + posAGB).value
 
 #Test it out for one ray (also compiles the njit for speedup, if you run this a second time it should be instant)
 index = 0
-ray_points, ray_indices = rtf.get_all_points(start_points[index], unit_vectors_interp[index], neighbors, position, boundary)
+ray_points, ray_indices, _ = rtf.get_all_points(start_points[index], unit_vectors_interp[index], neighbors, position, boundary)
 
 def process_ray(start_point, ray):
-        ray_points, ray_indices = rtf.get_all_points(start_point, ray, neighbors, position, boundary)
-        return ray_indices, ray_points
+        ray_points, ray_indices, is_short = rtf.get_all_points(start_point, ray, neighbors, position, boundary)
+        return ray_indices, ray_points, is_short
 
 rays = unit_vectors_interp
 
@@ -246,6 +252,7 @@ all_positions = np.zeros((num_rays, max_points, 3))
 all_r = np.zeros((num_rays, max_points))
 
 # change max_workers based on your CPU cores (if running on mac, use ThreadPoolExecutor)
+n_short = 0
 with ProcessPoolExecutor(max_workers=1) as executor:
 # with ThreadPoolExecutor(max_workers=12) as executor:
     futures = {executor.submit(process_ray, start_points[i], ray): i 
@@ -254,7 +261,9 @@ with ProcessPoolExecutor(max_workers=1) as executor:
     for future in tqdm(as_completed(futures), total=len(futures), 
                     desc='Rays processed', miniters=1):
         idxx = futures[future]
-        ray_indices, ray_points = future.result()
+        ray_indices, ray_points, is_short = future.result()
+        if is_short:
+            n_short += 1
         
         # Get actual length of this ray's data
         actual_length = len(ray_indices)
@@ -265,6 +274,42 @@ with ProcessPoolExecutor(max_workers=1) as executor:
         all_r[idxx, :actual_length] = np.linalg.norm(ray_points, axis=1)
         
 print("All rays processed.")
+
+# If QJ Delaunay produced short rays, fall back to standard Delaunay,
+# overwrite the cached mesh files, and re-run all rays with the new mesh.
+if n_short > 0 and USE_QJ:
+    print(f"\nWARNING: {n_short}/{num_rays} rays too short with QJ Delaunay."
+          " Rebuilding mesh without QJ and re-running all rays...")
+    delaunay_fb = Delaunay(position)
+    indptr_fb, indices_fb = delaunay_fb.vertex_neighbor_vertices
+    neighbors  = [indices_fb[indptr_fb[k]:indptr_fb[k+1]] for k in range(npoints)]
+    nbs        = [n for sublist in neighbors for n in sublist]
+    n_nbs      = [len(sublist) for sublist in neighbors]
+    mask_fb    = delaunay_fb.neighbors == -1
+    boundary   = np.unique(delaunay_fb.simplices[mask_fb.any(axis=1)].ravel())
+    b_nms_fb   = np.linalg.norm(position[boundary], axis=1)
+    boundary   = np.where(np.linalg.norm(position, axis=1) >= b_nms_fb.min())[0]
+    np.savetxt(Output / f'boundary{dump}.txt', boundary, fmt='%d')
+    with open(Output / f'neighbors{dump}.pkl', 'wb') as f:
+        pickle.dump(neighbors, f)
+    all_indices   = np.zeros((num_rays, max_points), dtype=int)
+    all_positions = np.zeros((num_rays, max_points, 3))
+    all_r         = np.zeros((num_rays, max_points))
+    with ProcessPoolExecutor(max_workers=1) as executor:
+        futures = {executor.submit(process_ray, start_points[i], ray): i
+                   for i, ray in enumerate(rays)}
+        for future in tqdm(as_completed(futures), total=len(futures),
+                           desc='Rays re-processed (no-QJ fallback)', miniters=1):
+            idxx = futures[future]
+            ray_indices, ray_points, _ = future.result()
+            actual_length = len(ray_indices)
+            all_indices[idxx, :actual_length]   = ray_indices
+            all_positions[idxx, :actual_length] = ray_points
+            all_r[idxx, :actual_length]          = np.linalg.norm(ray_points, axis=1)
+    print("Fallback ray processing complete.")
+    # Update nbs/n_nbs for the Magritte model which is built below
+    nbs   = [n for sublist in neighbors for n in sublist]
+    n_nbs = [len(sublist) for sublist in neighbors]
 
 indices_for_Magritte = all_indices.flatten()[all_indices.flatten() != 0]
 print(f"Total unique indices for Magritte: {len(np.unique(indices_for_Magritte))}")

@@ -11,12 +11,13 @@
 set -euo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
-DATA_DIR="/fred/oz304/beckers/v20a25"  # Phantom dump directory
-WORK_DIR="/fred/oz304/beckers/v20a25_out"   # Working dir (AV/, PhotoData/, Models/ live here)
-PREFIX="wind"                         # Dump file prefix (e.g. pigru or wind)
+DATA_DIR="/fred/oz304/tdanilov/pigru"  # Phantom dump directory
+WORK_DIR="/fred/oz304/beckers/pigru_out"   # Working dir (AV/, PhotoData/, Models/ live here)
+PREFIX="pigru"                         # Dump file prefix (e.g. pigru or wind)
 START_DUMP=0
-END_DUMP=1200
-STEP=1                                # Process every Nth dump (1 = all, 10 = every 10th)
+END_DUMP=710
+STEP=10                                # Process every Nth dump (1 = all, 10 = every 10th)
+USE_QJ=1                              # 1 = use QJ joggle in Delaunay (pigru), 0 = standard (v10/v20)
 
 # ── Parse optional arguments ─────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -58,7 +59,7 @@ printf '%s\n' "${UNPROCESSED[@]}" > "${DUMP_LIST}"
 
 ARRAY_MAX=$(( N - 1 ))
 DATETIME=$(date +%Y-%m-%d_%H-%M-%S)
-LOG_DIR="${SCRIPT_DIR}/logs/logs_%A_${DATETIME}"
+LOG_DIR="${WORK_DIR}/logs/logs_%A_${DATETIME}"
 
 echo "========================================="
 echo "Column Density Calculation (SLURM)"
@@ -76,5 +77,5 @@ sbatch \
     --array="0-${ARRAY_MAX}" \
     --output="${LOG_DIR}/cd_parallel_%A_%a.out" \
     --error="${LOG_DIR}/cd_parallel_%A_%a.err" \
-    --export="DATA_DIR=${DATA_DIR},WORK_DIR=${WORK_DIR},PREFIX=${PREFIX}" \
+    --export="DATA_DIR=${DATA_DIR},WORK_DIR=${WORK_DIR},PREFIX=${PREFIX},USE_QJ=${USE_QJ}" \
     "${SLURM}"
