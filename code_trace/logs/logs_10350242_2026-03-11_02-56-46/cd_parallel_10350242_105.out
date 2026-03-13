@@ -1,0 +1,210 @@
+Starting job 10350242, array task 105 on dave310
+Processing dump 105
+/fred/oz304/beckers/v20a25/wind_00105
+/fred/oz304/beckers/v20a25/wind.setup
+Index(['iorig', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'u', 'mu', 'gamma', 'Tdust',
+       'h', 'alpha', 'divv', 'rho', 'mass', 'p', 'cs', 'temp', 'kappa',
+       'Gamma', 'r', 'theta', 'phi', 'speed'],
+      dtype='str')
+Real simulation time: 5273865229.586451 seconds
+
+Time to read in data: 0.9337260723114014 seconds
+
+Computing and saving to /fred/oz304/beckers/v20a25_out/PhotoData/boundary105.txt.
+
+Time to calculate the delauney mesh: 51.08626103401184 seconds
+
+Tracing 768 rays
+Writing parameters...
+Writing points...
+Writing rays...
+Writing boundary...
+Writing chemistry...
+Writing species...
+Writing thermodynamics...
+Writing temperature...
+Writing turbulence...
+Writing lines...
+Writing lineProducingSpecies...
+Writing linedata...
+ncolpoar = 1
+--- colpoar = 0
+Writing collisionPartner...
+(l, c) = 0, 0
+Writing quadrature...
+Writing populations...
+Writing radiation...
+Writing frequencies...
+Writing dust...
+                                           
+-------------------------------------------
+  Reading Model...                         
+-------------------------------------------
+ model file = /fred/oz304/beckers/v20a25_out/Models/Model105.hdf5
+-------------------------------------------
+Reading parameters...
+Reading points...
+Reading rays...
+Reading boundary...
+Reading chemistry...
+Reading species...
+Reading thermodynamics...
+Reading temperature...
+Reading turbulence...
+Reading lines...
+Reading lineProducingSpecies...
+Reading linedata...
+read num 0
+read sym test
+nlev = 2
+nrad = 1
+Reading collisionPartner...
+Reading quadrature...
+Reading radiation...
+Reading frequencies...
+Not using scattering!
+Reading dust...
+No dust/continuum data found.
+                                           
+-------------------------------------------
+  Model read, parameters:                  
+-------------------------------------------
+  npoints    = 543012
+  nrays      = 192
+  nboundary  = 66924
+  nfreqs     = 1
+  nspecs     = 3
+  nlspecs    = 1
+  nlines     = 1
+  nquads     = 1
+-------------------------------------------
+                                           
+--- rr = 0
+--- rr = 1
+--- rr = 2
+--- rr = 3
+--- rr = 4
+--- rr = 5
+--- rr = 6
+--- rr = 7
+--- rr = 8
+--- rr = 9
+--- rr = 10
+--- rr = 11
+--- rr = 12
+--- rr = 13
+--- rr = 14
+--- rr = 15
+--- rr = 16
+--- rr = 17
+--- rr = 18
+--- rr = 19
+--- rr = 20
+--- rr = 21
+--- rr = 22
+--- rr = 23
+--- rr = 24
+--- rr = 25
+--- rr = 26
+--- rr = 27
+--- rr = 28
+--- rr = 29
+--- rr = 30
+--- rr = 31
+--- rr = 32
+--- rr = 33
+--- rr = 34
+--- rr = 35
+--- rr = 36
+--- rr = 37
+--- rr = 38
+--- rr = 39
+--- rr = 40
+--- rr = 41
+--- rr = 42
+--- rr = 43
+--- rr = 44
+--- rr = 45
+--- rr = 46
+--- rr = 47
+--- rr = 48
+--- rr = 49
+--- rr = 50
+--- rr = 51
+--- rr = 52
+--- rr = 53
+--- rr = 54
+--- rr = 55
+--- rr = 56
+--- rr = 57
+--- rr = 58
+--- rr = 59
+--- rr = 60
+--- rr = 61
+--- rr = 62
+--- rr = 63
+--- rr = 64
+--- rr = 65
+--- rr = 66
+--- rr = 67
+--- rr = 68
+--- rr = 69
+--- rr = 70
+--- rr = 71
+--- rr = 72
+--- rr = 73
+--- rr = 74
+--- rr = 75
+--- rr = 76
+--- rr = 77
+--- rr = 78
+--- rr = 79
+--- rr = 80
+--- rr = 81
+--- rr = 82
+--- rr = 83
+--- rr = 84
+--- rr = 85
+--- rr = 86
+--- rr = 87
+--- rr = 88
+--- rr = 89
+--- rr = 90
+--- rr = 91
+--- rr = 92
+--- rr = 93
+--- rr = 94
+--- rr = 95
+All rays processed.
+Total unique indices for Magritte: 66861
+
+Time to trace rays: 7.176857948303223 seconds
+
+Not considering all radiative transitions on the data file but only the specified ones!
+
+Time to create Magritte model: 5.6682844161987305 seconds
+
+
+Time to calculate column densities points: 173.40474200248718 seconds
+
+Saved A_V binary for 543012 particles to /fred/oz304/beckers/v20a25_out/AV/AV_00105
+
+Total runtime: 241.4928035736084 seconds
+
++------------------ Job Report: 10350348 (COMPLETED) ------------------+
+| Memory (RAM)  [#                   ]  8.2% (2.6 GB peak / 32 GB)     |
+| CPU           [##################  ] 93.4% average                   |
+| Time          [>                   ]  0.6% (0-00:04:16 / 0-12:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   Path    Total Read    Total Write    Total IOPS                    |
+|   ------  ------------  -------------  ------------                  |
+|   /apps   0 B           0 B            15                            |
+|   /fred   51.8 MB       164.3 MB       2.2 K                         |
+|   /home   0 B           0 B            2                             |
+|   OS      0 B           0 B            3                             |
+|                                                                      |
+| Warnings:                                                            |
+|   - Too much memory requested                                        |
+|   - Too much time requested                                          |
++----------------------------------------------------------------------+

@@ -10,10 +10,11 @@ import sarracen
 
 
 # Use test directory for phantom run
-BASE_DIR="/net/vdesk/data2/beckers/MRP"
-PH_DIR=os.path.join(BASE_DIR, "v20_a25")
-FINAL_DIR=PH_DIR  # Output to the same directory
-FILENAME="wind"
+BASE_DIR="/fred/oz304/tdanilov/"
+NAME = "pigru"
+PH_DIR=os.path.join(BASE_DIR, NAME)
+FINAL_DIR=os.path.join("/fred/oz304/beckers", NAME)  # Output to the same directory
+FILENAME=NAME
 
 # Number of particles to analyze (reduced for test run)
 PARTICLE_COUNT = 500
@@ -69,9 +70,12 @@ def get_dump_file_bounds(directory, filename):
 first_dump_file, last_dump_file = get_dump_file_bounds(PH_DIR, FILENAME)
 
 #Particle IDs
-sdf, sdf_sink = sarracen.read_phantom(os.path.join(PH_DIR, f"{FILENAME}_{first_dump_file:05d}"))
+first_dump = os.path.join(PH_DIR, f"{FILENAME}_{first_dump_file+10:05d}")
+sdf, sdf_sink = sarracen.read_phantom(first_dump)
 min_id = sdf['iorig'].min() + SKIP_BOUNDARY  # skip first 5000 particles to avoid boundary particles
-sdf, sdf_sink = sarracen.read_phantom(os.path.join(PH_DIR, f"{FILENAME}_{last_dump_file:05d}"))
+
+last_dump = os.path.join(PH_DIR, f"{FILENAME}_{last_dump_file-1:05d}")
+sdf, sdf_sink = sarracen.read_phantom(last_dump)
 max_id = sdf['iorig'].max()
 particle_ID = np.linspace(min_id, max_id, PARTICLE_COUNT, dtype=int)
 
