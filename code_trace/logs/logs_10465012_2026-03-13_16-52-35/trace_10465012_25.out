@@ -1,0 +1,134 @@
+Starting job 10465012, array task 25 on dave68
+Processing pair: pigru_00250  pigru_00260
+
+ Phantom analysis (trace): You data, we analyse
+
+ opening database from /fred/oz304/tdanilov/pigru/pigru.in with 50 entries
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00250 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 07/09/2024 04:25:23.9
+ npart =      1322413
+ npart(total) =               1322413
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    250.00000000000000     
+
+--> ALLOCATING ALL ARRAYS
+------------------------------------------------------------
+ Total memory allocated to arrays:    4.966 GB n =      5200000
+------------------------------------------------------------
+ reading particles          1:   1322413, from block     1 lims=         1-   1322413
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 7.34E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00250
+ Reading config from trace.cfg
+   Tracking particle ID range:        10000  to        10100  (         101  particles)
+   Skipping first         5000  particles (boundary)
+ Creating trace_output directory in: /fred/oz304/beckers/pigru_out/trace_output/
+ Tracking          101  particles
+ === Initialisation complete: tracking          101  particles (IDs        10000 -       10100 ) ===
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00260 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 07/09/2024 06:15:31.2
+ npart =      1373574
+ npart(total) =               1373574
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    260.00000000000000     
+ reading particles          1:   1373574, from block     1 lims=         1-   1373574
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 7.94E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00260
+ /fred/oz304/tdanilov/pigru/pigru_00260: not first step data, timestep =    1305909485.4214067      npart =      1373574 nprev =      1322413
+   Loaded A_V for      1373574  particles from AV/AV_00260
+ Filling empty file for particle                 10046
+ Filling empty file for particle                 10053
+ Filling empty file for particle                 10055
+ Filling empty file for particle                 10056
+ Filling empty file for particle                 10059
+ Filling empty file for particle                 10060
+ Filling empty file for particle                 10061
+ Filling empty file for particle                 10062
+ Filling empty file for particle                 10063
+ Filling empty file for particle                 10064
+ Filling empty file for particle                 10065
+ Filling empty file for particle                 10066
+ Filling empty file for particle                 10068
+ Filling empty file for particle                 10071
+ Filling empty file for particle                 10072
+ Filling empty file for particle                 10074
+
++------------------- Job Report: 10465038 (FAILED) --------------------+
+| Memory (RAM)  No data available                                      |
+| CPU           No data available                                      |
+| Time          [>                   ]  0.0% (0-00:00:10 / 0-12:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   No data available                                                  |
++----------------------------------------------------------------------+

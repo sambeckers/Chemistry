@@ -1,0 +1,155 @@
+Starting job 10465012, array task 13 on dave28
+Processing pair: pigru_00130  pigru_00140
+
+ Phantom analysis (trace): You data, we analyse
+
+ opening database from /fred/oz304/tdanilov/pigru/pigru.in with 50 entries
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00130 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 06/09/2024 15:51:13.3
+ npart =       697460
+ npart(total) =                697460
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    130.00000000000000     
+
+--> ALLOCATING ALL ARRAYS
+------------------------------------------------------------
+ Total memory allocated to arrays:    4.966 GB n =      5200000
+------------------------------------------------------------
+ reading particles          1:    697460, from block     1 lims=         1-    697460
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 2.93E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00130
+ Reading config from trace.cfg
+   Tracking particle ID range:        10000  to        10100  (         101  particles)
+   Skipping first         5000  particles (boundary)
+ Creating trace_output directory in: /fred/oz304/beckers/pigru_out/trace_output/
+ Tracking          101  particles
+ === Initialisation complete: tracking          101  particles (IDs        10000 -       10100 ) ===
+
+ >>> reading setup from file: /fred/oz304/tdanilov/pigru/pigru_00140 on unit   9
+ FT:Phantom:2024.0.0:11b3a72 (hydro+Tdust): 06/09/2024 16:12:18.0
+ npart =       751183
+ npart(total) =                751183
+ adiabatic eos: gamma =    1.2000000000000000     
+ ERROR: could not find cs_min in header
+ ERROR: could not find mtot_in in header
+ time =    140.00000000000000     
+ reading particles          1:    751183, from block     1 lims=         1-    751183
+
+WARNING! sink particle vwind not found
+
+
+WARNING! sink particle Twind not found
+
+
+WARNING! sink particle ieject not found
+
+
+WARNING! sink particle sftype not found
+
+
+WARNING! sink particle nseed not found
+
+
+WARNING! sink particle Rbondi not found
+
+
+WARNING! sink particle Pr_Bondi not found
+
+ got   29 sink properties from    2 sink particles
+ ----------------------------------------------------------
+ ID| Mass     | Racc     | Macc     | hsoft    | Lsink    |
+ ----------------------------------------------------------
+  1|  1.4     |  1.9     |  0.0     |  0.0     | 7.99E-03 |
+  2| 0.70     | 5.00E-02 | 2.99E-07 |  0.0     |  0.0     |
+ ----------------------------------------------------------
+
+WARNING: iseed_sink not in dump
+
+ <<< finished reading (hydro) file 
+
+Performing analysis type trace               
+Input file name is /fred/oz304/tdanilov/pigru/pigru_00140
+ /fred/oz304/tdanilov/pigru/pigru_00140: not first step data, timestep =    703182030.61152673      npart =       751183 nprev =       697460
+   Loaded A_V for       751183  particles from AV/AV_00140
+ Filling empty file for particle                 10049
+ Filling empty file for particle                 10050
+ Filling empty file for particle                 10052
+ Filling empty file for particle                 10053
+ Filling empty file for particle                 10056
+ Filling empty file for particle                 10058
+ Filling empty file for particle                 10059
+ Filling empty file for particle                 10060
+ Filling empty file for particle                 10061
+ Filling empty file for particle                 10066
+ Filling empty file for particle                 10068
+ Filling empty file for particle                 10070
+ Filling empty file for particle                 10071
+ Filling empty file for particle                 10072
+ Filling empty file for particle                 10073
+ Filling empty file for particle                 10074
+ Filling empty file for particle                 10075
+ Filling empty file for particle                 10076
+ Filling empty file for particle                 10077
+ Filling empty file for particle                 10078
+ Filling empty file for particle                 10080
+ Filling empty file for particle                 10085
+ Filling empty file for particle                 10086
+ Filling empty file for particle                 10087
+ Filling empty file for particle                 10088
+ Filling empty file for particle                 10089
+ Filling empty file for particle                 10090
+ Filling empty file for particle                 10091
+ Filling empty file for particle                 10093
+ Filling empty file for particle                 10098
+ Filling empty file for particle                 10099
+ Filling empty file for particle                 10100
+ === Analysis of /fred/oz304/tdanilov/pigru/pigru_00140 complete ===
+
+ Phantom analysis: may your paper be a happy one
+
+Pair (130, 140) complete.
+
++------------------ Job Report: 10465026 (COMPLETED) ------------------+
+| Memory (RAM)  No data available                                      |
+| CPU           No data available                                      |
+| Time          [>                   ]  0.0% (0-00:00:11 / 0-12:00:00) |
+|                                                                      |
+| Lustre Filesystem:                                                   |
+|   No data available                                                  |
++----------------------------------------------------------------------+

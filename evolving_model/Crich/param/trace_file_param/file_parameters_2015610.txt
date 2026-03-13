@@ -1,0 +1,25 @@
+! FILE PARAMETERS FOR ENVELOPE MODEL
+! Physical conditions input file
+Crich/input/2015610.txt
+! Reaction file
+./rate12_complex.rates
+! Species file
+./rate12_complex_atomic_Crich.specs
+! Binding energies file
+./rate12_binding.dat
+! Reaction parameters file
+param/reaction_parameters.txt
+! Grain parameters file
+param/grain_parameters.txt
+! Radiation field parameters file
+param/radiation_parameters.txt
+! Output abundances file
+Crich/output/model_output_2015610.dat
+! Output rates file
+Crich/output/model_rates_2015610.dat
+! Call analyse subroutine (T(RUE) or F(ALSE))?
+F
+! Grid point to run analyse
+0
+! Analyse file
+Crich/output/model_analyse_2015610.dat

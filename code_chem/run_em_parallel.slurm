@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-WORKDIR="/fred/oz304/beckers/Chemistry/code"
+WORKDIR="/fred/oz304/beckers/Chemistry/code_chem"
 cd "$WORKDIR"
 
 CHEMISTRY_ARG="${1:-}"

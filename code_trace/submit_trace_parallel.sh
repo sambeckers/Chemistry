@@ -55,10 +55,7 @@ for (( N=START_DUMP; N<=END_DUMP; N+=STEP )); do
     [[ ! -f "$DUMP1" ]] && continue
     [[ ! -f "$DUMP2" ]] && continue
 
-    SENTINEL="${WORK_DIR}/trace_output/.done_$(printf '%05d' "${SECOND}")"
-    if [[ ! -f "$SENTINEL" ]]; then
-        UNPROCESSED+=("${N}")
-    fi
+    UNPROCESSED+=("${N}")
 done
 
 N_JOBS=${#UNPROCESSED[@]}

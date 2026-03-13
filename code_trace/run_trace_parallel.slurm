@@ -50,7 +50,4 @@ mkdir -p trace_output
 
 ./phantomanalysis "$DUMP1" "$DUMP2"
 
-# Mark the output dump as done so submit_trace_parallel.sh can skip it on re-run
-touch "trace_output/.done_$(printf '%05d' "${SECOND}")"
-
 echo "Pair (${FIRST}, ${SECOND}) complete."
