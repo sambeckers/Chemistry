@@ -1,0 +1,37 @@
+paths:
+  base_path: /fred/oz304/beckers/
+  phantom_dump_dir: v10a09
+  av_dir: v10a09_out/AV
+  phantomanalysis_binary: v10a09_out/phantomanalysis
+  chemistry_model_root: Chemistry/evolving_model
+  batch_output_dir: v10a09_out/output/batches
+  final_output_dir: v10a09_out/output/dumps
+  scratch_root: v10a09_out/work
+  python: MRP_env/bin/python
+  particle_ids_cache: /fred/oz304/beckers/v10a09_out/work/particle_discovery/run_2026-03-14_00-27-42/per_dump_ids/particle_ids_all.npy
+  particle_ids_cache_mode: all_ids
+simulation:
+  prefix: wind
+processing:
+  start_dump: 0
+  end_dump: 1600
+  dump_step: 1
+  batch_size: 1
+  n_batches: 10
+  n_boundary: 20000
+  chemistry_types:
+  - Crich
+  - Orich
+  compression: gzip
+  compression_level: 4
+  cleanup_temporary: true
+  reuse_existing_trace_output: true
+  reuse_existing_ev_output: false
+  overwrite_batch: true
+  retain_batch_files_after_merge: true
+  discovered_particle_count_all: 4099320
+  discovered_particle_count: 4079320
+  discovered_batch_count: 10
+hdf5:
+  backend: python
+  fortran_converter_executable: /path/to/convert_ev_to_hdf5
