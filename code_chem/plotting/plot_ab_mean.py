@@ -434,14 +434,14 @@ def plot_compare_1d_grid(
 
 
 def main():
-    chemistry = "Crich"  # "Crich" or "Orich"
+    chemistry = "Orich"  # "Crich" or "Orich"
     pmf = "wind_v10"
-    max_particle_id = 1030991
+    max_particle_id = None
     start_index = 2
     n_select = None
     n_radius = 1600
     show_plot = True
-    compare_1d = False  # set False to produce the 3-D-only plot
+    compare_1d = True  # set False to produce the 3-D-only plot
 
     use_select_particle_ids = True
     max_particles = None
@@ -463,13 +463,14 @@ def main():
             max_particle_id=max_particle_id,
             start_index=start_index,
             n_select=n_select,
+            min_data_rows=3,
         )
 
         # Custom overrides – adjust as needed
-        if len(particle_IDs) > 1:
-            particle_IDs[1] = 29823
-        if len(particle_IDs) > 2:
-            particle_IDs[2] = 46371
+        # if len(particle_IDs) > 1:
+        #     particle_IDs[1] = 29823
+        # if len(particle_IDs) > 2:
+        #     particle_IDs[2] = 46371
         # particle_IDs = [29823, 46371]  # uncomment to override list entirely
 
         files = files_from_particle_ids(source_dir, particle_IDs)
