@@ -61,7 +61,7 @@ def select_particle_ids(particle_IDs_file, trace_dir,
                 if not stripped or stripped.startswith('#'):
                     continue
                 data_rows += 1
-                if data_rows >= min_data_rows:
+                if data_rows > min_data_rows:
                     return True
         return False
 
@@ -431,33 +431,35 @@ def setup_directories(base_path, particle_ids=None, analysis=False,
     bool
         True if setup succeeded, False if the user chose to cancel.
     """
+    # Always ensure the chemistry root exists (e.g. .../evolving_model/Crich or Orich).
+    base_path.mkdir(parents=True, exist_ok=True)
+
     directories = ['param/trace_file_param', 'ev_output', 'input', 'output', 'analyse_output']
 
     for dir_name in directories:
         dir_path = base_path / dir_name
 
+        if not interactive:
+            # SLURM/parallel mode: never prompt, never wipe, always ensure layout exists.
+            dir_path.mkdir(parents=True, exist_ok=True)
+            continue
+
         if dir_path.exists():
             if any(dir_path.iterdir()):
-                if interactive:
-                    print(f"\nDirectory '{dir_name}' already exists and contains files.")
-                    response = input(f"Empty '{dir_name}' directory? [y/n]: ").strip().lower()
-                    if response in ('y', 'yes'):
-                        print(f"   Removing all files in {dir_name}/...")
-                        shutil.rmtree(dir_path)
-                        dir_path.mkdir(parents=True, exist_ok=True)
-                        print(f"   ✓ {dir_name}/ cleared")
-                    else:
-                        print(f"✗ Keeping existing files in {dir_name}/")
+                print(f"\nDirectory '{dir_name}' already exists and contains files.")
+                response = input(f"Empty '{dir_name}' directory? [y/n]: ").strip().lower()
+                if response in ('y', 'yes'):
+                    print(f"   Removing all files in {dir_name}/...")
+                    shutil.rmtree(dir_path)
+                    dir_path.mkdir(parents=True, exist_ok=True)
+                    print(f"   ✓ {dir_name}/ cleared")
                 else:
-                    # SLURM mode: always ensure dir exists, never wipe
-                    pass
+                    print(f"✗ Keeping existing files in {dir_name}/")
             else:
-                if interactive:
-                    print(f"✓ {dir_name}/ exists (empty)")
+                print(f"✓ {dir_name}/ exists (empty)")
         else:
             dir_path.mkdir(parents=True, exist_ok=True)
-            if interactive:
-                print(f"✓ Created {dir_name}/")
+            print(f"✓ Created {dir_name}/")
 
     if analysis:
         if analysis_params_path is None:
