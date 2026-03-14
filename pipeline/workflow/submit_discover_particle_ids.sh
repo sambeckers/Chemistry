@@ -2,17 +2,23 @@
 # Build particle-ID cache in parallel over dumps and update pipeline_config.yaml.
 #
 # Usage:
-#   ./submit_discover_particle_ids.sh
-#   ./submit_discover_particle_ids.sh --config /path/to/pipeline_config.yaml
-#   ./submit_discover_particle_ids.sh --max-concurrent 256
+#   ./workflow/submit_discover_particle_ids.sh
+#   ./workflow/submit_discover_particle_ids.sh --config /path/to/pipeline_config.yaml
+#   ./workflow/submit_discover_particle_ids.sh --max-concurrent 256
+#
+# Workflow summary:
+# 1) Query config for selected dumps, python binary, and scratch root.
+# 2) Materialize run directory with dump list and per-dump output folder.
+# 3) Submit worker array job.
+# 4) Submit merge job with dependency afterok:<array_job_id>.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PIPELINE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEFAULT_CONFIG="${PIPELINE_ROOT}/config/pipeline_config.yaml"
-ARRAY_SLURM="${SCRIPT_DIR}/discover_particle_ids_array.slurm"
-MERGE_SLURM="${SCRIPT_DIR}/discover_particle_ids_merge.slurm"
+ARRAY_SLURM="${PIPELINE_ROOT}/slurm/discover_particle_ids_array.slurm"
+MERGE_SLURM="${PIPELINE_ROOT}/slurm/discover_particle_ids_merge.slurm"
 
 CONFIG_PATH="${DEFAULT_CONFIG}"
 MAX_CONCURRENT=""
@@ -29,7 +35,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: ./submit_discover_particle_ids.sh [--config PATH] [--max-concurrent N]"
+            echo "Usage: ./workflow/submit_discover_particle_ids.sh [--config PATH] [--max-concurrent N]"
             exit 1
             ;;
     esac
@@ -40,6 +46,7 @@ if [[ ! -f "${CONFIG_PATH}" ]]; then
     exit 1
 fi
 
+# Python helper prints values as lines to keep shell parsing robust.
 readarray -t INFO < <(
     /fred/oz304/beckers/MRP_env/bin/python - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
 import sys
@@ -50,12 +57,12 @@ pipeline_root = Path(sys.argv[2]).resolve()
 
 sys.path.insert(0, str((pipeline_root / "scripts").resolve()))
 
-from common import get_selected_dump_numbers, load_pipeline_config  # noqa: E402
+from common import DumpSelection, PipelineConfigManager  # noqa: E402
 
-cfg = load_pipeline_config(config_path)
+cfg = PipelineConfigManager.load(config_path)
 python_bin = cfg.get("paths", {}).get("python", "/fred/oz304/beckers/MRP_env/bin/python")
 scratch_root = Path(cfg.get("paths", {}).get("scratch_root", str(pipeline_root / "work"))).resolve()
-selected = get_selected_dump_numbers(cfg)
+selected = DumpSelection.selected_dump_numbers(cfg)
 
 print(python_bin)
 print(str(scratch_root))
@@ -91,6 +98,7 @@ printf '%s\n' "${INFO[@]:3}" > "${DUMP_LIST_FILE}"
 ARRAY_MAX=$((N_DUMPS - 1))
 ARRAY_SPEC="0-${ARRAY_MAX}"
 if [[ -n "${MAX_CONCURRENT}" ]]; then
+    # Optional concurrency cap for large dump lists.
     ARRAY_SPEC="${ARRAY_SPEC}%${MAX_CONCURRENT}"
 fi
 

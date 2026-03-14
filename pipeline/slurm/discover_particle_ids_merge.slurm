@@ -1,4 +1,6 @@
 #!/bin/bash
+# Merge step for particle-ID discovery.
+# This job depends on successful completion of discovery array tasks.
 #SBATCH --job-name=chem_hdf5_discover_merge
 #SBATCH --time=04:00:00
 #SBATCH --cpus-per-task=1
@@ -8,6 +10,7 @@
 
 set -euo pipefail
 
+# Use exported PIPELINE_ROOT when available to avoid ambiguity in copied job scripts.
 if [[ -n "${PIPELINE_ROOT:-}" ]]; then
     ROOT="${PIPELINE_ROOT}"
 elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
@@ -23,6 +26,7 @@ DUMP_LIST_FILE="${DISCOVER_DUMP_LIST:?DISCOVER_DUMP_LIST is required}"
 DISCOVER_OUT_DIR="${DISCOVER_OUT_DIR:?DISCOVER_OUT_DIR is required}"
 
 cd "${ROOT}"
+# Merge per-dump .npy files and update pipeline config with cache metadata.
 exec "${PYTHON_BIN}" "${ROOT}/scripts/discover_particle_ids_parallel.py" \
     --mode merge \
     --config "${CONFIG_PATH}" \

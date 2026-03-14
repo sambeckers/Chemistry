@@ -2,15 +2,20 @@
 # Submit pipeline merge job with dated logs in scratch/work area.
 #
 # Usage:
-#   ./submit_merge.sh
-#   ./submit_merge.sh --config /path/to/pipeline_config.yaml
+#   ./workflow/submit_merge.sh
+#   ./workflow/submit_merge.sh --config /path/to/pipeline_config.yaml
+#
+# Workflow summary:
+# 1) Resolve config and runtime paths.
+# 2) Query python binary + scratch root from config.
+# 3) Submit merge_dumps.slurm with exported environment values.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PIPELINE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEFAULT_CONFIG="${PIPELINE_ROOT}/config/pipeline_config.yaml"
-SLURM_SCRIPT="${SCRIPT_DIR}/merge_dumps.slurm"
+SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/merge_dumps.slurm"
 
 CONFIG_PATH="${DEFAULT_CONFIG}"
 
@@ -22,7 +27,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: ./submit_merge.sh [--config PATH]"
+            echo "Usage: ./workflow/submit_merge.sh [--config PATH]"
             exit 1
             ;;
     esac
@@ -33,6 +38,7 @@ if [[ ! -f "${CONFIG_PATH}" ]]; then
     exit 1
 fi
 
+# Keep shell logic minimal by delegating config parsing to Python.
 readarray -t INFO < <(
     /fred/oz304/beckers/MRP_env/bin/python - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
 import sys
@@ -43,9 +49,9 @@ pipeline_root = Path(sys.argv[2]).resolve()
 
 sys.path.insert(0, str(pipeline_root / "scripts"))
 
-from common import load_pipeline_config  # noqa: E402
+from common import PipelineConfigManager  # noqa: E402
 
-cfg = load_pipeline_config(config_path)
+cfg = PipelineConfigManager.load(config_path)
 python_bin = cfg.get("paths", {}).get("python", "/fred/oz304/beckers/MRP_env/bin/python")
 scratch_root = cfg.get("paths", {}).get("scratch_root", str(pipeline_root / "work"))
 

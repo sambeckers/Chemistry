@@ -1,4 +1,7 @@
 #!/bin/bash
+# One array task = one PHANTOM dump scan.
+# Expected environment variables are exported by submit_discover_particle_ids.sh:
+#   PIPELINE_ROOT, PIPELINE_CONFIG, PIPELINE_PYTHON, DISCOVER_DUMP_LIST, DISCOVER_OUT_DIR
 #SBATCH --job-name=chem_hdf5_discover_ids
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=1
@@ -9,6 +12,7 @@
 
 set -euo pipefail
 
+# Resolve pipeline root robustly for both direct and wrapper-driven submissions.
 if [[ -n "${PIPELINE_ROOT:-}" ]]; then
     ROOT="${PIPELINE_ROOT}"
 elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
@@ -23,6 +27,7 @@ PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
 DUMP_LIST_FILE="${DISCOVER_DUMP_LIST:?DISCOVER_DUMP_LIST is required}"
 DISCOVER_OUT_DIR="${DISCOVER_OUT_DIR:?DISCOVER_OUT_DIR is required}"
 
+# SLURM array index maps 1-to-1 to line number in dump list file.
 if [[ ! -f "${DUMP_LIST_FILE}" ]]; then
     echo "Error: dump list file not found: ${DUMP_LIST_FILE}"
     exit 1
@@ -35,6 +40,7 @@ if [[ -z "${DUMP_NUMBER}" ]]; then
 fi
 
 cd "${ROOT}"
+# Execute in-place to preserve SLURM process accounting and exit code handling.
 exec "${PYTHON_BIN}" "${ROOT}/scripts/discover_particle_ids_parallel.py" \
     --mode worker \
     --config "${CONFIG_PATH}" \

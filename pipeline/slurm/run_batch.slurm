@@ -1,4 +1,5 @@
 #!/bin/bash
+# One array task = one pipeline batch index.
 #SBATCH --job-name=chem_hdf5_batch
 #SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=1
@@ -9,6 +10,7 @@
 
 set -euo pipefail
 
+# Keep root resolution compatible with both submit wrappers and direct sbatch use.
 if [[ -n "${PIPELINE_ROOT:-}" ]]; then
 	ROOT="${PIPELINE_ROOT}"
 elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
@@ -20,10 +22,11 @@ fi
 
 CONFIG_PATH="${PIPELINE_CONFIG:-${ROOT}/config/pipeline_config.yaml}"
 
-if [[ ! -f "${ROOT}/workflow/run_batch.sh" ]]; then
-	echo "Error: workflow script not found: ${ROOT}/workflow/run_batch.sh"
+if [[ ! -f "${ROOT}/workflow/batch.sh" ]]; then
+	echo "Error: workflow script not found: ${ROOT}/workflow/batch.sh"
 	exit 1
 fi
 
 cd "${ROOT}"
-"${ROOT}/workflow/run_batch.sh" "${SLURM_ARRAY_TASK_ID}"
+# Unified workflow script executes one batch task in run mode.
+"${ROOT}/workflow/batch.sh" --run-index "${SLURM_ARRAY_TASK_ID}"

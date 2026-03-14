@@ -28,7 +28,9 @@ Particle histories are stored as variable-length per-particle arrays in batch fi
 - `scripts/merge_batches.py`: merges batch files into per-dump HDF5 outputs.
 - `slurm/run_batch.slurm`: one array task per batch.
 - `slurm/merge_dumps.slurm`: final merge job.
-- `workflow/run_batch.sh`: shell wrapper used by the batch job.
+- `workflow/batch.sh`: unified script for submit mode and per-task run mode.
+- `workflow/submit_discover_particle_ids.sh`: particle-ID discovery submit wrapper.
+- `workflow/submit_merge.sh`: merge submit wrapper.
 - `config/pipeline_config.yaml`: configurable paths and scaling parameters.
 
 ## Configuration
@@ -86,9 +88,9 @@ Merged dump files contain:
 
 Before submitting batch chemistry jobs, build the particle-ID cache with the dedicated SLURM workflow:
 
-- `cd slurm`
-- `./submit_discover_particle_ids.sh`
-- optional throttle: `./submit_discover_particle_ids.sh --max-concurrent 256`
+- `cd <pipeline-root>`
+- `./workflow/submit_discover_particle_ids.sh`
+- optional throttle: `./workflow/submit_discover_particle_ids.sh --max-concurrent 256`
 
 This runs one array task per dump, merges IDs, and writes discovery results back to `config/pipeline_config.yaml`:
 
@@ -97,7 +99,7 @@ This runs one array task per dump, merges IDs, and writes discovery results back
 - `processing.discovered_particle_count`
 - `processing.discovered_batch_count`
 
-`submit_batch.sh` then uses these cached values and no longer performs expensive live `sarracen` scans at submit time.
+`workflow/batch.sh` then uses these cached values and no longer performs expensive live `sarracen` scans at submit time.
 
 Important: cache now stores all discovered particle IDs (`particle_ids_all.npy`) and applies `processing.n_boundary` at runtime.
 This means changing `n_boundary` in `pipeline_config.yaml` takes effect immediately on the next batch submission without recompiling.
@@ -105,17 +107,17 @@ This means changing `n_boundary` in `pipeline_config.yaml` takes effect immediat
 Test configuration:
 
 1. Set `batch_size: 1` and `n_batches: 10` in `config/pipeline_config.yaml`.
-2. Submit with wrapper from the slurm directory:
-  - `./submit_batch.sh`
-  - optional throttle: `./submit_batch.sh --max-concurrent 256`
+2. Submit with unified workflow wrapper:
+  - `./workflow/batch.sh`
+  - optional throttle: `./workflow/batch.sh --max-concurrent 256`
 3. After all array tasks succeed, submit merge with:
-  - `./submit_merge.sh`
+  - `./workflow/submit_merge.sh`
 
 Production configuration:
 
 1. Set `batch_size` and `n_batches` to your production values.
-2. Submit with `./submit_batch.sh` (the wrapper computes the array size automatically from discovered particles and batch layout).
-3. Submit merge with `./submit_merge.sh` after batch completion.
+2. Submit with `./workflow/batch.sh` (the wrapper computes the array size automatically from discovered particles and batch layout).
+3. Submit merge with `./workflow/submit_merge.sh` after batch completion.
 
 ### Logging
 
