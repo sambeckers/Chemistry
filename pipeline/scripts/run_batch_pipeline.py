@@ -9,7 +9,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-import yaml
 
 from append_ev_to_hdf5 import BatchHDF5Appender
 from common import BatchPlanner, DumpSelection, FileSystemTools, SpeciesCatalog, PipelineConfigManager
@@ -43,43 +42,6 @@ class BatchPipelineRunner:
         self.compression = self.processing.get("compression", "gzip")
         self.compression_level = self.processing.get("compression_level", 4)
         self.cleanup_temporary = bool(self.processing.get("cleanup_temporary", True))
-        self.reuse_trace_output = bool(self.processing.get("reuse_existing_trace_output", False))
-        self.reuse_existing_ev_output = bool(self.processing.get("reuse_existing_ev_output", True))
-        self._persisted_reuse_flag_changes: set[str] = set()
-
-    def _persist_processing_flag(self, flag_name: str, value: bool, reason: str) -> None:
-        """Persist one processing flag change to in-memory config and pipeline YAML."""
-        if flag_name in self._persisted_reuse_flag_changes:
-            return
-
-        self.processing[flag_name] = bool(value)
-        self._persisted_reuse_flag_changes.add(flag_name)
-        print(f"Batch {self.batch_index}: setting processing.{flag_name}={value} ({reason})")
-
-        config_path_raw = self.config.get("config_path")
-        if not config_path_raw:
-            return
-
-        config_path = Path(config_path_raw)
-        try:
-            with open(config_path, "r", encoding="ascii") as handle:
-                config_data = yaml.safe_load(handle)
-
-            if not isinstance(config_data, dict):
-                print(
-                    f"Batch {self.batch_index}: warning: could not persist {flag_name}; config root is not a mapping"
-                )
-                return
-
-            if "processing" not in config_data or not isinstance(config_data["processing"], dict):
-                config_data["processing"] = {}
-
-            config_data["processing"][flag_name] = bool(value)
-
-            with open(config_path, "w", encoding="ascii") as handle:
-                yaml.safe_dump(config_data, handle, sort_keys=False)
-        except Exception as exc:  # noqa: BLE001
-            print(f"Batch {self.batch_index}: warning: failed to persist {flag_name} to config: {exc}")
 
     @staticmethod
     def _write_trace_config(config_path: Path, particle_ids: np.ndarray) -> None:
@@ -132,13 +94,6 @@ class BatchPipelineRunner:
         prefix = self.config["simulation"]["prefix"]
         dump_paths = [str(data_dir / f"{prefix}_{dump_number:05d}") for dump_number in selected_dumps]
         subprocess.run([str(binary), *dump_paths], cwd=self.batch_work_dir, check=True)
-
-    def _all_trace_files_present(self, trace_output_dir: Path) -> bool:
-        """Check whether trace_output already contains all expected particle files."""
-        for particle_id in self.particle_ids.tolist():
-            if not (trace_output_dir / f"{particle_id}.phys").exists():
-                return False
-        return True
 
     @staticmethod
     def _reset_trace_output_dir(trace_output_dir: Path) -> None:
@@ -371,7 +326,7 @@ class BatchPipelineRunner:
                 raise FileExistsError(f"Batch output already exists: {self.batch_file}")
             self.batch_file.unlink()
 
-        if self.batch_work_dir.exists() and not self.reuse_trace_output:
+        if self.batch_work_dir.exists():
             shutil.rmtree(self.batch_work_dir)
 
     @staticmethod
@@ -409,33 +364,21 @@ class BatchPipelineRunner:
         trace_output_dir = self._prepare_trace_workspace()
         stage_totals["prepare_trace_workspace"] += time.perf_counter() - stage_start
 
-        if self.reuse_trace_output and self._all_trace_files_present(trace_output_dir):
-            print(f"Batch {self.batch_index}: reusing existing trace_output (skip phantomanalysis)")
+        stage_start = time.perf_counter()
+        try:
+            self._run_tracing()
+        except subprocess.CalledProcessError as exc:
+            stage_totals["tracing"] += time.perf_counter() - stage_start
+            print(
+                f"Batch {self.batch_index}: phantomanalysis failed with return code {exc.returncode}; "
+                "retrying once with a clean trace_output directory"
+            )
+            self._reset_trace_output_dir(trace_output_dir)
+            retry_start = time.perf_counter()
+            self._run_tracing()
+            stage_totals["tracing"] += time.perf_counter() - retry_start
         else:
-            if self.reuse_trace_output:
-                self._persist_processing_flag(
-                    "reuse_existing_trace_output",
-                    False,
-                    "trace_output is incomplete for this batch",
-                )
-                self.reuse_trace_output = False
-                self._reset_trace_output_dir(trace_output_dir)
-                print(f"Batch {self.batch_index}: cleared stale trace_output before fresh phantomanalysis run")
-            stage_start = time.perf_counter()
-            try:
-                self._run_tracing()
-            except subprocess.CalledProcessError as exc:
-                stage_totals["tracing"] += time.perf_counter() - stage_start
-                print(
-                    f"Batch {self.batch_index}: phantomanalysis failed with return code {exc.returncode}; "
-                    "retrying once with a clean trace_output directory"
-                )
-                self._reset_trace_output_dir(trace_output_dir)
-                retry_start = time.perf_counter()
-                self._run_tracing()
-                stage_totals["tracing"] += time.perf_counter() - retry_start
-            else:
-                stage_totals["tracing"] += time.perf_counter() - stage_start
+            stage_totals["tracing"] += time.perf_counter() - stage_start
 
         stage_start = time.perf_counter()
         BatchHDF5Appender.initialise_batch_file(
@@ -465,35 +408,21 @@ class BatchPipelineRunner:
                 runtime_dirs = runtime_dirs_by_type[chemistry_type]
                 model_runtime_rel = runtime_rel_by_type[chemistry_type]
                 input_file = runtime_dirs["input"] / f"{particle_id}.txt"
-                ev_output_path = runtime_dirs["ev_output"] / f"ev_{particle_id}.dat"
 
-                if self.reuse_existing_ev_output and ev_output_path.exists() and ev_output_path.stat().st_size == 0:
-                    self._persist_processing_flag(
-                        "reuse_existing_ev_output",
-                        False,
-                        f"found empty ev_output file: {ev_output_path.name}",
-                    )
-                    self.reuse_existing_ev_output = False
+                stage_start = time.perf_counter()
+                PhysTraceConverter.convert_phys_file(trace_file, input_file)
+                stage_totals["phys_to_txt"] += time.perf_counter() - stage_start
 
-                if self.reuse_existing_ev_output and ev_output_path.exists() and ev_output_path.stat().st_size > 0:
-                    print(
-                        f"Batch {self.batch_index}: reusing existing ev_output for particle {particle_id} ({chemistry_type})"
-                    )
-                else:
-                    stage_start = time.perf_counter()
-                    PhysTraceConverter.convert_phys_file(trace_file, input_file)
-                    stage_totals["phys_to_txt"] += time.perf_counter() - stage_start
+                file_params_path = self._write_file_params(runtime_dirs, model_runtime_rel, particle_id, chemistry_type)
+                file_params_arg = (model_runtime_rel / "par" / file_params_path.name).as_posix()
 
-                    file_params_path = self._write_file_params(runtime_dirs, model_runtime_rel, particle_id, chemistry_type)
-                    file_params_arg = (model_runtime_rel / "par" / file_params_path.name).as_posix()
+                stage_start = time.perf_counter()
+                self._run_chemistry_model(file_params_arg)
+                stage_totals["chemistry_model"] += time.perf_counter() - stage_start
 
-                    stage_start = time.perf_counter()
-                    self._run_chemistry_model(file_params_arg)
-                    stage_totals["chemistry_model"] += time.perf_counter() - stage_start
-
-                    stage_start = time.perf_counter()
-                    ev_output_path = self._convert_model_output(runtime_dirs, particle_id, chemistry_type)
-                    stage_totals["ev_convert"] += time.perf_counter() - stage_start
+                stage_start = time.perf_counter()
+                ev_output_path = self._convert_model_output(runtime_dirs, particle_id, chemistry_type)
+                stage_totals["ev_convert"] += time.perf_counter() - stage_start
 
                 stage_start = time.perf_counter()
                 BatchHDF5Appender.append_particle_to_batch(
@@ -514,7 +443,7 @@ class BatchPipelineRunner:
                     runtime_dirs,
                     particle_id,
                     cleanup_trace_file=False,
-                    cleanup_ev_output=not self.reuse_existing_ev_output,
+                    cleanup_ev_output=True,
                 )
                 stage_totals["cleanup_particle_products"] += time.perf_counter() - stage_start
 

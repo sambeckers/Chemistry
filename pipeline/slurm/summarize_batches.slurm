@@ -26,4 +26,4 @@ if [[ -z "${BATCH_LOG_DIR:-}" ]]; then
 fi
 
 cd "${ROOT}"
-exec "${PYTHON_BIN}" "${ROOT}/scripts/summarize_batch_logs.py"
+"${PYTHON_BIN}" "${ROOT}/scripts/summarize_batch_logs.py"

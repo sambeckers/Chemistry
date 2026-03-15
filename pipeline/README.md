@@ -51,7 +51,6 @@ All other `paths.*` entries may be written relative to `paths.base_path`; they a
 - `processing.n_batches`: number of jobs to expose.
 - `processing.n_boundary`: number of low-ID particles to exclude during discovery. Keep this at `0` for small test runs and set it to values such as `5000` only when the selected dump actually contains that many removable boundary particles.
 - `processing.chemistry_types`: `Crich`, `Orich`, or both.
-- `processing.reuse_existing_trace_output`: when `true`, skip `phantomanalysis` for a batch if all expected `trace_output/<id>.phys` files already exist.
 
 If both `batch_size` and `n_batches` are set, the pipeline processes the first `batch_size * n_batches` discovered particles. This makes small-scale testing cheap while keeping production layout predictable.
 
