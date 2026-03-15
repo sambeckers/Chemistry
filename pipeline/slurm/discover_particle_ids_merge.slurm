@@ -1,7 +1,7 @@
 #!/bin/bash
 # Merge step for particle-ID discovery.
 # This job depends on successful completion of discovery array tasks.
-#SBATCH --job-name=chem_hdf5_discover_merge
+#SBATCH --job-name=discover_merge
 #SBATCH --time=04:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=8G
@@ -26,10 +26,15 @@ DUMP_LIST_FILE="${DISCOVER_DUMP_LIST:?DISCOVER_DUMP_LIST is required}"
 DISCOVER_OUT_DIR="${DISCOVER_OUT_DIR:?DISCOVER_OUT_DIR is required}"
 
 cd "${ROOT}"
-# Merge per-dump .npy files and update pipeline config with cache metadata.
-exec "${PYTHON_BIN}" "${ROOT}/scripts/discover_particle_ids_parallel.py" \
+echo "WORKFLOW_TASK|stage=particle_discovery_merge|phase=start|epoch=$(date +%s)"
+set +e
+"${PYTHON_BIN}" "${ROOT}/scripts/discover_particle_ids_parallel.py" \
     --mode merge \
     --config "${CONFIG_PATH}" \
     --dump-list "${DUMP_LIST_FILE}" \
     --out-dir "${DISCOVER_OUT_DIR}" \
     --update-config
+status=$?
+set -e
+echo "WORKFLOW_TASK|stage=particle_discovery_merge|phase=end|epoch=$(date +%s)|status=${status}"
+exit "${status}"

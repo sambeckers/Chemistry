@@ -2,7 +2,7 @@
 # One array task = one PHANTOM dump scan.
 # Expected environment variables are exported by submit_discover_particle_ids.sh:
 #   PIPELINE_ROOT, PIPELINE_CONFIG, PIPELINE_PYTHON, DISCOVER_DUMP_LIST, DISCOVER_OUT_DIR
-#SBATCH --job-name=chem_hdf5_discover_ids
+#SBATCH --job-name=discover_ids
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=4G
@@ -40,9 +40,14 @@ if [[ -z "${DUMP_NUMBER}" ]]; then
 fi
 
 cd "${ROOT}"
-# Execute in-place to preserve SLURM process accounting and exit code handling.
-exec "${PYTHON_BIN}" "${ROOT}/scripts/discover_particle_ids_parallel.py" \
+echo "WORKFLOW_TASK|stage=particle_discovery_worker|item=${SLURM_ARRAY_TASK_ID}|phase=start|epoch=$(date +%s)"
+set +e
+"${PYTHON_BIN}" "${ROOT}/scripts/discover_particle_ids_parallel.py" \
     --mode worker \
     --config "${CONFIG_PATH}" \
     --dump-number "${DUMP_NUMBER}" \
     --out-dir "${DISCOVER_OUT_DIR}"
+status=$?
+set -e
+echo "WORKFLOW_TASK|stage=particle_discovery_worker|item=${SLURM_ARRAY_TASK_ID}|phase=end|epoch=$(date +%s)|status=${status}"
+exit "${status}"

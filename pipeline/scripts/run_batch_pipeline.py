@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 import numpy as np
@@ -120,8 +121,8 @@ class BatchPipelineRunner:
         self._ensure_link(av_dir, self.batch_work_dir / "AV")
         return trace_output_dir
 
-    def _run_trace_stage(self) -> None:
-        """Execute phantomanalysis across selected dumps to generate .phys files."""
+    def _run_tracing(self) -> None:
+        """Execute phantomanalysis across selected dumps to generate particle traces."""
         selected_dumps = DumpSelection.selected_dump_numbers(self.config)
         if len(selected_dumps) < 2:
             raise RuntimeError("Trace stage requires at least two dumps.")
@@ -138,6 +139,13 @@ class BatchPipelineRunner:
             if not (trace_output_dir / f"{particle_id}.phys").exists():
                 return False
         return True
+
+    @staticmethod
+    def _reset_trace_output_dir(trace_output_dir: Path) -> None:
+        """Delete and recreate trace_output to force a fresh phantomanalysis run."""
+        if trace_output_dir.exists():
+            shutil.rmtree(trace_output_dir)
+        trace_output_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def _assert_fortran_path_length(value: str, label: str) -> None:
@@ -366,16 +374,41 @@ class BatchPipelineRunner:
         if self.batch_work_dir.exists() and not self.reuse_trace_output:
             shutil.rmtree(self.batch_work_dir)
 
+    @staticmethod
+    def _emit_timing(batch_index: int, stage: str, seconds: float) -> None:
+        """Emit machine-parseable timing markers for log summarisation."""
+        print(f"TIMING|batch={batch_index}|stage={stage}|seconds={seconds:.6f}")
+
     def run(self) -> Path:
         """Execute complete batch workflow and return generated batch file path."""
+        batch_start = time.perf_counter()
+        stage_totals = {
+            "prepare_batch_paths": 0.0,
+            "prepare_trace_workspace": 0.0,
+            "tracing": 0.0,
+            "init_batch_hdf5": 0.0,
+            "prepare_chem_runtime": 0.0,
+            "phys_to_txt": 0.0,
+            "chemistry_model": 0.0,
+            "ev_convert": 0.0,
+            "append_hdf5": 0.0,
+            "cleanup_particle_products": 0.0,
+            "cleanup_batch_workspace": 0.0,
+        }
+
+        stage_start = time.perf_counter()
         self._prepare_batch_paths()
+        stage_totals["prepare_batch_paths"] += time.perf_counter() - stage_start
 
         print(
             f"Batch {self.batch_index}: particles {self.metadata['selection_start']}:{self.metadata['selection_end']} "
             f"({len(self.particle_ids)} particle(s) out of {self.metadata['total_particles']})"
         )
 
+        stage_start = time.perf_counter()
         trace_output_dir = self._prepare_trace_workspace()
+        stage_totals["prepare_trace_workspace"] += time.perf_counter() - stage_start
+
         if self.reuse_trace_output and self._all_trace_files_present(trace_output_dir):
             print(f"Batch {self.batch_index}: reusing existing trace_output (skip phantomanalysis)")
         else:
@@ -386,8 +419,25 @@ class BatchPipelineRunner:
                     "trace_output is incomplete for this batch",
                 )
                 self.reuse_trace_output = False
-            self._run_trace_stage()
+                self._reset_trace_output_dir(trace_output_dir)
+                print(f"Batch {self.batch_index}: cleared stale trace_output before fresh phantomanalysis run")
+            stage_start = time.perf_counter()
+            try:
+                self._run_tracing()
+            except subprocess.CalledProcessError as exc:
+                stage_totals["tracing"] += time.perf_counter() - stage_start
+                print(
+                    f"Batch {self.batch_index}: phantomanalysis failed with return code {exc.returncode}; "
+                    "retrying once with a clean trace_output directory"
+                )
+                self._reset_trace_output_dir(trace_output_dir)
+                retry_start = time.perf_counter()
+                self._run_tracing()
+                stage_totals["tracing"] += time.perf_counter() - retry_start
+            else:
+                stage_totals["tracing"] += time.perf_counter() - stage_start
 
+        stage_start = time.perf_counter()
         BatchHDF5Appender.initialise_batch_file(
             batch_file=self.batch_file,
             batch_index=self.batch_index,
@@ -395,13 +445,16 @@ class BatchPipelineRunner:
             dump_numbers=self.dump_numbers,
             chemistry_types=self.chemistry_types,
         )
+        stage_totals["init_batch_hdf5"] += time.perf_counter() - stage_start
 
         runtime_dirs_by_type: dict[str, dict[str, Path]] = {}
         runtime_rel_by_type: dict[str, Path] = {}
+        stage_start = time.perf_counter()
         for chemistry_type in self.chemistry_types:
             runtime_dirs = self._chemistry_runtime_dirs(chemistry_type)
             runtime_dirs_by_type[chemistry_type] = runtime_dirs
             runtime_rel_by_type[chemistry_type] = self._prepare_model_runtime_links(runtime_dirs, chemistry_type)
+        stage_totals["prepare_chem_runtime"] += time.perf_counter() - stage_start
 
         for slot, particle_id in enumerate(self.particle_ids.tolist()):
             trace_file = trace_output_dir / f"{particle_id}.phys"
@@ -427,12 +480,22 @@ class BatchPipelineRunner:
                         f"Batch {self.batch_index}: reusing existing ev_output for particle {particle_id} ({chemistry_type})"
                     )
                 else:
+                    stage_start = time.perf_counter()
                     PhysTraceConverter.convert_phys_file(trace_file, input_file)
+                    stage_totals["phys_to_txt"] += time.perf_counter() - stage_start
+
                     file_params_path = self._write_file_params(runtime_dirs, model_runtime_rel, particle_id, chemistry_type)
                     file_params_arg = (model_runtime_rel / "par" / file_params_path.name).as_posix()
-                    self._run_chemistry_model(file_params_arg)
-                    ev_output_path = self._convert_model_output(runtime_dirs, particle_id, chemistry_type)
 
+                    stage_start = time.perf_counter()
+                    self._run_chemistry_model(file_params_arg)
+                    stage_totals["chemistry_model"] += time.perf_counter() - stage_start
+
+                    stage_start = time.perf_counter()
+                    ev_output_path = self._convert_model_output(runtime_dirs, particle_id, chemistry_type)
+                    stage_totals["ev_convert"] += time.perf_counter() - stage_start
+
+                stage_start = time.perf_counter()
                 BatchHDF5Appender.append_particle_to_batch(
                     batch_file=self.batch_file,
                     slot=slot,
@@ -443,7 +506,9 @@ class BatchPipelineRunner:
                     compression=self.compression,
                     compression_level=self.compression_level,
                 )
+                stage_totals["append_hdf5"] += time.perf_counter() - stage_start
 
+                stage_start = time.perf_counter()
                 self._cleanup_particle_products(
                     trace_file,
                     runtime_dirs,
@@ -451,16 +516,23 @@ class BatchPipelineRunner:
                     cleanup_trace_file=False,
                     cleanup_ev_output=not self.reuse_existing_ev_output,
                 )
+                stage_totals["cleanup_particle_products"] += time.perf_counter() - stage_start
 
             if self.cleanup_temporary and trace_file.exists():
                 trace_file.unlink()
 
         if self.cleanup_temporary:
+            stage_start = time.perf_counter()
             for model_runtime_rel in runtime_rel_by_type.values():
                 link_root = self.model_root / model_runtime_rel
                 if link_root.exists():
                     shutil.rmtree(link_root)
             shutil.rmtree(self.batch_work_dir)
+            stage_totals["cleanup_batch_workspace"] += time.perf_counter() - stage_start
+
+        for stage_name, elapsed_seconds in stage_totals.items():
+            self._emit_timing(self.batch_index, stage_name, elapsed_seconds)
+        self._emit_timing(self.batch_index, "batch_total", time.perf_counter() - batch_start)
 
         return self.batch_file
 
@@ -481,7 +553,18 @@ class BatchPipelineCLI:
         """Execute batch pipeline and print completion summary."""
         args = cls.parse_args()
         config = PipelineConfigManager.load(args.config)
-        batch_file = BatchPipelineRunner(config=config, batch_index=args.batch_index).run()
+        started = time.perf_counter()
+        try:
+            batch_file = BatchPipelineRunner(config=config, batch_index=args.batch_index).run()
+        except Exception as exc:
+            elapsed = time.perf_counter() - started
+            print(
+                f"BATCH_STATUS|batch={args.batch_index}|status=error|seconds={elapsed:.6f}|error={type(exc).__name__}"
+            )
+            raise
+
+        elapsed = time.perf_counter() - started
+        print(f"BATCH_STATUS|batch={args.batch_index}|status=ok|seconds={elapsed:.6f}")
         print(f"Completed batch {args.batch_index}: {batch_file}")
 
 

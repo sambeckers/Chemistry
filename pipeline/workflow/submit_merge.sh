@@ -82,7 +82,7 @@ echo "Logs            : ${LOG_DIR}"
 
 echo "Submitting..."
 sbatch \
-    --output="${LOG_DIR}/chem_hdf5_merge_%A.out" \
-    --error="${LOG_DIR}/chem_hdf5_merge_%A.err" \
+    --output="${LOG_DIR}/merge_%A.out" \
+    --error="${LOG_DIR}/merge_%A.err" \
     --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN}" \
     "${SLURM_SCRIPT}"

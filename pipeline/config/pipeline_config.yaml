@@ -16,7 +16,7 @@ processing:
   start_dump: 0
   end_dump: 1600
   dump_step: 1
-  batch_size: 1
+  batch_size: 2
   n_batches: 10
   n_boundary: 20000
   chemistry_types:
@@ -25,7 +25,7 @@ processing:
   compression: gzip
   compression_level: 4
   cleanup_temporary: true
-  reuse_existing_trace_output: true
+  reuse_existing_trace_output: false
   reuse_existing_ev_output: true
   overwrite_batch: true
   retain_batch_files_after_merge: true

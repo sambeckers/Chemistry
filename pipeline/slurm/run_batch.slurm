@@ -1,12 +1,12 @@
 #!/bin/bash
 # One array task = one pipeline batch index.
-#SBATCH --job-name=chem_hdf5_batch
+#SBATCH --job-name=batch
 #SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=8G
 #SBATCH --array=0-0
-#SBATCH --output=logs/logs_%A/chem_hdf5_batch_%A_%a.out
-#SBATCH --error=logs/logs_%A/chem_hdf5_batch_%A_%a.err
+#SBATCH --output=logs/logs_%A/batch_%A_%a.out
+#SBATCH --error=logs/logs_%A/batch_%A_%a.err
 
 set -euo pipefail
 
@@ -28,5 +28,13 @@ if [[ ! -f "${ROOT}/workflow/batch.sh" ]]; then
 fi
 
 cd "${ROOT}"
+echo "BATCH_TASK|batch=${SLURM_ARRAY_TASK_ID}|phase=start|epoch=$(date +%s)"
+
 # Unified workflow script executes one batch task in run mode.
+set +e
 "${ROOT}/workflow/batch.sh" --run-index "${SLURM_ARRAY_TASK_ID}"
+status=$?
+set -e
+
+echo "BATCH_TASK|batch=${SLURM_ARRAY_TASK_ID}|phase=end|epoch=$(date +%s)|status=${status}"
+exit "${status}"

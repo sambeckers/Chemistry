@@ -122,10 +122,18 @@ Production configuration:
 ### Logging
 
 - Logs are written under `paths.scratch_root/logs/` with per-submission timestamped directories:
-  - `logs_%A_YYYY-mm-dd_HH-MM-SS/chem_hdf5_batch_%A_%a.out`
-  - `logs_%A_YYYY-mm-dd_HH-MM-SS/chem_hdf5_batch_%A_%a.err`
-  - `logs_%A_YYYY-mm-dd_HH-MM-SS/chem_hdf5_merge_%A.out`
-  - `logs_%A_YYYY-mm-dd_HH-MM-SS/chem_hdf5_merge_%A.err`
+  - `logs_%A_YYYY-mm-dd_HH-MM-SS/batch_%A_%a.out`
+  - `logs_%A_YYYY-mm-dd_HH-MM-SS/batch_%A_%a.err`
+  - `logs_%A_YYYY-mm-dd_HH-MM-SS/merge_%A.out`
+  - `logs_%A_YYYY-mm-dd_HH-MM-SS/merge_%A.err`
+  - `logs_%A_YYYY-mm-dd_HH-MM-SS/batch_run_summary.txt` (auto-generated after array completion)
+
+When you submit with `workflow/batch.sh`, the wrapper now submits a dependent summary job that runs after the batch array finishes (`afterany`).
+The summary file contains:
+
+- Per-batch runtime by key pipeline process (trace stage, chemistry model, append, total, and other stages)
+- Warning/error line counts and sampled issue lines from each batch `*.out` and `*.err`
+- Total run wall time across all batches (first task start to last task end)
 
 This follows the same submit-wrapper style used in `code_chem` and `code_trace` while keeping logs in the configured work area.
 
