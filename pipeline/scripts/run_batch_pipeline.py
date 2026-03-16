@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from append_ev_to_hdf5 import BatchHDF5Appender
-from common import BatchPlanner, DumpSelection, FileSystemTools, SpeciesCatalog, PipelineConfigManager
+from common import BatchPlanner, DumpSelection, DumpTimeMapper, FileSystemTools, SpeciesCatalog, PipelineConfigManager
 from convert_phys_to_txt import PhysTraceConverter
 
 
@@ -31,6 +31,8 @@ class BatchPipelineRunner:
 
         self.processing = config["processing"]
         self.dump_numbers = DumpSelection.target_dump_numbers(config)
+        self.time_key_decimals = DumpTimeMapper.time_key_decimals(config)
+        self.dump_time_seconds = DumpTimeMapper.load_or_build_dump_time_seconds(config, self.dump_numbers)
         self.chemistry_types = list(self.processing.get("chemistry_types", ["Crich"]))
 
         self.batch_output_dir = FileSystemTools.ensure_clean_directory(config["paths"]["batch_output_dir"])
@@ -386,6 +388,8 @@ class BatchPipelineRunner:
             batch_index=self.batch_index,
             particle_ids=self.particle_ids,
             dump_numbers=self.dump_numbers,
+            dump_time_seconds=self.dump_time_seconds,
+            time_key_decimals=self.time_key_decimals,
             chemistry_types=self.chemistry_types,
         )
         stage_totals["init_batch_hdf5"] += time.perf_counter() - stage_start
@@ -432,6 +436,8 @@ class BatchPipelineRunner:
                     chemistry_type=chemistry_type,
                     ev_output_path=ev_output_path,
                     dump_numbers=self.dump_numbers,
+                    dump_time_seconds=self.dump_time_seconds,
+                    time_key_decimals=self.time_key_decimals,
                     compression=self.compression,
                     compression_level=self.compression_level,
                 )

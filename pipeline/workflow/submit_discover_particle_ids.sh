@@ -5,6 +5,7 @@
 #   ./workflow/submit_discover_particle_ids.sh
 #   ./workflow/submit_discover_particle_ids.sh --config /path/to/pipeline_config.yaml
 #   ./workflow/submit_discover_particle_ids.sh --max-concurrent 256
+#   ./workflow/submit_discover_particle_ids.sh --serial
 #
 # Workflow summary:
 # 1) Query config for selected dumps, python binary, and scratch root.
@@ -19,9 +20,12 @@ PIPELINE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEFAULT_CONFIG="${PIPELINE_ROOT}/config/pipeline_config.yaml"
 ARRAY_SLURM="${PIPELINE_ROOT}/slurm/discover_particle_ids_array.slurm"
 MERGE_SLURM="${PIPELINE_ROOT}/slurm/discover_particle_ids_merge.slurm"
+SERIAL_SLURM="${PIPELINE_ROOT}/slurm/discover_particle_ids_serial.slurm"
 
 CONFIG_PATH="${DEFAULT_CONFIG}"
 MAX_CONCURRENT=""
+SERIAL_MODE=0
+SERIAL_MODE_SET=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -33,9 +37,14 @@ while [[ $# -gt 0 ]]; do
             MAX_CONCURRENT="$2"
             shift 2
             ;;
+        --serial)
+            SERIAL_MODE=1
+            SERIAL_MODE_SET=1
+            shift 1
+            ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: ./workflow/submit_discover_particle_ids.sh [--config PATH] [--max-concurrent N]"
+            echo "Usage: ./workflow/submit_discover_particle_ids.sh [--config PATH] [--max-concurrent N] [--serial]"
             exit 1
             ;;
     esac
@@ -63,23 +72,32 @@ cfg = PipelineConfigManager.load(config_path)
 python_bin = cfg.get("paths", {}).get("python", "/fred/oz304/beckers/MRP_env/bin/python")
 scratch_root = Path(cfg.get("paths", {}).get("scratch_root", str(pipeline_root / "work"))).resolve()
 selected = DumpSelection.selected_dump_numbers(cfg)
+discovery_mode = str(cfg.get("processing", {}).get("discovery_mode", "array")).strip().lower()
+if discovery_mode not in {"array", "serial"}:
+    raise ValueError("processing.discovery_mode must be 'array' or 'serial'")
 
 print(python_bin)
 print(str(scratch_root))
+print(discovery_mode)
 print(len(selected))
 for number in selected:
     print(number)
 PY
 )
 
-if [[ "${#INFO[@]}" -lt 4 ]]; then
+if [[ "${#INFO[@]}" -lt 5 ]]; then
     echo "Error: failed to read discovery metadata from config."
     exit 1
 fi
 
 PYTHON_BIN="${INFO[0]}"
 SCRATCH_ROOT="${INFO[1]}"
-N_DUMPS="${INFO[2]}"
+DISCOVERY_MODE="${INFO[2]}"
+N_DUMPS="${INFO[3]}"
+
+if [[ "${SERIAL_MODE_SET}" -eq 0 && "${DISCOVERY_MODE}" == "serial" ]]; then
+    SERIAL_MODE=1
+fi
 
 if [[ "${N_DUMPS}" -lt 1 ]]; then
     echo "Error: no dumps selected."
@@ -93,7 +111,7 @@ DISCOVER_OUT_DIR="${RUN_DIR}/per_dump_ids"
 
 mkdir -p "${RUN_DIR}" "${DISCOVER_OUT_DIR}" "${SCRATCH_ROOT}/logs"
 
-printf '%s\n' "${INFO[@]:3}" > "${DUMP_LIST_FILE}"
+printf '%s\n' "${INFO[@]:4}" > "${DUMP_LIST_FILE}"
 
 ARRAY_MAX=$((N_DUMPS - 1))
 ARRAY_SPEC="0-${ARRAY_MAX}"
@@ -110,9 +128,26 @@ echo "Particle ID Discovery Submit"
 echo "========================================="
 echo "Pipeline root   : ${PIPELINE_ROOT}"
 echo "Config          : ${CONFIG_PATH}"
-echo "Dumps           : ${N_DUMPS} (array ${ARRAY_SPEC})"
+if [[ "${SERIAL_MODE}" -eq 1 ]]; then
+    echo "Dumps           : ${N_DUMPS} (serial)"
+else
+    echo "Dumps           : ${N_DUMPS} (array ${ARRAY_SPEC})"
+fi
 echo "Run dir         : ${RUN_DIR}"
 echo "Logs            : ${LOG_DIR}"
+
+if [[ "${SERIAL_MODE}" -eq 1 ]]; then
+    echo "Submitting serial discovery job..."
+    SERIAL_SUBMIT_OUTPUT=$(sbatch \
+        --output="${LOG_DIR}/discover_ids_serial_%A.out" \
+        --error="${LOG_DIR}/discover_ids_serial_%A.err" \
+        --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},DISCOVER_OUT_DIR=${DISCOVER_OUT_DIR}" \
+        "${SERIAL_SLURM}")
+
+    echo "Serial discovery submitted: ${SERIAL_SUBMIT_OUTPUT}"
+    echo "Done."
+    exit 0
+fi
 
 echo "Submitting discovery array..."
 ARRAY_SUBMIT_OUTPUT=$(sbatch \

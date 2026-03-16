@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import json
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +37,154 @@ TRACE_COLUMN_MAP = {
     "AV": "av",
     "TIME": "time",
 }
+
+
+class DumpTimeMapper:
+    """Build and use dump-number <-> real-time mappings with fixed-precision keys."""
+
+    SECONDS_PER_YEAR = 31557600.0
+
+    @staticmethod
+    def _time_key(seconds: float, decimals: int) -> int:
+        """Convert seconds to an integer key using fixed decimal precision."""
+        scale = 10**int(decimals)
+        return int(np.rint(float(seconds) * scale))
+
+    @staticmethod
+    def time_key_decimals(config: dict) -> int:
+        """Return configured decimal precision used for time-key matching."""
+        processing = config.get("processing", {})
+        decimals = int(processing.get("time_key_decimals", 0))
+        if decimals < 0:
+            raise ValueError("processing.time_key_decimals must be >= 0")
+        return decimals
+
+    @staticmethod
+    def cache_path(config: dict) -> Path:
+        """Return JSON cache path for dump-time mapping."""
+        paths = config.get("paths", {})
+        explicit = paths.get("dump_time_map_cache")
+        if explicit:
+            return Path(explicit)
+        scratch_root = Path(paths["scratch_root"]).resolve()
+        return scratch_root / "dump_time_map_cache.json"
+
+    @classmethod
+    def _build_dump_time_seconds(cls, config: dict, dump_numbers: list[int]) -> list[float]:
+        """Read PHANTOM dump params and return real-time seconds in dump order."""
+        paths = config["paths"]
+        simulation = config["simulation"]
+        data_dir = Path(paths["phantom_dump_dir"])
+        prefix = simulation["prefix"]
+
+        values: list[float] = []
+        for dump_number in dump_numbers:
+            dump_path = data_dir / f"{prefix}_{dump_number:05d}"
+            sdf, _ = sarracen.read_phantom(str(dump_path))
+            params = getattr(sdf, "_params", {})
+            if "time" not in params or "utime" not in params:
+                raise KeyError(f"Missing time/utime in dump params for {dump_path}")
+            values.append(float(params["time"]) * float(params["utime"]))
+        return values
+
+    @classmethod
+    def load_or_build_dump_time_seconds(cls, config: dict, dump_numbers: list[int]) -> list[float]:
+        """Load dump-time seconds from cache when possible, else build and cache."""
+        cache_path = cls.cache_path(config).expanduser().resolve()
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if cache_path.is_file():
+            try:
+                payload = json.loads(cache_path.read_text(encoding="ascii"))
+                cached_dumps = [int(value) for value in payload.get("dump_numbers", [])]
+                cached_times = [float(value) for value in payload.get("time_seconds", [])]
+                if cached_dumps == [int(value) for value in dump_numbers] and len(cached_times) == len(dump_numbers):
+                    return cached_times
+
+                # Common case: cache covers the full selected dump list, while caller requests
+                # a subset (e.g. target dumps excluding initial state). Reuse by keyed lookup.
+                cache_lookup = {int(dump): float(seconds) for dump, seconds in zip(cached_dumps, cached_times)}
+                if all(int(dump) in cache_lookup for dump in dump_numbers):
+                    return [cache_lookup[int(dump)] for dump in dump_numbers]
+            except Exception:
+                # Corrupt/partial cache is rebuilt below.
+                pass
+
+        time_seconds = cls._build_dump_time_seconds(config, dump_numbers)
+        payload = {
+            "dump_numbers": [int(value) for value in dump_numbers],
+            "time_seconds": [float(value) for value in time_seconds],
+        }
+        temp_path = cache_path.with_suffix(".tmp")
+        temp_path.write_text(json.dumps(payload), encoding="ascii")
+        temp_path.replace(cache_path)
+        return time_seconds
+
+    @classmethod
+    def dump_lookup_from_seconds(
+        cls,
+        dump_numbers: list[int],
+        dump_time_seconds: list[float],
+        decimals: int,
+    ) -> dict[int, int]:
+        """Build key->dump lookup and fail if duplicate keys appear."""
+        lookup: dict[int, int] = {}
+        for dump_number, seconds in zip(dump_numbers, dump_time_seconds):
+            key = cls._time_key(seconds, decimals)
+            if key in lookup and lookup[key] != int(dump_number):
+                raise ValueError(
+                    f"Time-key collision at precision {decimals} for dumps "
+                    f"{lookup[key]:05d} and {int(dump_number):05d}"
+                )
+            lookup[key] = int(dump_number)
+        return lookup
+
+    @classmethod
+    def map_time_values_to_dump_numbers(
+        cls,
+        time_values: np.ndarray,
+        dump_numbers: list[int],
+        dump_time_seconds: list[float],
+        decimals: int,
+    ) -> np.ndarray:
+        """Map time values (years or seconds) to dump numbers using fixed-precision keys.
+
+        Two hypotheses are tested:
+        - values are already in seconds
+        - values are in years and need conversion to seconds
+        The hypothesis with more exact key matches is selected.
+        """
+        times = np.asarray(time_values, dtype=np.float64)
+        lookup = cls.dump_lookup_from_seconds(dump_numbers, dump_time_seconds, decimals)
+
+        keys_seconds = np.asarray([cls._time_key(value, decimals) for value in times], dtype=np.int64)
+        keys_years = np.asarray([cls._time_key(value * cls.SECONDS_PER_YEAR, decimals) for value in times], dtype=np.int64)
+
+        matches_seconds = int(sum(1 for key in keys_seconds if int(key) in lookup))
+        matches_years = int(sum(1 for key in keys_years if int(key) in lookup))
+
+        if matches_seconds == matches_years:
+            if matches_seconds == len(times):
+                chosen_keys = keys_seconds
+            else:
+                raise ValueError(
+                    "Ambiguous time-unit detection for EV TIME column: "
+                    f"seconds_matches={matches_seconds}, years_matches={matches_years}, rows={len(times)}"
+                )
+        elif matches_seconds > matches_years:
+            chosen_keys = keys_seconds
+        else:
+            chosen_keys = keys_years
+
+        mapped = []
+        for index, key in enumerate(chosen_keys.tolist()):
+            if key not in lookup:
+                raise ValueError(
+                    "Could not map EV TIME value to a configured dump using fixed precision: "
+                    f"row={index}, time={times[index]:.12g}, key={key}, decimals={decimals}"
+                )
+            mapped.append(lookup[key])
+        return np.asarray(mapped, dtype=np.int32)
 
 
 class PipelineConfigManager:

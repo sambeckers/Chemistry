@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -19,11 +20,15 @@ class ParticleIdDiscoveryApp:
         self.config = PipelineConfigManager.load(self.config_path)
 
     @staticmethod
-    def _read_dump_ids(dump_path: Path) -> np.ndarray:
-        """Read one PHANTOM dump and return unique int64 particle IDs."""
+    def _read_dump_metadata(dump_path: Path) -> tuple[np.ndarray, float]:
+        """Read one PHANTOM dump and return (unique ids, real-time seconds)."""
         sdf, _ = sarracen.read_phantom(str(dump_path))
         ids = np.unique(sdf["iorig"].to_numpy(dtype=np.int64))
-        return ids.astype(np.int64, copy=False)
+        params = getattr(sdf, "_params", {})
+        if "time" not in params or "utime" not in params:
+            raise KeyError(f"Missing time/utime in dump params for {dump_path}")
+        real_time_seconds = float(params["time"]) * float(params["utime"])
+        return ids.astype(np.int64, copy=False), real_time_seconds
 
     def run_worker(self, dump_number: int, out_dir: Path) -> None:
         """Worker mode: process one dump number and save per-dump IDs."""
@@ -35,9 +40,18 @@ class ParticleIdDiscoveryApp:
 
         out_dir.mkdir(parents=True, exist_ok=True)
         out_file = out_dir / f"ids_{dump_number:05d}.npy"
-        ids = self._read_dump_ids(dump_path)
+        time_file = out_dir / f"time_{dump_number:05d}.json"
+        ids, real_time_seconds = self._read_dump_metadata(dump_path)
         np.save(out_file, ids, allow_pickle=False)
-        print(f"worker dump={dump_number:05d} ids={len(ids)} -> {out_file}")
+        time_payload = {
+            "dump_number": int(dump_number),
+            "real_time_seconds": float(real_time_seconds),
+        }
+        time_file.write_text(json.dumps(time_payload), encoding="ascii")
+        print(
+            f"worker dump={dump_number:05d} ids={len(ids)} time_seconds={real_time_seconds:.9g} "
+            f"-> {out_file}"
+        )
 
     def run_merge(self, dump_list: Path, out_dir: Path, update_config: bool) -> None:
         """Merge mode: combine per-dump worker outputs into one canonical cache."""
@@ -51,12 +65,26 @@ class ParticleIdDiscoveryApp:
             raise RuntimeError(f"Empty dump list: {dump_list}")
 
         all_ids: set[int] = set()
+        dump_time_seconds: list[float] = []
         for index, dump_number in enumerate(dump_numbers, start=1):
             part_file = out_dir / f"ids_{dump_number:05d}.npy"
+            time_file = out_dir / f"time_{dump_number:05d}.json"
             if not part_file.is_file():
                 raise FileNotFoundError(f"Missing worker output: {part_file}")
+            if not time_file.is_file():
+                raise FileNotFoundError(f"Missing worker output: {time_file}")
+
             ids = np.load(part_file, allow_pickle=False)
             all_ids.update(ids.astype(np.int64, copy=False).tolist())
+
+            time_payload = json.loads(time_file.read_text(encoding="ascii"))
+            expected_dump = int(time_payload.get("dump_number", -1))
+            if expected_dump != int(dump_number):
+                raise ValueError(
+                    f"Time payload dump mismatch in {time_file}: expected {dump_number}, got {expected_dump}"
+                )
+            dump_time_seconds.append(float(time_payload["real_time_seconds"]))
+
             if index % 50 == 0 or index == len(dump_numbers):
                 print(f"merge progress: {index}/{len(dump_numbers)} dumps")
 
@@ -68,7 +96,13 @@ class ParticleIdDiscoveryApp:
             raise ValueError(f"processing.n_boundary={n_boundary} removes all {len(all_sorted)} discovered particles")
 
         particle_ids_file = out_dir / "particle_ids_all.npy"
+        dump_time_map_file = out_dir / "dump_time_map_cache.json"
         np.save(particle_ids_file, all_sorted, allow_pickle=False)
+        dump_time_payload = {
+            "dump_numbers": [int(value) for value in dump_numbers],
+            "time_seconds": [float(value) for value in dump_time_seconds],
+        }
+        dump_time_map_file.write_text(json.dumps(dump_time_payload), encoding="ascii")
 
         selected_count = int(len(all_sorted) - n_boundary)
         layout = BatchPlanner.compute_layout(selected_count, batch_size, n_batches)
@@ -81,6 +115,7 @@ class ParticleIdDiscoveryApp:
             "batch_count": int(len(layout)),
             "particle_ids_cache": str(particle_ids_file.resolve()),
             "cache_contains_all_ids": True,
+            "dump_time_map_cache": str(dump_time_map_file.resolve()),
         }
 
         metadata_file = out_dir / "particle_discovery_metadata.yaml"
@@ -105,6 +140,7 @@ class ParticleIdDiscoveryApp:
 
             config_data["paths"]["particle_ids_cache"] = str(particle_ids_file.resolve())
             config_data["paths"]["particle_ids_cache_mode"] = "all_ids"
+            config_data["paths"]["dump_time_map_cache"] = str(dump_time_map_file.resolve())
             config_data["processing"]["discovered_particle_count_all"] = int(len(all_sorted))
             config_data["processing"]["discovered_particle_count"] = selected_count
             config_data["processing"]["discovered_batch_count"] = int(len(layout))
@@ -113,6 +149,23 @@ class ParticleIdDiscoveryApp:
                 yaml.safe_dump(config_data, handle, sort_keys=False)
 
             print(f"Updated config with discovery fields: {self.config_path}")
+
+    def run_serial(self, out_dir: Path, update_config: bool) -> None:
+        """Serial mode: scan all selected dumps in one process and write canonical outputs."""
+        selected = DumpSelection.selected_dump_numbers(self.config)
+        if not selected:
+            raise RuntimeError("No dumps selected for discovery")
+
+        dump_list = out_dir / "dump_numbers.txt"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        dump_list.write_text("\n".join(str(number) for number in selected) + "\n", encoding="ascii")
+
+        for index, dump_number in enumerate(selected, start=1):
+            self.run_worker(dump_number=dump_number, out_dir=out_dir)
+            if index % 50 == 0 or index == len(selected):
+                print(f"serial progress: {index}/{len(selected)} dumps")
+
+        self.run_merge(dump_list=dump_list, out_dir=out_dir, update_config=update_config)
 
     def run_list(self, dump_list: Path) -> None:
         """List mode: write selected dump numbers to plain text for SLURM arrays."""
@@ -129,7 +182,7 @@ class ParticleIdDiscoveryCLI:
     def parse_args() -> argparse.Namespace:
         """Parse discovery mode arguments."""
         parser = argparse.ArgumentParser(description="Parallel particle-ID discovery utilities.")
-        parser.add_argument("--mode", choices=["list", "worker", "merge"], required=True)
+        parser.add_argument("--mode", choices=["list", "worker", "merge", "serial"], required=True)
         parser.add_argument("--config", required=True)
         parser.add_argument("--dump-number", type=int)
         parser.add_argument("--dump-list")
@@ -163,6 +216,12 @@ class ParticleIdDiscoveryCLI:
                 out_dir=Path(args.out_dir).resolve(),
                 update_config=args.update_config,
             )
+            return
+
+        if args.mode == "serial":
+            if not args.out_dir:
+                raise ValueError("--out-dir is required for --mode serial")
+            app.run_serial(out_dir=Path(args.out_dir).resolve(), update_config=args.update_config)
             return
 
         raise RuntimeError(f"Unsupported mode: {args.mode}")

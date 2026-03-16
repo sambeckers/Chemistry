@@ -7,7 +7,7 @@ from pathlib import Path
 import h5py
 import numpy as np
 
-from common import FileSystemTools, PipelineConfigManager
+from common import DumpTimeMapper, FileSystemTools, PipelineConfigManager
 
 
 class BatchFileMerger:
@@ -37,6 +37,32 @@ class BatchFileMerger:
         return dump_numbers, chemistry_types
 
     @staticmethod
+    def _rows_from_dump_number_dataset(
+        dump_dataset: h5py.Dataset,
+        candidate_indices: np.ndarray,
+        dump_number: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Return particle indices and per-particle row indices matching one dump number."""
+        matched_indices: list[int] = []
+        matched_rows: list[int] = []
+
+        for index in candidate_indices.tolist():
+            rows = np.asarray(dump_dataset[index], dtype=np.int32)
+            if rows.size == 0:
+                continue
+            local = np.where(rows == int(dump_number))[0]
+            if local.size == 0:
+                continue
+            if local.size > 1:
+                raise ValueError(
+                    f"Particle slot {index} has duplicate dump_number={dump_number} rows in batch dataset"
+                )
+            matched_indices.append(int(index))
+            matched_rows.append(int(local[0]))
+
+        return np.asarray(matched_indices, dtype=np.int64), np.asarray(matched_rows, dtype=np.int64)
+
+    @staticmethod
     def _dataset_write_kwargs(compression: str | None, compression_level: int | None) -> dict:
         """Build h5py dataset creation kwargs from compression settings."""
         kwargs = {}
@@ -47,12 +73,57 @@ class BatchFileMerger:
         return kwargs
 
     @staticmethod
+    def _aligned_rows_from_row_count(
+        row_count: np.ndarray,
+        global_row_index: int,
+        total_dumps: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Map a global dump index to per-particle row indices using inferred start offsets.
+
+        Particles can start late, so a particle with n rows is interpreted as covering the
+        final n dumps in the selected dump list. This yields:
+          start_offset = total_dumps - n_rows
+          particle_row = global_row_index - start_offset
+        """
+        n_rows = np.asarray(row_count, dtype=np.int64)
+        start_offset = total_dumps - n_rows
+        particle_row = global_row_index - start_offset
+        include_mask = (particle_row >= 0) & (particle_row < n_rows)
+        return include_mask, particle_row.astype(np.int64)
+
+    @staticmethod
+    def _assert_single_dump_time(dump_number: int, trace_data: dict[str, np.ndarray]) -> None:
+        """Validate that merged dump contains one unique time value across particles."""
+        if "time" not in trace_data:
+            return
+
+        time_values = np.asarray(trace_data["time"], dtype=np.float64)
+        if time_values.size == 0:
+            return
+
+        # Round away tiny floating-point print/noise differences before uniqueness check.
+        rounded = np.round(time_values, decimals=10)
+        unique = np.unique(rounded)
+        if unique.size > 1:
+            raise ValueError(
+                "Merged dump has inconsistent particle times for "
+                f"dump {dump_number:05d}: min={np.min(time_values):.6g}, "
+                f"max={np.max(time_values):.6g}, unique_count={unique.size}"
+            )
+
+    @staticmethod
     def _collect_dump_data(
         batch_files: list[Path],
         dump_number: int,
         chemistry_types: list[str],
+        canonical_dump_seconds: dict[int, float] | None = None,
     ) -> tuple[dict[str, np.ndarray], dict[str, dict[str, np.ndarray]]]:
-        """Collect one dump's trace and chemistry arrays across all batch files."""
+        """Collect one dump's trace and chemistry arrays across all batch files.
+
+        Per-particle vectors can have different lengths because particles may enter later.
+        We therefore infer each particle's start offset from row_count and align rows to
+        the requested dump_number before extracting values.
+        """
         trace_values: dict[str, list[np.ndarray]] = {"id": []}
         chemistry_values: dict[str, dict[str, list[np.ndarray]]] = {chemistry_type: {} for chemistry_type in chemistry_types}
 
@@ -67,37 +138,112 @@ class BatchFileMerger:
                 if dump_number not in dump_numbers:
                     continue
                 row_index = dump_numbers.index(dump_number)
+                total_dumps = len(dump_numbers)
+
+                dump_seconds = None
+                if canonical_dump_seconds is not None and int(dump_number) in canonical_dump_seconds:
+                    dump_seconds = float(canonical_dump_seconds[int(dump_number)])
+                else:
+                    dump_time_seconds_json = handle.attrs.get("dump_time_seconds_json")
+                    if dump_time_seconds_json:
+                        dump_time_seconds = [float(value) for value in json.loads(dump_time_seconds_json)]
+                        if len(dump_time_seconds) == len(dump_numbers):
+                            dump_seconds = float(dump_time_seconds[row_index])
 
                 if "particles" in handle["trace"]:
                     trace_particles = handle["trace/particles"]
-                    row_count = trace_particles["row_count"][:]
-                    include_indices = np.where(valid_mask & (row_count > row_index))[0]
+                    valid_indices = np.where(valid_mask)[0]
+
+                    if "dump_number" in trace_particles:
+                        include_indices, include_rows = BatchFileMerger._rows_from_dump_number_dataset(
+                            dump_dataset=trace_particles["dump_number"],
+                            candidate_indices=valid_indices,
+                            dump_number=dump_number,
+                        )
+                        if include_indices.size == 0:
+                            row_count = trace_particles["row_count"][:]
+                            include_mask, aligned_rows = BatchFileMerger._aligned_rows_from_row_count(
+                                row_count[valid_indices],
+                                global_row_index=row_index,
+                                total_dumps=total_dumps,
+                            )
+                            include_indices = valid_indices[include_mask]
+                            include_rows = aligned_rows[include_mask]
+                    else:
+                        row_count = trace_particles["row_count"][:]
+                        include_mask, aligned_rows = BatchFileMerger._aligned_rows_from_row_count(
+                            row_count[valid_indices],
+                            global_row_index=row_index,
+                            total_dumps=total_dumps,
+                        )
+                        include_indices = valid_indices[include_mask]
+                        include_rows = aligned_rows[include_mask]
+
                     if include_indices.size == 0:
                         continue
 
                     trace_values["id"].append(particle_ids[include_indices].astype(np.int64))
 
                     for dataset_name in trace_particles.keys():
-                        if dataset_name == "row_count":
+                        if dataset_name in {"row_count", "dump_number", "time"}:
                             continue
                         dataset = trace_particles[dataset_name]
                         values = np.asarray(
-                            [np.float64(dataset[idx][row_index]) for idx in include_indices], dtype=np.float64
+                            [np.float64(dataset[idx][row]) for idx, row in zip(include_indices, include_rows)],
+                            dtype=np.float64,
                         )
                         trace_values.setdefault(dataset_name, []).append(values)
 
+                    if dump_seconds is not None:
+                        trace_values.setdefault("time", []).append(
+                            np.full(include_indices.shape[0], dump_seconds, dtype=np.float64)
+                        )
+                    elif "time" in trace_particles:
+                        time_dataset = trace_particles["time"]
+                        values = np.asarray(
+                            [np.float64(time_dataset[idx][row]) for idx, row in zip(include_indices, include_rows)],
+                            dtype=np.float64,
+                        )
+                        trace_values.setdefault("time", []).append(values)
+
                     for chemistry_type in chemistry_types:
                         chemistry_particles = handle[f"chemistry/{chemistry_type}/particles"]
-                        chem_row_count = chemistry_particles["row_count"][:]
-                        chem_include = np.where(valid_mask & (chem_row_count > row_index))[0]
+                        chem_valid_indices = np.where(valid_mask)[0]
+
+                        if "dump_number" in chemistry_particles:
+                            chem_include, chem_rows = BatchFileMerger._rows_from_dump_number_dataset(
+                                dump_dataset=chemistry_particles["dump_number"],
+                                candidate_indices=chem_valid_indices,
+                                dump_number=dump_number,
+                            )
+                            if chem_include.size == 0:
+                                chem_row_count = chemistry_particles["row_count"][:]
+                                chem_mask, chem_aligned_rows = BatchFileMerger._aligned_rows_from_row_count(
+                                    chem_row_count[chem_valid_indices],
+                                    global_row_index=row_index,
+                                    total_dumps=total_dumps,
+                                )
+                                chem_include = chem_valid_indices[chem_mask]
+                                chem_rows = chem_aligned_rows[chem_mask]
+                        else:
+                            chem_row_count = chemistry_particles["row_count"][:]
+                            chem_mask, chem_aligned_rows = BatchFileMerger._aligned_rows_from_row_count(
+                                chem_row_count[chem_valid_indices],
+                                global_row_index=row_index,
+                                total_dumps=total_dumps,
+                            )
+                            chem_include = chem_valid_indices[chem_mask]
+                            chem_rows = chem_aligned_rows[chem_mask]
+
                         if chem_include.size == 0:
                             continue
                         for dataset_name in chemistry_particles.keys():
-                            if dataset_name == "row_count":
+                            if dataset_name in {"row_count", "dump_number"}:
                                 continue
                             dataset = chemistry_particles[dataset_name]
                             values = np.asarray(
-                                [np.float64(dataset[idx][row_index]) for idx in chem_include], dtype=np.float64
+                                [np.float64(dataset[idx][row]) for idx, row in zip(chem_include, chem_rows)],
+                                dtype=np.float64,
                             )
                             chemistry_values[chemistry_type].setdefault(dataset_name, []).append(values)
                 else:
@@ -177,10 +323,18 @@ class BatchFileMerger:
         """Merge all batches and return output dump file paths."""
         batch_files = self.list_batch_files()
         dump_numbers, chemistry_types = self.first_batch_metadata(batch_files)
+        canonical_times = DumpTimeMapper.load_or_build_dump_time_seconds(self.config, dump_numbers)
+        canonical_dump_seconds = {int(dump): float(seconds) for dump, seconds in zip(dump_numbers, canonical_times)}
         output_files = []
 
         for dump_number in dump_numbers:
-            trace_data, chemistry_data = self._collect_dump_data(batch_files, dump_number, chemistry_types)
+            trace_data, chemistry_data = self._collect_dump_data(
+                batch_files,
+                dump_number,
+                chemistry_types,
+                canonical_dump_seconds=canonical_dump_seconds,
+            )
+            self._assert_single_dump_time(dump_number=dump_number, trace_data=trace_data)
             output_path = self.final_output_dir / f"dump_{dump_number:05d}.h5"
             self._write_dump_file(
                 output_path=output_path,

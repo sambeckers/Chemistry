@@ -13,8 +13,10 @@ Each SLURM array task processes one particle batch end to end:
 5. Convert each generated `.phys` file into chemistry input.
 6. Run the chemistry model for every configured chemistry type.
 7. Convert `ev_output.dat` into one persistent `batch_XXXXX.h5` file.
-8. Delete temporary `.phys`, `.txt`, `param`, `output`, and `ev_output` files after append.
-9. Merge `batch_*.h5` into final `dump_XXXXX.h5` files after all batches finish.
+8. Build/reuse a dump-number -> real-time(seconds) map from PHANTOM metadata (`time * utime`).
+9. Map each EV row to exact dump numbers using fixed-precision time keys (supports EV times in years or seconds).
+10. Delete temporary `.phys`, `.txt`, `param`, `output`, and `ev_output` files after append.
+11. Merge `batch_*.h5` into final `dump_XXXXX.h5` files after all batches finish.
 
 Particle histories are stored as variable-length per-particle arrays in batch files (no NaN padding for shorter traces). During merge, each dump output includes only particles that have data for that timestep.
 
@@ -45,8 +47,11 @@ Edit `config/pipeline_config.yaml` before submitting:
 - `paths.batch_output_dir`: persistent `batch_XXXXX.h5` output location.
 - `paths.final_output_dir`: final `dump_XXXXX.h5` output location.
 - `paths.scratch_root`: per-batch scratch workspaces.
+- `paths.dump_time_map_cache`: JSON cache of dump-number -> real-time(seconds) mapping.
 
 All other `paths.*` entries may be written relative to `paths.base_path`; they are resolved to absolute paths when loading the config.
+- `processing.time_key_decimals`: fixed decimal precision used for second-based time keys when matching EV rows to dumps.
+- `processing.discovery_mode`: particle-discovery submission mode; use `serial` for one-job scan or `array` for dump-parallel workers.
 - `processing.batch_size`: particles per job.
 - `processing.n_batches`: number of jobs to expose.
 - `processing.n_boundary`: number of low-ID particles to exclude during discovery. Keep this at `0` for small test runs and set it to values such as `5000` only when the selected dump actually contains that many removable boundary particles.
@@ -56,24 +61,32 @@ If both `batch_size` and `n_batches` are set, the pipeline processes the first `
 
 ## HDF5 layout
 
-Each batch job writes one file:
+Each batch job writes one file with per-particle variable-length vectors and explicit dump alignment:
 
 ```text
 batch_00042.h5
   /particles/id
-  /trace/dumps/dump_00010/x
-  /trace/dumps/dump_00010/y
-  /trace/dumps/dump_00010/z
-  /trace/dumps/dump_00010/r
-  /trace/dumps/dump_00010/density
-  /trace/dumps/dump_00010/temp
-  /trace/dumps/dump_00010/av
-  /trace/dumps/dump_00010/time
-  /chemistry/Crich/dumps/dump_00010/co
-  /chemistry/Orich/dumps/dump_00010/co
+  /trace/particles/row_count
+  /trace/particles/dump_number
+  /trace/particles/x
+  /trace/particles/y
+  /trace/particles/z
+  /trace/particles/r
+  /trace/particles/density
+  /trace/particles/temp
+  /trace/particles/av
+  /trace/particles/time
+  /chemistry/Crich/particles/row_count
+  /chemistry/Crich/particles/dump_number
+  /chemistry/Crich/particles/co
+  /chemistry/Orich/particles/row_count
+  /chemistry/Orich/particles/dump_number
+  /chemistry/Orich/particles/co
 ```
 
-All numeric datasets are written as `float64`. Particle IDs are `int64`.
+All numeric value datasets are written as `float64`. Particle IDs are `int64`. Per-row dump indices are `int32`.
+
+Merged alignment now prefers per-particle `dump_number` vectors, avoiding row-index assumptions for short traces and late-start particles.
 
 Merged dump files contain:
 
@@ -90,10 +103,12 @@ Before submitting batch chemistry jobs, build the particle-ID cache with the ded
 - `cd <pipeline-root>`
 - `./workflow/submit_discover_particle_ids.sh`
 - optional throttle: `./workflow/submit_discover_particle_ids.sh --max-concurrent 256`
+- optional serial mode: `./workflow/submit_discover_particle_ids.sh --serial`
 
 This runs one array task per dump, merges IDs, and writes discovery results back to `config/pipeline_config.yaml`:
 
 - `paths.particle_ids_cache`
+- `paths.dump_time_map_cache`
 - `processing.discovered_particle_count_all`
 - `processing.discovered_particle_count`
 - `processing.discovered_batch_count`

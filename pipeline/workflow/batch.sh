@@ -21,6 +21,9 @@ DEFAULT_CONFIG="${PIPELINE_ROOT}/config/pipeline_config.yaml"
 SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/run_batch.slurm"
 MERGE_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/merge_dumps.slurm"
 SUMMARY_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/summarize_batches.slurm"
+DISCOVER_ARRAY_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/discover_particle_ids_array.slurm"
+DISCOVER_MERGE_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/discover_particle_ids_merge.slurm"
+DISCOVER_SERIAL_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/discover_particle_ids_serial.slurm"
 
 TOTAL_STEPS=8
 CURRENT_STEP=0
@@ -159,6 +162,9 @@ if cfg.get("processing", {}).get("discovered_particle_count_all") is None:
     sys.exit(2)
 
 count = BatchPlanner.batch_count(cfg)
+discovery_mode = str(cfg.get("processing", {}).get("discovery_mode", "array")).strip().lower()
+if discovery_mode not in {"array", "serial"}:
+    raise ValueError("processing.discovery_mode must be 'array' or 'serial'")
 
 python_bin = cfg.get("paths", {}).get("python", "/fred/oz304/beckers/MRP_env/bin/python")
 scratch_root = cfg.get("paths", {}).get("scratch_root", str(pipeline_root / "work"))
@@ -166,6 +172,7 @@ scratch_root = cfg.get("paths", {}).get("scratch_root", str(pipeline_root / "wor
 print(count)
 print(python_bin)
 print(scratch_root)
+print(discovery_mode)
 PY
 )
 STATUS=$?
@@ -177,7 +184,7 @@ fi
 step_done
 
 readarray -t INFO <<< "${INFO_RAW}"
-if [[ "${#INFO[@]}" -lt 3 ]]; then
+if [[ "${#INFO[@]}" -lt 4 ]]; then
     echo "Error: failed to read batch submission metadata from config."
     exit 1
 fi
@@ -185,6 +192,7 @@ fi
 BATCH_COUNT="${INFO[0]}"
 PYTHON_BIN="${INFO[1]}"
 SCRATCH_ROOT="${INFO[2]}"
+DISCOVERY_MODE="${INFO[3]}"
 
 if [[ -z "${BATCH_COUNT}" || "${BATCH_COUNT}" -lt 1 ]]; then
     echo "Error: invalid batch count '${BATCH_COUNT}'"
@@ -213,6 +221,7 @@ echo "Python          : ${PYTHON_BIN}"
 echo "Logs root       : ${SCRATCH_ROOT}/logs/"
 if [[ "${DISCOVERY_NEEDED}" -eq 1 ]]; then
     echo "Particle IDs    : discovery required (will submit discover+merge jobs)"
+    echo "Discovery mode  : ${DISCOVERY_MODE}"
 else
     echo "Particle IDs    : cache valid (discovery step skipped)"
 fi
@@ -250,38 +259,54 @@ PY
     DISCOVER_DUMP_LIST="${DISCOVERY_RUN_DIR}/dump_numbers.txt"
     DISCOVER_OUT_DIR="${DISCOVERY_RUN_DIR}/per_dump_ids"
     mkdir -p "${DISCOVERY_RUN_DIR}" "${DISCOVER_OUT_DIR}"
-    printf '%s\n' "${DISCOVERY_INFO[@]}" > "${DISCOVER_DUMP_LIST}"
-
-    DISCOVER_ARRAY_MAX=$(( ${#DISCOVERY_INFO[@]} - 1 ))
-    DISCOVER_ARRAY_SPEC="0-${DISCOVER_ARRAY_MAX}"
-    if [[ -n "${MAX_CONCURRENT}" ]]; then
-        DISCOVER_ARRAY_SPEC="${DISCOVER_ARRAY_SPEC}%${MAX_CONCURRENT}"
+    if [[ "${DISCOVERY_MODE}" == "array" ]]; then
+        printf '%s\n' "${DISCOVERY_INFO[@]}" > "${DISCOVER_DUMP_LIST}"
     fi
 
-    DISCOVER_ARRAY_SUBMIT_OUTPUT=$(sbatch \
-        --array="${DISCOVER_ARRAY_SPEC}" \
-        --output="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_ids_%A_%a.out" \
-        --error="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_ids_%A_%a.err" \
-        --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},DISCOVER_DUMP_LIST=${DISCOVER_DUMP_LIST},DISCOVER_OUT_DIR=${DISCOVER_OUT_DIR}" \
-        "${PIPELINE_ROOT}/slurm/discover_particle_ids_array.slurm")
-    echo "${DISCOVER_ARRAY_SUBMIT_OUTPUT}"
-    DISCOVER_ARRAY_JOB_ID=$(echo "${DISCOVER_ARRAY_SUBMIT_OUTPUT}" | awk '{print $NF}')
-    if [[ -z "${DISCOVER_ARRAY_JOB_ID}" ]]; then
-        echo "Error: could not parse discovery array job id from: ${DISCOVER_ARRAY_SUBMIT_OUTPUT}"
-        exit 1
-    fi
+    if [[ "${DISCOVERY_MODE}" == "serial" ]]; then
+        DISCOVER_SERIAL_SUBMIT_OUTPUT=$(sbatch \
+            --output="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_ids_serial_%A.out" \
+            --error="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_ids_serial_%A.err" \
+            --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},DISCOVER_OUT_DIR=${DISCOVER_OUT_DIR}" \
+            "${DISCOVER_SERIAL_SLURM_SCRIPT}")
+        echo "${DISCOVER_SERIAL_SUBMIT_OUTPUT}"
+        DISCOVER_MERGE_JOB_ID=$(echo "${DISCOVER_SERIAL_SUBMIT_OUTPUT}" | awk '{print $NF}')
+        if [[ -z "${DISCOVER_MERGE_JOB_ID}" ]]; then
+            echo "Error: could not parse discovery serial job id from: ${DISCOVER_SERIAL_SUBMIT_OUTPUT}"
+            exit 1
+        fi
+    else
+        DISCOVER_ARRAY_MAX=$(( ${#DISCOVERY_INFO[@]} - 1 ))
+        DISCOVER_ARRAY_SPEC="0-${DISCOVER_ARRAY_MAX}"
+        if [[ -n "${MAX_CONCURRENT}" ]]; then
+            DISCOVER_ARRAY_SPEC="${DISCOVER_ARRAY_SPEC}%${MAX_CONCURRENT}"
+        fi
 
-    DISCOVER_MERGE_SUBMIT_OUTPUT=$(sbatch \
-        --dependency="afterok:${DISCOVER_ARRAY_JOB_ID}" \
-        --output="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_merge_%A.out" \
-        --error="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_merge_%A.err" \
-        --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},DISCOVER_DUMP_LIST=${DISCOVER_DUMP_LIST},DISCOVER_OUT_DIR=${DISCOVER_OUT_DIR}" \
-        "${PIPELINE_ROOT}/slurm/discover_particle_ids_merge.slurm")
-    echo "${DISCOVER_MERGE_SUBMIT_OUTPUT}"
-    DISCOVER_MERGE_JOB_ID=$(echo "${DISCOVER_MERGE_SUBMIT_OUTPUT}" | awk '{print $NF}')
-    if [[ -z "${DISCOVER_MERGE_JOB_ID}" ]]; then
-        echo "Error: could not parse discovery merge job id from: ${DISCOVER_MERGE_SUBMIT_OUTPUT}"
-        exit 1
+        DISCOVER_ARRAY_SUBMIT_OUTPUT=$(sbatch \
+            --array="${DISCOVER_ARRAY_SPEC}" \
+            --output="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_ids_%A_%a.out" \
+            --error="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_ids_%A_%a.err" \
+            --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},DISCOVER_DUMP_LIST=${DISCOVER_DUMP_LIST},DISCOVER_OUT_DIR=${DISCOVER_OUT_DIR}" \
+            "${DISCOVER_ARRAY_SLURM_SCRIPT}")
+        echo "${DISCOVER_ARRAY_SUBMIT_OUTPUT}"
+        DISCOVER_ARRAY_JOB_ID=$(echo "${DISCOVER_ARRAY_SUBMIT_OUTPUT}" | awk '{print $NF}')
+        if [[ -z "${DISCOVER_ARRAY_JOB_ID}" ]]; then
+            echo "Error: could not parse discovery array job id from: ${DISCOVER_ARRAY_SUBMIT_OUTPUT}"
+            exit 1
+        fi
+
+        DISCOVER_MERGE_SUBMIT_OUTPUT=$(sbatch \
+            --dependency="afterok:${DISCOVER_ARRAY_JOB_ID}" \
+            --output="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_merge_%A.out" \
+            --error="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/discover_merge_%A.err" \
+            --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},DISCOVER_DUMP_LIST=${DISCOVER_DUMP_LIST},DISCOVER_OUT_DIR=${DISCOVER_OUT_DIR}" \
+            "${DISCOVER_MERGE_SLURM_SCRIPT}")
+        echo "${DISCOVER_MERGE_SUBMIT_OUTPUT}"
+        DISCOVER_MERGE_JOB_ID=$(echo "${DISCOVER_MERGE_SUBMIT_OUTPUT}" | awk '{print $NF}')
+        if [[ -z "${DISCOVER_MERGE_JOB_ID}" ]]; then
+            echo "Error: could not parse discovery merge job id from: ${DISCOVER_MERGE_SUBMIT_OUTPUT}"
+            exit 1
+        fi
     fi
     step_done
 fi

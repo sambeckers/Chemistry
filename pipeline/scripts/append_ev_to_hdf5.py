@@ -8,7 +8,7 @@ from pathlib import Path
 import h5py
 import numpy as np
 
-from common import SpeciesCatalog, TRACE_COLUMN_MAP
+from common import DumpTimeMapper, SpeciesCatalog, TRACE_COLUMN_MAP
 
 
 class BatchHDF5Appender:
@@ -55,6 +55,8 @@ class BatchHDF5Appender:
         particle_ids: np.ndarray,
         dump_numbers: list[int],
         chemistry_types: list[str],
+        dump_time_seconds: list[float] | None = None,
+        time_key_decimals: int = 0,
     ) -> None:
         """Create an empty batch file with metadata and fixed bookkeeping datasets."""
         batch_file = Path(batch_file)
@@ -63,6 +65,9 @@ class BatchHDF5Appender:
             handle.attrs["batch_index"] = int(batch_index)
             handle.attrs["n_particles"] = int(len(particle_ids))
             handle.attrs["dump_numbers_json"] = json.dumps([int(dump) for dump in dump_numbers])
+            if dump_time_seconds is not None:
+                handle.attrs["dump_time_seconds_json"] = json.dumps([float(value) for value in dump_time_seconds])
+            handle.attrs["time_key_decimals"] = int(time_key_decimals)
             handle.attrs["chemistry_types_json"] = json.dumps(list(chemistry_types))
 
             particles_group = handle.create_group("particles")
@@ -71,20 +76,24 @@ class BatchHDF5Appender:
 
             trace_particles = handle.create_group("trace").create_group("particles")
             trace_particles.create_dataset("row_count", shape=(len(particle_ids),), dtype=np.int32, fillvalue=0)
+            cls = BatchHDF5Appender
+            cls._require_vlen_dataset(trace_particles, "dump_number", len(particle_ids), np.int32)
 
             chemistry_group = handle.create_group("chemistry")
             for chemistry_type in chemistry_types:
                 chemistry_particles = chemistry_group.create_group(chemistry_type).create_group("particles")
                 chemistry_particles.create_dataset("row_count", shape=(len(particle_ids),), dtype=np.int32, fillvalue=0)
+                cls._require_vlen_dataset(chemistry_particles, "dump_number", len(particle_ids), np.int32)
 
     @staticmethod
-    def _require_vlen_dataset(group: h5py.Group, name: str, n_particles: int):
-        """Return or create one variable-length float64 dataset indexed by particle slot."""
+    def _require_vlen_dataset(group: h5py.Group, name: str, n_particles: int, base_dtype=np.float64):
+        """Return/create one variable-length dataset indexed by particle slot."""
         if name in group:
             return group[name]
-        vlen_dtype = h5py.vlen_dtype(np.float64)
+        base_dtype = np.dtype(base_dtype)
+        vlen_dtype = h5py.vlen_dtype(base_dtype)
         dataset = group.create_dataset(name, shape=(n_particles,), dtype=vlen_dtype)
-        empty = np.asarray([], dtype=np.float64)
+        empty = np.asarray([], dtype=base_dtype)
         for index in range(n_particles):
             dataset[index] = empty
         return dataset
@@ -98,6 +107,8 @@ class BatchHDF5Appender:
         chemistry_type: str,
         ev_output_path: str | Path,
         dump_numbers: list[int],
+        dump_time_seconds: list[float] | None = None,
+        time_key_decimals: int | None = None,
         compression: str | None = "gzip",
         compression_level: int | None = 4,
     ) -> None:
@@ -139,6 +150,36 @@ class BatchHDF5Appender:
             chemistry_group = handle[f"chemistry/{chemistry_type}/particles"]
             name_map = json.loads(chemistry_group.attrs.get("species_name_map_json", "{}"))
 
+            if dump_time_seconds is None:
+                dump_time_seconds_json = handle.attrs.get("dump_time_seconds_json")
+                if dump_time_seconds_json:
+                    dump_time_seconds = [float(value) for value in json.loads(dump_time_seconds_json)]
+
+            if time_key_decimals is None:
+                time_key_decimals = int(handle.attrs.get("time_key_decimals", 0))
+
+            mapped_dump_numbers: np.ndarray | None = None
+            if dump_time_seconds is not None and "TIME" in column_data:
+                mapped_dump_numbers = DumpTimeMapper.map_time_values_to_dump_numbers(
+                    time_values=np.asarray(column_data["TIME"], dtype=np.float64),
+                    dump_numbers=dump_numbers,
+                    dump_time_seconds=dump_time_seconds,
+                    decimals=int(time_key_decimals),
+                )
+                dump_to_seconds = {
+                    int(dump): float(seconds) for dump, seconds in zip(dump_numbers, dump_time_seconds)
+                }
+                # Canonicalise stored TIME values to exact dump-time map seconds.
+                column_data["TIME"] = np.asarray(
+                    [dump_to_seconds[int(dump)] for dump in mapped_dump_numbers], dtype=np.float64
+                )
+
+                dump_dataset = cls._require_vlen_dataset(trace_particles, "dump_number", n_particles, np.int32)
+                dump_dataset[slot] = np.asarray(mapped_dump_numbers, dtype=np.int32)
+
+                chemistry_dump_dataset = cls._require_vlen_dataset(chemistry_particles, "dump_number", n_particles, np.int32)
+                chemistry_dump_dataset[slot] = np.asarray(mapped_dump_numbers, dtype=np.int32)
+
             species_names = [name for name in column_names if name not in TRACE_COLUMN_MAP]
 
             for source_name, dataset_name in TRACE_COLUMN_MAP.items():
@@ -170,7 +211,9 @@ class BatchHDF5CLI:
         init_parser.add_argument("batch_index", type=int)
         init_parser.add_argument("particle_ids_json")
         init_parser.add_argument("dump_numbers_json")
+        init_parser.add_argument("dump_time_seconds_json")
         init_parser.add_argument("chemistry_types_json")
+        init_parser.add_argument("--time-key-decimals", type=int, default=0)
 
         append_parser = subparsers.add_parser("append")
         append_parser.add_argument("batch_file")
@@ -179,6 +222,8 @@ class BatchHDF5CLI:
         append_parser.add_argument("chemistry_type")
         append_parser.add_argument("ev_output_path")
         append_parser.add_argument("dump_numbers_json")
+        append_parser.add_argument("dump_time_seconds_json")
+        append_parser.add_argument("--time-key-decimals", type=int, default=0)
         append_parser.add_argument("--compression", default="gzip")
         append_parser.add_argument("--compression-level", type=int, default=4)
 
@@ -194,6 +239,8 @@ class BatchHDF5CLI:
                 batch_index=args.batch_index,
                 particle_ids=np.asarray(json.loads(args.particle_ids_json), dtype=np.int64),
                 dump_numbers=[int(value) for value in json.loads(args.dump_numbers_json)],
+                dump_time_seconds=[float(value) for value in json.loads(args.dump_time_seconds_json)],
+                time_key_decimals=int(args.time_key_decimals),
                 chemistry_types=list(json.loads(args.chemistry_types_json)),
             )
             return
@@ -205,6 +252,8 @@ class BatchHDF5CLI:
             chemistry_type=args.chemistry_type,
             ev_output_path=args.ev_output_path,
             dump_numbers=[int(value) for value in json.loads(args.dump_numbers_json)],
+            dump_time_seconds=[float(value) for value in json.loads(args.dump_time_seconds_json)],
+            time_key_decimals=int(args.time_key_decimals),
             compression=args.compression,
             compression_level=args.compression_level,
         )

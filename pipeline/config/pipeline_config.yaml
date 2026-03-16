@@ -8,7 +8,8 @@ paths:
   final_output_dir: v10a09_out/output/dumps
   scratch_root: v10a09_out/work
   python: MRP_env/bin/python
-  particle_ids_cache: /fred/oz304/beckers/v10a09_out/work/particle_discovery/run_2026-03-14_00-27-42/per_dump_ids/particle_ids_all.npy
+  dump_time_map_cache: /fred/oz304/beckers/v10a09_out/work/particle_discovery/run_2026-03-16_15-27-59/per_dump_ids/dump_time_map_cache.json
+  particle_ids_cache: /fred/oz304/beckers/v10a09_out/work/particle_discovery/run_2026-03-16_15-27-59/per_dump_ids/particle_ids_all.npy
   particle_ids_cache_mode: all_ids
 simulation:
   prefix: wind
@@ -16,6 +17,8 @@ processing:
   start_dump: 0
   end_dump: 1600
   dump_step: 1
+  discovery_mode: serial
+  time_key_decimals: 0
   batch_size: 10
   n_batches: 10
   n_boundary: 20000
