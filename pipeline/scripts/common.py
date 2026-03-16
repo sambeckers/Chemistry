@@ -146,6 +146,7 @@ class DumpTimeMapper:
         dump_numbers: list[int],
         dump_time_seconds: list[float],
         decimals: int,
+        unit_hint: str | None = None,
     ) -> np.ndarray:
         """Map time values (years or seconds) to dump numbers using fixed-precision keys.
 
@@ -155,7 +156,13 @@ class DumpTimeMapper:
         The hypothesis with more exact key matches is selected.
         """
         times = np.asarray(time_values, dtype=np.float64)
+        unit_mode = "auto" if unit_hint is None else str(unit_hint).strip().lower()
+        if unit_mode not in {"auto", "seconds", "years"}:
+            raise ValueError(f"Unsupported unit_hint={unit_hint!r}; expected 'auto', 'seconds', or 'years'")
+
         lookup = cls.dump_lookup_from_seconds(dump_numbers, dump_time_seconds, decimals)
+        dump_seconds = np.asarray(dump_time_seconds, dtype=np.float64)
+        dump_numbers_array = np.asarray(dump_numbers, dtype=np.int32)
 
         keys_seconds = np.asarray([cls._time_key(value, decimals) for value in times], dtype=np.int64)
         keys_years = np.asarray([cls._time_key(value * cls.SECONDS_PER_YEAR, decimals) for value in times], dtype=np.int64)
@@ -163,9 +170,16 @@ class DumpTimeMapper:
         matches_seconds = int(sum(1 for key in keys_seconds if int(key) in lookup))
         matches_years = int(sum(1 for key in keys_years if int(key) in lookup))
 
-        if matches_seconds == matches_years:
+        if unit_mode == "seconds":
+            chosen_keys = keys_seconds
+            chosen_seconds = times
+        elif unit_mode == "years":
+            chosen_keys = keys_years
+            chosen_seconds = times * cls.SECONDS_PER_YEAR
+        elif matches_seconds == matches_years:
             if matches_seconds == len(times):
                 chosen_keys = keys_seconds
+                chosen_seconds = times
             else:
                 raise ValueError(
                     "Ambiguous time-unit detection for EV TIME column: "
@@ -173,15 +187,21 @@ class DumpTimeMapper:
                 )
         elif matches_seconds > matches_years:
             chosen_keys = keys_seconds
+            chosen_seconds = times
         else:
             chosen_keys = keys_years
+            chosen_seconds = times * cls.SECONDS_PER_YEAR
 
         mapped = []
         for index, key in enumerate(chosen_keys.tolist()):
             if key not in lookup:
+                nearest_index = int(np.argmin(np.abs(dump_seconds - chosen_seconds[index])))
                 raise ValueError(
                     "Could not map EV TIME value to a configured dump using fixed precision: "
-                    f"row={index}, time={times[index]:.12g}, key={key}, decimals={decimals}"
+                    f"row={index}, time={times[index]:.12g}, key={key}, decimals={decimals}, "
+                    f"unit_mode={unit_mode}, nearest_dump={int(dump_numbers_array[nearest_index]):05d}, "
+                    f"nearest_time_seconds={dump_seconds[nearest_index]:.12g}, "
+                    f"absdiff_seconds={abs(dump_seconds[nearest_index] - chosen_seconds[index]):.12g}"
                 )
             mapped.append(lookup[key])
         return np.asarray(mapped, dtype=np.int32)

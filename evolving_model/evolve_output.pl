@@ -228,7 +228,7 @@ $density[$i]     = sprintf("%-15.5e",$density[$i]);
 $temperature[$i] = sprintf("%-15.5e",$temperature[$i]);
 $guv[$i]         = sprintf("%-15.5e",$guv[$i]);        
 $av[$i]          = sprintf("%-15.5e",$av[$i]);         
-$time[$i]        = sprintf("%-15.5e",$time[$i]);
+$time[$i]        = sprintf("%-20.12e",$time[$i]);
 
 print FILE1 "$xcoord[$i] $ycoord[$i] $zcoord[$i] $density[$i] $temperature[$i] $av[$i] $time[$i] ";
 	

@@ -14,7 +14,7 @@ Each SLURM array task processes one particle batch end to end:
 6. Run the chemistry model for every configured chemistry type.
 7. Convert `ev_output.dat` into one persistent `batch_XXXXX.h5` file.
 8. Build/reuse a dump-number -> real-time(seconds) map from PHANTOM metadata (`time * utime`).
-9. Map each EV row to exact dump numbers using fixed-precision time keys (supports EV times in years or seconds).
+9. Map each chemistry row to exact dump numbers using EV `TIME` values (years) with fixed-precision second keys; for legacy low-precision EV outputs, fall back to deterministic row-order suffix alignment.
 10. Delete temporary `.phys`, `.txt`, `param`, `output`, and `ev_output` files after append.
 11. Merge `batch_*.h5` into final `dump_XXXXX.h5` files after all batches finish.
 
@@ -50,7 +50,7 @@ Edit `config/pipeline_config.yaml` before submitting:
 - `paths.dump_time_map_cache`: JSON cache of dump-number -> real-time(seconds) mapping.
 
 All other `paths.*` entries may be written relative to `paths.base_path`; they are resolved to absolute paths when loading the config.
-- `processing.time_key_decimals`: fixed decimal precision used for second-based time keys when matching EV rows to dumps.
+- `processing.time_key_decimals`: fixed decimal precision used for second-based time keys when matching EV `TIME` rows to dumps.
 - `processing.discovery_mode`: particle-discovery submission mode; use `serial` for one-job scan or `array` for dump-parallel workers.
 - `processing.batch_size`: particles per job.
 - `processing.n_batches`: number of jobs to expose.
@@ -162,3 +162,9 @@ Batch recovery is file-based:
 ## Notes on the Fortran converter
 
 The requested `src/convert_ev_to_hdf5.f90` is included as the intended compiled HDF5 path, but the current environment does not provide `h5fc` or `h5pfc`. The working pipeline therefore uses `scripts/append_ev_to_hdf5.py` by default so the new architecture is runnable immediately. Once an HDF5 Fortran toolchain is available, the batch runner can be switched to a compiled converter without changing the batch layout or merge step.
+
+## EV time precision
+
+Strict EV-time matching relies on chemistry model outputs providing sufficiently precise `TIME` values in years and using the same year-to-seconds convention as the dump-time map (`31557600` seconds per year).
+
+The source in `evolving_model/inputmodel.f` now writes `TIME` with higher precision (`1PE20.12`) and uses `YR2SEC = 3.15576e+07` for this export path. Rebuild the chemistry executable after updating these sources, otherwise legacy outputs with coarse `TIME` precision will use the row-order fallback alignment.

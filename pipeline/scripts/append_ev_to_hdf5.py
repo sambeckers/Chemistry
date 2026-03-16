@@ -49,6 +49,14 @@ class BatchHDF5Appender:
         return column_names, data
 
     @staticmethod
+    def aligned_dump_numbers_for_rows(dump_numbers: list[int], row_count: int) -> np.ndarray:
+        """Return the ordered dump-number suffix represented by one particle trace."""
+        if row_count > len(dump_numbers):
+            raise ValueError(f"Row count {row_count} exceeds configured dump count {len(dump_numbers)}")
+        start_index = len(dump_numbers) - int(row_count)
+        return np.asarray(dump_numbers[start_index:], dtype=np.int32)
+
+    @staticmethod
     def initialise_batch_file(
         batch_file: str | Path,
         batch_index: int,
@@ -159,13 +167,30 @@ class BatchHDF5Appender:
                 time_key_decimals = int(handle.attrs.get("time_key_decimals", 0))
 
             mapped_dump_numbers: np.ndarray | None = None
-            if dump_time_seconds is not None and "TIME" in column_data:
-                mapped_dump_numbers = DumpTimeMapper.map_time_values_to_dump_numbers(
-                    time_values=np.asarray(column_data["TIME"], dtype=np.float64),
-                    dump_numbers=dump_numbers,
-                    dump_time_seconds=dump_time_seconds,
-                    decimals=int(time_key_decimals),
-                )
+            if dump_time_seconds is not None:
+                if "TIME" in column_data:
+                    try:
+                        # EV TIME is written in years by evolve_output.pl.
+                        mapped_dump_numbers = DumpTimeMapper.map_time_values_to_dump_numbers(
+                            time_values=np.asarray(column_data["TIME"], dtype=np.float64),
+                            dump_numbers=dump_numbers,
+                            dump_time_seconds=dump_time_seconds,
+                            decimals=int(time_key_decimals),
+                            unit_hint="years",
+                        )
+                    except ValueError:
+                        # Fallback for legacy chemistry outputs where TIME precision is too coarse.
+                        mapped_dump_numbers = cls.aligned_dump_numbers_for_rows(
+                            dump_numbers=dump_numbers,
+                            row_count=n_rows,
+                        )
+                else:
+                    mapped_dump_numbers = cls.aligned_dump_numbers_for_rows(
+                        dump_numbers=dump_numbers,
+                        row_count=n_rows,
+                    )
+
+            if mapped_dump_numbers is not None:
                 dump_to_seconds = {
                     int(dump): float(seconds) for dump, seconds in zip(dump_numbers, dump_time_seconds)
                 }
