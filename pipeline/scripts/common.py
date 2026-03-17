@@ -102,7 +102,7 @@ class DumpTimeMapper:
                     return cached_times
 
                 # Common case: cache covers the full selected dump list, while caller requests
-                # a subset (e.g. target dumps excluding initial state). Reuse by keyed lookup.
+                # a subset. Reuse by keyed lookup.
                 cache_lookup = {int(dump): float(seconds) for dump, seconds in zip(cached_dumps, cached_times)}
                 if all(int(dump) in cache_lookup for dump in dump_numbers):
                     return [cache_lookup[int(dump)] for dump in dump_numbers]
@@ -336,8 +336,8 @@ class DumpSelection:
 
     @classmethod
     def target_dump_numbers(cls, config: dict) -> list[int]:
-        """Return target dumps (all selected dumps except the initial state dump)."""
-        return cls.selected_dump_numbers(config)[1:]
+        """Return target dumps for chemistry batching and merged output files."""
+        return cls.selected_dump_numbers(config)
 
 
 class ParticleIdStore:

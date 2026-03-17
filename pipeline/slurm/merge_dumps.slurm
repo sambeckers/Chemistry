@@ -3,7 +3,7 @@
 #SBATCH --job-name=merge
 #SBATCH --time=08:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=16G
+#SBATCH --mem=4G
 #SBATCH --output=logs/logs_%A/merge_%A.out
 #SBATCH --error=logs/logs_%A/merge_%A.err
 

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
+import re
 import shutil
 import subprocess
 import time
 from pathlib import Path
 
+import h5py
 import numpy as np
 
 from append_ev_to_hdf5 import BatchHDF5Appender
@@ -18,8 +19,140 @@ from convert_phys_to_txt import PhysTraceConverter
 FORTRAN_PATH_LIMIT = 70
 
 
+class ChemistryOutputFilter:
+    """Filter noisy evolving-model stdout while preserving critical failures."""
+
+    _RE_NONLINEAR = re.compile(r"No\.\s*nonlinear convergence failures\s*=\s*(-?\d+)", re.IGNORECASE)
+    _RE_ERROR_TEST = re.compile(r"No\.\s*error test failures\s*=\s*(-?\d+)", re.IGNORECASE)
+    _RE_INDEX_ERR = re.compile(r"Index\s*compenent\s*largest\s*error\s*=\s*(-?\d+)", re.IGNORECASE)
+    _RE_PROGRESS_STEP = re.compile(r"^\.\.\.\s*\d+\s*/\s*\d+\s*$")
+
+    def __init__(self, batch_index: int, particle_id: int, chemistry_type: str, verbose: bool) -> None:
+        self.batch_index = int(batch_index)
+        self.particle_id = int(particle_id)
+        self.chemistry_type = str(chemistry_type)
+        self.verbose = bool(verbose)
+        self.nonlinear_failures_total = 0
+        self.error_test_failures_total = 0
+        self.max_index_component_error = 0
+        self.dvode_messages: list[str] = []
+
+    @staticmethod
+    def _is_banner_or_path_noise(text: str) -> bool:
+        noise_markers = (
+            "ENVELOPE CHEMICAL MODEL",
+            "Version 1.",
+            "++++++++++++++++++++++++++++++++",
+            "Input file =",
+            "Physical conditions",
+            "Chemical network",
+            "Species file",
+            "Binding energies",
+            "Reaction parameters",
+            "Grain parameters",
+            "Radiation parameters",
+            "Output file",
+            "Rates file",
+            "Opening and reading physical conditions file",
+            "Beginning to run model",
+            "Preparing output files",
+            "Progress =",
+            "No. steps =",
+            "No. f-s =",
+            "No. J-s =",
+            "No. LU-s =",
+            "No. nonlinear iterations =",
+            "Last step size used =",
+        )
+        if ChemistryOutputFilter._RE_PROGRESS_STEP.match(text):
+            return True
+        return any(marker in text for marker in noise_markers)
+
+    def process_line(self, raw_line: str) -> list[str]:
+        line = raw_line.rstrip("\n\r")
+        text = line.strip()
+        if not text:
+            return []
+
+        if self.verbose:
+            return [text]
+
+        outputs: list[str] = []
+
+        nonlinear_match = self._RE_NONLINEAR.search(text)
+        if nonlinear_match:
+            value = int(nonlinear_match.group(1))
+            if value > 0:
+                self.nonlinear_failures_total += value
+                outputs.append(
+                    f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+                    f"nonlinear_convergence_failures={value}"
+                )
+            return outputs
+
+        error_test_match = self._RE_ERROR_TEST.search(text)
+        if error_test_match:
+            value = int(error_test_match.group(1))
+            if value > 0:
+                self.error_test_failures_total += value
+                outputs.append(
+                    f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+                    f"error_test_failures={value}"
+                )
+            return outputs
+
+        index_err_match = self._RE_INDEX_ERR.search(text)
+        if index_err_match:
+            value = int(index_err_match.group(1))
+            if value > 0:
+                self.max_index_component_error = max(self.max_index_component_error, value)
+                outputs.append(
+                    f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+                    f"index_component_largest_error={value}"
+                )
+            return outputs
+
+        # Keep only high-signal DVODE failures / NaN tolerance diagnostics.
+        dvode_markers = (
+            "DVODE--",
+            "corrector convergence failed repeatedly",
+            "too much accuracy",
+            "TOLSF",
+            "R1 =",
+            "NaN",
+        )
+        if any(marker in text for marker in dvode_markers):
+            self.dvode_messages.append(text)
+            outputs.append(
+                f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|dvode={text}"
+            )
+            return outputs
+
+        if self._is_banner_or_path_noise(text):
+            return []
+
+        # Suppress any remaining evolving-model chatter in non-verbose mode.
+        return []
+
+    def summary_line(self) -> str | None:
+        if (
+            self.nonlinear_failures_total <= 0
+            and self.error_test_failures_total <= 0
+            and self.max_index_component_error <= 0
+            and not self.dvode_messages
+        ):
+            return None
+        return (
+            f"CHEM_SUMMARY|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+            f"nonlinear_failures_total={self.nonlinear_failures_total}|"
+            f"error_test_failures_total={self.error_test_failures_total}|"
+            f"max_index_component_largest_error={self.max_index_component_error}|"
+            f"dvode_messages={len(self.dvode_messages)}"
+        )
+
+
 class BatchPipelineRunner:
-    """Run one chemistry pipeline batch from trace extraction to HDF5 append."""
+    """Run one chemistry pipeline batch from prebuilt tracing to HDF5 append."""
 
     def __init__(self, config: dict, batch_index: int) -> None:
         """Store config and resolve batch particle selection metadata."""
@@ -44,17 +177,12 @@ class BatchPipelineRunner:
         self.compression = self.processing.get("compression", "gzip")
         self.compression_level = self.processing.get("compression_level", 4)
         self.cleanup_temporary = bool(self.processing.get("cleanup_temporary", True))
+        self.verbose_chemistry_output = bool(self.processing.get("verbose_chemistry_output", False))
 
-    @staticmethod
-    def _write_trace_config(config_path: Path, particle_ids: np.ndarray) -> None:
-        """Write trace.cfg selecting only the batch particle ID range."""
-        config_path.write_text(
-            "&trace_config\n"
-            f"  id_start = {int(particle_ids[0])}\n"
-            f"  id_end = {int(particle_ids[-1])}\n"
-            "  n_boundary = 0\n"
-            "/\n",
-            encoding="ascii",
+    def _print_chem_done(self, chemistry_type: str, total: int) -> None:
+        print(
+            f"CHEM_PROGRESS|batch={self.batch_index}|chem={chemistry_type}|completed={total}",
+            flush=True,
         )
 
     @staticmethod
@@ -67,42 +195,94 @@ class BatchPipelineRunner:
                 destination.unlink()
         os.symlink(source, destination)
 
-    def _prepare_trace_workspace(self) -> Path:
-        """Create batch-local trace workspace and return trace output directory."""
-        phantomanalysis_binary = Path(self.config["paths"]["phantomanalysis_binary"]).resolve()
-        av_dir = Path(self.config["paths"]["av_dir"]).resolve()
+    def _load_batch_tracing(self) -> dict[int, str]:
+        """Load tracing rows for this batch, preferring per-batch binary traces."""
+        binary_dir_raw = self.config.get("paths", {}).get("trace_binary_batches_dir")
+        if binary_dir_raw:
+            binary_dir = Path(binary_dir_raw).resolve()
+            binary_file = binary_dir / f"trace_batch_{self.batch_index:05d}.bin"
+            if binary_file.is_file():
+                return self._load_batch_tracing_from_binary(binary_file)
 
-        FileSystemTools.ensure_clean_directory(self.batch_work_dir)
-        trace_output_dir = FileSystemTools.ensure_clean_directory(self.batch_work_dir / "trace_output")
-        self._write_trace_config(self.batch_work_dir / "trace.cfg", self.particle_ids)
-        (self.batch_work_dir / "batch_particle_ids.json").write_text(
-            json.dumps([int(pid) for pid in self.particle_ids.tolist()]), encoding="ascii"
-        )
+        # Backward-compatible fallback to tracing_batch_XXXXX.h5
+        trace_batches_dir_raw = self.config.get("paths", {}).get("trace_batches_dir")
+        if not trace_batches_dir_raw:
+            raise RuntimeError(
+                "paths.trace_binary_batches_dir/paths.trace_batches_dir are not configured. "
+                "Run the tracing step before batch chemistry."
+            )
+        trace_batches_dir = Path(trace_batches_dir_raw).resolve()
+        trace_file = trace_batches_dir / f"tracing_batch_{self.batch_index:05d}.h5"
+        if not trace_file.is_file():
+            raise FileNotFoundError(f"Missing tracing batch file: {trace_file}")
 
-        copied_binary = self.batch_work_dir / "phantomanalysis"
-        shutil.copy2(phantomanalysis_binary, copied_binary)
-        copied_binary.chmod(0o755)
-        self._ensure_link(av_dir, self.batch_work_dir / "AV")
-        return trace_output_dir
+        trace_map: dict[int, str] = {}
+        with h5py.File(trace_file, "r") as handle:
+            ids = handle["particles/id"][:].astype(np.int64)
+            phys = handle["particles/phys"][:]
+            for pid, text in zip(ids.tolist(), phys.tolist()):
+                if isinstance(text, bytes):
+                    trace_map[int(pid)] = text.decode("ascii")
+                else:
+                    trace_map[int(pid)] = str(text)
 
-    def _run_tracing(self) -> None:
-        """Execute phantomanalysis across selected dumps to generate particle traces."""
-        selected_dumps = DumpSelection.selected_dump_numbers(self.config)
-        if len(selected_dumps) < 2:
-            raise RuntimeError("Trace stage requires at least two dumps.")
-
-        binary = self.batch_work_dir / "phantomanalysis"
-        data_dir = Path(self.config["paths"]["phantom_dump_dir"])
-        prefix = self.config["simulation"]["prefix"]
-        dump_paths = [str(data_dir / f"{prefix}_{dump_number:05d}") for dump_number in selected_dumps]
-        subprocess.run([str(binary), *dump_paths], cwd=self.batch_work_dir, check=True)
+        if len(trace_map) != len(self.particle_ids):
+            raise RuntimeError(
+                f"Tracing batch {self.batch_index} contains {len(trace_map)} particles, "
+                f"expected {len(self.particle_ids)}"
+            )
+        return trace_map
 
     @staticmethod
-    def _reset_trace_output_dir(trace_output_dir: Path) -> None:
-        """Delete and recreate trace_output to force a fresh phantomanalysis run."""
-        if trace_output_dir.exists():
-            shutil.rmtree(trace_output_dir)
-        trace_output_dir.mkdir(parents=True, exist_ok=True)
+    def _read_batch_binary_records(path: Path) -> np.ndarray:
+        """Read fixed-width batch trace binary records written by analysis_trace.f90."""
+        record_dtype = np.dtype(
+            [
+                ("pid", np.int64),
+                ("time", np.float64),
+                ("x", np.float64),
+                ("y", np.float64),
+                ("z", np.float64),
+                ("density", np.float64),
+                ("temp", np.float64),
+                ("av", np.float64),
+            ]
+        )
+        return np.fromfile(path, dtype=record_dtype)
+
+    @staticmethod
+    def _format_phys_line(record: np.void) -> str:
+        return (
+            f"{float(record['time']):16.8E} "
+            f"{float(record['x']):14.7E} "
+            f"{float(record['y']):14.7E} "
+            f"{float(record['z']):14.7E} "
+            f"{float(record['density']):14.7E} "
+            f"{float(record['temp']):8.2f} "
+            f"{float(record['av']):10.8f}\n"
+        )
+
+    def _load_batch_tracing_from_binary(self, binary_file: Path) -> dict[int, str]:
+        """Build per-particle .phys text payloads from one shared per-batch binary file."""
+        records = self._read_batch_binary_records(binary_file)
+        trace_map_lines: dict[int, list[str]] = {
+            int(pid): ["# time(s)   X(AU)   Y(AU)   Z(AU)   n(cm-3)   T(K)   A_V\n"]
+            for pid in self.particle_ids.tolist()
+        }
+        for record in records:
+            pid = int(record["pid"])
+            if pid in trace_map_lines:
+                trace_map_lines[pid].append(self._format_phys_line(record))
+
+        trace_map: dict[int, str] = {}
+        for pid in self.particle_ids.tolist():
+            lines = trace_map_lines[int(pid)]
+            if len(lines) <= 1:
+                raise RuntimeError(
+                    f"No trace rows found in {binary_file} for particle {pid} (batch {self.batch_index})"
+                )
+            trace_map[int(pid)] = "".join(lines)
+        return trace_map
 
     @staticmethod
     def _assert_fortran_path_length(value: str, label: str) -> None:
@@ -200,10 +380,36 @@ class BatchPipelineRunner:
             handle.write(f"{ana_file}\n")
         return file_params_path
 
-    def _run_chemistry_model(self, file_params_arg: str) -> None:
+    def _run_chemistry_model(self, file_params_arg: str, particle_id: int, chemistry_type: str) -> None:
         """Run compiled chemistry model binary for one particle parameters file."""
         self._assert_fortran_path_length(file_params_arg, "file_parameters")
-        subprocess.run([str((self.model_root / "model").resolve()), file_params_arg], cwd=self.model_root, check=True)
+        process = subprocess.Popen(
+            [str((self.model_root / "model").resolve()), file_params_arg],
+            cwd=self.model_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        output_filter = ChemistryOutputFilter(
+            batch_index=self.batch_index,
+            particle_id=particle_id,
+            chemistry_type=chemistry_type,
+            verbose=self.verbose_chemistry_output,
+        )
+
+        if process.stdout is not None:
+            for raw_line in process.stdout:
+                for filtered_line in output_filter.process_line(raw_line):
+                    print(filtered_line, flush=True)
+
+        return_code = process.wait()
+        if return_code != 0:
+            raise subprocess.CalledProcessError(return_code, str((self.model_root / "model").resolve()))
+
+        summary_line = output_filter.summary_line()
+        if summary_line is not None:
+            print(summary_line, flush=True)
 
     def _postprocess_ev_output(self, filepath: Path, to_cm: bool = True) -> None:
         """Ensure EV output includes R and converted position units in centimeters."""
@@ -341,8 +547,7 @@ class BatchPipelineRunner:
         batch_start = time.perf_counter()
         stage_totals = {
             "prepare_batch_paths": 0.0,
-            "prepare_trace_workspace": 0.0,
-            "tracing": 0.0,
+            "tracing_load": 0.0,
             "init_batch_hdf5": 0.0,
             "prepare_chem_runtime": 0.0,
             "phys_to_txt": 0.0,
@@ -363,24 +568,8 @@ class BatchPipelineRunner:
         )
 
         stage_start = time.perf_counter()
-        trace_output_dir = self._prepare_trace_workspace()
-        stage_totals["prepare_trace_workspace"] += time.perf_counter() - stage_start
-
-        stage_start = time.perf_counter()
-        try:
-            self._run_tracing()
-        except subprocess.CalledProcessError as exc:
-            stage_totals["tracing"] += time.perf_counter() - stage_start
-            print(
-                f"Batch {self.batch_index}: phantomanalysis failed with return code {exc.returncode}; "
-                "retrying once with a clean trace_output directory"
-            )
-            self._reset_trace_output_dir(trace_output_dir)
-            retry_start = time.perf_counter()
-            self._run_tracing()
-            stage_totals["tracing"] += time.perf_counter() - retry_start
-        else:
-            stage_totals["tracing"] += time.perf_counter() - stage_start
+        trace_map = self._load_batch_tracing()
+        stage_totals["tracing_load"] += time.perf_counter() - stage_start
 
         stage_start = time.perf_counter()
         BatchHDF5Appender.initialise_batch_file(
@@ -403,10 +592,12 @@ class BatchPipelineRunner:
             runtime_rel_by_type[chemistry_type] = self._prepare_model_runtime_links(runtime_dirs, chemistry_type)
         stage_totals["prepare_chem_runtime"] += time.perf_counter() - stage_start
 
+        total_particles = len(self.particle_ids)
+
         for slot, particle_id in enumerate(self.particle_ids.tolist()):
-            trace_file = trace_output_dir / f"{particle_id}.phys"
-            if not trace_file.exists():
-                raise FileNotFoundError(f"Missing trace file for particle {particle_id}: {trace_file}")
+            if int(particle_id) not in trace_map:
+                raise KeyError(f"Missing tracing content for particle {particle_id} in batch {self.batch_index}")
+            trace_text = trace_map[int(particle_id)]
 
             for chemistry_type in self.chemistry_types:
                 runtime_dirs = runtime_dirs_by_type[chemistry_type]
@@ -414,14 +605,14 @@ class BatchPipelineRunner:
                 input_file = runtime_dirs["input"] / f"{particle_id}.txt"
 
                 stage_start = time.perf_counter()
-                PhysTraceConverter.convert_phys_file(trace_file, input_file)
+                PhysTraceConverter.convert_phys_text(trace_text, input_file)
                 stage_totals["phys_to_txt"] += time.perf_counter() - stage_start
 
                 file_params_path = self._write_file_params(runtime_dirs, model_runtime_rel, particle_id, chemistry_type)
                 file_params_arg = (model_runtime_rel / "par" / file_params_path.name).as_posix()
 
                 stage_start = time.perf_counter()
-                self._run_chemistry_model(file_params_arg)
+                self._run_chemistry_model(file_params_arg, particle_id=int(particle_id), chemistry_type=chemistry_type)
                 stage_totals["chemistry_model"] += time.perf_counter() - stage_start
 
                 stage_start = time.perf_counter()
@@ -445,16 +636,16 @@ class BatchPipelineRunner:
 
                 stage_start = time.perf_counter()
                 self._cleanup_particle_products(
-                    trace_file,
-                    runtime_dirs,
-                    particle_id,
+                    trace_file=None,
+                    runtime_dirs=runtime_dirs,
+                    particle_id=particle_id,
                     cleanup_trace_file=False,
                     cleanup_ev_output=True,
                 )
                 stage_totals["cleanup_particle_products"] += time.perf_counter() - stage_start
 
-            if self.cleanup_temporary and trace_file.exists():
-                trace_file.unlink()
+        for chemistry_type in self.chemistry_types:
+            self._print_chem_done(chemistry_type=chemistry_type, total=total_particles)
 
         if self.cleanup_temporary:
             stage_start = time.perf_counter()

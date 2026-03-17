@@ -4,30 +4,32 @@ This directory contains a standalone batch-parallel post-processing pipeline for
 
 ## What it does
 
-Each SLURM array task processes one particle batch end to end:
+The workflow runs as: discovery -> tracing -> batch chemistry -> merge.
 
-1. Discover the particle IDs directly from a PHANTOM dump with `sarracen`.
+1. Discover the particle IDs directly from PHANTOM dumps with `sarracen`.
 2. Exclude the first `n_boundary` IDs during discovery.
-3. Select one batch by particle count, not by a pre-generated `particle_IDs.txt` file.
-4. Run `phantomanalysis` serially in one call over the ordered configured dump list inside an isolated batch workspace.
-5. Convert each generated `.phys` file into chemistry input.
+3. Run `phantomanalysis` once over the ordered configured dump list.
+4. Concatenate generated per-particle `.phys` outputs into per-batch `tracing_batch_XXXXX.h5` files.
+5. For each chemistry batch, load tracing rows from `tracing_batch_XXXXX.h5` and convert to evolving-model input.
 6. Run the chemistry model for every configured chemistry type.
 7. Convert `ev_output.dat` into one persistent `batch_XXXXX.h5` file.
 8. Build/reuse a dump-number -> real-time(seconds) map from PHANTOM metadata (`time * utime`).
 9. Map each chemistry row to exact dump numbers using EV `TIME` values (years) with fixed-precision second keys; for legacy low-precision EV outputs, fall back to deterministic row-order suffix alignment.
-10. Delete temporary `.phys`, `.txt`, `param`, `output`, and `ev_output` files after append.
+10. Delete temporary `.txt`, `param`, `output`, and `ev_output` files after append.
 11. Merge `batch_*.h5` into final `dump_XXXXX.h5` files after all batches finish.
 
 Particle histories are stored as variable-length per-particle arrays in batch files (no NaN padding for shorter traces). During merge, each dump output includes only particles that have data for that timestep.
 
 ## Directory layout
 
-- `src/analysis_trace.f90`: copied reference trace analysis source.
+- `src/analysis_trace.f90`: legacy reference copy (runtime tracing uses `paths.analysis_trace_source` in the Phantom tree).
 - `src/convert_ev_to_hdf5.f90`: Fortran HDF5 converter scaffold for future compiled use.
 - `scripts/convert_phys_to_txt.py`: standalone `.phys -> chemistry input` converter.
+- `scripts/run_tracing.py`: one-shot tracing runner (`phantomanalysis` once, then pack per-batch tracing HDF5).
 - `scripts/run_batch_pipeline.py`: main batch runner.
 - `scripts/append_ev_to_hdf5.py`: current operational HDF5 appender using `h5py` and `float64` datasets.
 - `scripts/merge_batches.py`: merges batch files into per-dump HDF5 outputs.
+- `slurm/run_tracing.slurm`: tracing job (runs between discovery and batch jobs).
 - `slurm/run_batch.slurm`: one array task per batch.
 - `slurm/merge_dumps.slurm`: final merge job.
 - `workflow/batch.sh`: unified script for submit mode and per-task run mode.
@@ -48,6 +50,9 @@ Edit `config/pipeline_config.yaml` before submitting:
 - `paths.final_output_dir`: final `dump_XXXXX.h5` output location.
 - `paths.scratch_root`: per-batch scratch workspaces.
 - `paths.dump_time_map_cache`: JSON cache of dump-number -> real-time(seconds) mapping.
+- `paths.trace_batches_dir`: legacy fallback directory for `tracing_batch_XXXXX.h5` files (binary traces are primary).
+- `paths.trace_metadata_file`: metadata YAML written by tracing step.
+- `paths.analysis_trace_source`: source of `analysis_trace.f90` in your Phantom tree (used for tracing provenance).
 
 All other `paths.*` entries may be written relative to `paths.base_path`; they are resolved to absolute paths when loading the config.
 - `processing.time_key_decimals`: fixed decimal precision used for second-based time keys when matching EV `TIME` rows to dumps.
@@ -113,7 +118,7 @@ This runs one array task per dump, merges IDs, and writes discovery results back
 - `processing.discovered_particle_count`
 - `processing.discovered_batch_count`
 
-`workflow/batch.sh` then uses these cached values and no longer performs expensive live `sarracen` scans at submit time.
+`workflow/batch.sh` then submits tracing automatically before chemistry batches and no longer performs expensive live `sarracen` scans at submit time.
 
 Important: cache now stores all discovered particle IDs (`particle_ids_all.npy`) and applies `processing.n_boundary` at runtime.
 This means changing `n_boundary` in `pipeline_config.yaml` takes effect immediately on the next batch submission without recompiling.

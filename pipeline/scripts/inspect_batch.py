@@ -78,20 +78,27 @@ class InteractiveHDF5Inspector:
 
         return "stats unavailable"
 
-    def interactive_dataset_view(self, rows: list[tuple[str, h5py.Dataset]]) -> None:
-        """Run REPL loop to inspect one dataset at a time."""
+    def interactive_dataset_view(self, rows: list[tuple[str, h5py.Dataset]]) -> str:
+        """Run REPL loop to inspect one dataset at a time.
+
+        Returns:
+            "back" to go back to batch selection.
+            "quit" to exit the inspector.
+        """
         print("\nInspect datasets")
-        print("Type a dataset index to preview it, 'r' to reprint summary, or 'q' to quit.")
+        print("Type a dataset index to preview it, 'r' to reprint summary, 'b' to go back, or 'q' to quit.")
 
         while True:
             raw = input("dataset> ").strip().lower()
             if raw == "q":
-                return
+                return "quit"
+            if raw == "b":
+                return "back"
             if raw == "r":
                 self.print_summary(rows)
                 continue
             if not raw.isdigit():
-                print("Enter an integer index, 'r', or 'q'.")
+                print("Enter an integer index, 'r', 'b', or 'q'.")
                 continue
 
             idx = int(raw)
@@ -202,18 +209,29 @@ class BatchInspectorApp:
         """Open selected batch and start interactive dataset explorer."""
         batch_dir = self.resolve_batch_dir()
         batch_files = self.list_batch_files(batch_dir)
-        batch_file = self.resolve_batch_file(batch_files)
+        force_interactive_selection = False
 
-        print(f"Batch directory: {batch_dir}")
-        print(f"Selected batch: {batch_file.name}")
+        while True:
+            if force_interactive_selection:
+                batch_file = self._choose_file_interactively(batch_files, "batch")
+            else:
+                batch_file = self.resolve_batch_file(batch_files)
 
-        with h5py.File(batch_file, "r") as handle:
-            rows = self.inspector.collect_datasets(handle)
-            if not rows:
-                print("This file contains no datasets.")
+            print(f"Batch directory: {batch_dir}")
+            print(f"Selected batch: {batch_file.name}")
+
+            with h5py.File(batch_file, "r") as handle:
+                rows = self.inspector.collect_datasets(handle)
+                if not rows:
+                    print("This file contains no datasets.")
+                    force_interactive_selection = True
+                    continue
+                self.inspector.print_summary(rows)
+                action = self.inspector.interactive_dataset_view(rows)
+
+            if action == "quit":
                 return
-            self.inspector.print_summary(rows)
-            self.inspector.interactive_dataset_view(rows)
+            force_interactive_selection = True
 
 
 def main() -> None:

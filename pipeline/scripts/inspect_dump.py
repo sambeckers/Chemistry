@@ -78,20 +78,27 @@ class InteractiveHDF5Inspector:
 
         return "stats unavailable"
 
-    def interactive_dataset_view(self, rows: list[tuple[str, h5py.Dataset]]) -> None:
-        """Run REPL loop to inspect one dataset at a time."""
+    def interactive_dataset_view(self, rows: list[tuple[str, h5py.Dataset]]) -> str:
+        """Run REPL loop to inspect one dataset at a time.
+
+        Returns:
+            "back" to go back to dump selection.
+            "quit" to exit the inspector.
+        """
         print("\nInspect datasets")
-        print("Type a dataset index to preview it, 'r' to reprint summary, or 'q' to quit.")
+        print("Type a dataset index to preview it, 'r' to reprint summary, 'b' to go back, or 'q' to quit.")
 
         while True:
             raw = input("dataset> ").strip().lower()
             if raw == "q":
-                return
+                return "quit"
+            if raw == "b":
+                return "back"
             if raw == "r":
                 self.print_summary(rows)
                 continue
             if not raw.isdigit():
-                print("Enter an integer index, 'r', or 'q'.")
+                print("Enter an integer index, 'r', 'b', or 'q'.")
                 continue
 
             idx = int(raw)
@@ -202,18 +209,29 @@ class DumpInspectorApp:
         """Open selected dump and start interactive dataset explorer."""
         dump_dir = self.resolve_dump_dir()
         dump_files = self.list_dump_files(dump_dir)
-        dump_file = self.resolve_dump_file(dump_files)
+        force_interactive_selection = False
 
-        print(f"Dump directory: {dump_dir}")
-        print(f"Selected dump: {dump_file.name}")
+        while True:
+            if force_interactive_selection:
+                dump_file = self._choose_file_interactively(dump_files, "dump")
+            else:
+                dump_file = self.resolve_dump_file(dump_files)
 
-        with h5py.File(dump_file, "r") as handle:
-            rows = self.inspector.collect_datasets(handle)
-            if not rows:
-                print("This file contains no datasets.")
+            print(f"Dump directory: {dump_dir}")
+            print(f"Selected dump: {dump_file.name}")
+
+            with h5py.File(dump_file, "r") as handle:
+                rows = self.inspector.collect_datasets(handle)
+                if not rows:
+                    print("This file contains no datasets.")
+                    force_interactive_selection = True
+                    continue
+                self.inspector.print_summary(rows)
+                action = self.inspector.interactive_dataset_view(rows)
+
+            if action == "quit":
                 return
-            self.inspector.print_summary(rows)
-            self.inspector.interactive_dataset_view(rows)
+            force_interactive_selection = True
 
 
 def main() -> None:
