@@ -17,6 +17,17 @@ ISSUE_RE = re.compile(r"\b(warning|warn|error|traceback|exception|failed|failure
 WARNING_RE = re.compile(r"\b(warning|warn)\b", re.IGNORECASE)
 ERROR_RE = re.compile(r"\b(error|traceback|exception|failed|failure)\b", re.IGNORECASE)
 PARTICLE_RE = re.compile(r"^Batch\s+(\d+):\s+particles\s+\d+:\d+\s+\((\d+)\s+particle\(s\)\s+out\s+of\s+\d+\)")
+CHEM_ERROR_LINE_RE = re.compile(r"^CHEM_ERROR\|")
+CHEM_SUMMARY_LINE_RE = re.compile(
+    r"^CHEM_SUMMARY\|.*nonlinear_failures_total=(\d+)\|error_test_failures_total=(\d+)\|"
+    r"max_index_component_largest_error=(\d+)\|dvode_messages=(\d+)"
+)
+ERROR_TEST_RE = re.compile(r"No\.\s*error test failures\s*=\s*(-?\d+)", re.IGNORECASE)
+INDEX_COMPONENT_RE = re.compile(r"Index\s*compenent\s*largest\s*error\s*=\s*(-?\d+)", re.IGNORECASE)
+DVODE_RE = re.compile(
+    r"DVODE--|corrector convergence failed repeatedly|too much accuracy\s+requested|TOLSF|R1\s*=\s*NaN|NaN",
+    re.IGNORECASE,
+)
 
 STAGE_ALIASES = {
     "trace_stage": "tracing",
@@ -24,7 +35,7 @@ STAGE_ALIASES = {
 
 SUBPROCESS_STAGE_ORDER = [
     "prepare_batch_paths",
-    "prepare_trace_workspace",
+    "tracing_load",
     "init_batch_hdf5",
     "prepare_chem_runtime",
     "phys_to_txt",
@@ -35,13 +46,11 @@ SUBPROCESS_STAGE_ORDER = [
 ]
 
 MAIN_PROCESS_STAGE_ORDER = [
-    "tracing",
     "chemistry_model",
     "batch_total",
 ]
 
 PROCESS_TOTAL_STAGE_ORDER = [
-    "tracing",
     "chemistry_model",
     *SUBPROCESS_STAGE_ORDER,
     "batch_total",
@@ -111,6 +120,143 @@ def _workflow_stage_info() -> dict:
     }
 
 
+def _classify_issue_line(line: str) -> tuple[bool, bool, str] | None:
+    """Return (is_warning, is_error, text) or None if line should be ignored."""
+    stripped = line.strip()
+    if not stripped:
+        return None
+
+    m = ERROR_TEST_RE.search(stripped)
+    if m and int(m.group(1)) == 0:
+        return None
+
+    m = INDEX_COMPONENT_RE.search(stripped)
+    if m and int(m.group(1)) == 0:
+        return None
+
+    if CHEM_ERROR_LINE_RE.search(stripped):
+        return (False, True, stripped)
+
+    m = CHEM_SUMMARY_LINE_RE.search(stripped)
+    if m:
+        nonlinear = int(m.group(1))
+        error_tests = int(m.group(2))
+        index_error = int(m.group(3))
+        dvode = int(m.group(4))
+        if nonlinear > 0 or error_tests > 0 or index_error > 0 or dvode > 0:
+            return (False, True, stripped)
+        return None
+
+    is_warning = bool(WARNING_RE.search(stripped))
+    is_error = bool(ERROR_RE.search(stripped) or DVODE_RE.search(stripped))
+    if not is_warning and not is_error:
+        return None
+    return (is_warning, is_error, stripped)
+
+
+def _issue_priority(text: str) -> int:
+    """Higher value means more important for sampled issue display."""
+    if DVODE_RE.search(text):
+        return 4
+    if CHEM_ERROR_LINE_RE.search(text):
+        if "|dvode=" in text:
+            return 4
+        return 3
+    if CHEM_SUMMARY_LINE_RE.search(text):
+        return 3
+
+    m = INDEX_COMPONENT_RE.search(text)
+    if m and int(m.group(1)) > 0:
+        return 2
+
+    m = ERROR_TEST_RE.search(text)
+    if m and int(m.group(1)) > 0:
+        return 1
+
+    if ERROR_RE.search(text):
+        return 1
+    if WARNING_RE.search(text):
+        return 0
+    return -1
+
+
+def _issue_label(text: str) -> str:
+    """Return a normalized issue label for grouped sampling in summary output."""
+    if DVODE_RE.search(text):
+        if "corrector convergence failed repeatedly" in text.lower() or "At T (=R1) and step size H (=R2)" in text:
+            return "DVODE corrector convergence failed repeatedly"
+        return "DVODE too much accuracy requested (TOLSF/R1=NaN)"
+
+    if CHEM_ERROR_LINE_RE.search(text):
+        if "|dvode=" in text:
+            if "corrector convergence failed repeatedly" in text.lower() or "At T (=R1) and step size H (=R2)" in text:
+                return "DVODE corrector convergence failed repeatedly"
+            return "DVODE too much accuracy requested (TOLSF/R1=NaN)"
+        if "nonlinear_convergence_failures=" in text:
+            return "nonlinear convergence failures > 0"
+        if "error_test_failures=" in text:
+            return "No. error test failures"
+        if "index_component_largest_error=" in text:
+            return "Index compenent largest error > 0"
+        return "CHEM_ERROR"
+
+    m = CHEM_SUMMARY_LINE_RE.search(text)
+    if m:
+        parts: list[str] = []
+        if int(m.group(4)) > 0:
+            parts.append("DVODE messages")
+        if int(m.group(1)) > 0:
+            parts.append("nonlinear convergence failures")
+        if int(m.group(2)) > 0:
+            parts.append("error test failures")
+        if int(m.group(3)) > 0:
+            parts.append("index component largest error")
+        if parts:
+            return "CHEM_SUMMARY nonzero: " + ", ".join(parts)
+        return "CHEM_SUMMARY"
+
+    if ERROR_TEST_RE.search(text):
+        return "No. error test failures"
+    if INDEX_COMPONENT_RE.search(text):
+        return "Index compenent largest error > 0"
+
+    return text
+
+
+def _record_issue(info: dict, source: str, text: str) -> None:
+    issue_counts = info.setdefault("issue_type_counts", {})
+    issue_order = info.setdefault("issue_type_order", {})
+    label = _issue_label(text)
+    key = (source, label)
+    priority = int(_issue_priority(text))
+
+    if key not in issue_counts:
+        issue_counts[key] = {"count": 0, "priority": priority}
+        issue_order[key] = len(issue_order)
+    issue_counts[key]["count"] += 1
+    if priority > int(issue_counts[key]["priority"]):
+        issue_counts[key]["priority"] = priority
+
+
+def _finalize_issue_lines(info: dict, max_lines: int = 8) -> None:
+    issue_counts = dict(info.get("issue_type_counts", {}))
+    if not issue_counts:
+        info["issue_lines"] = []
+        return
+
+    issue_order = dict(info.get("issue_type_order", {}))
+    ranked: list[tuple[int, int, int, str]] = []
+    for key, payload in issue_counts.items():
+        source, label = key
+        priority = int(payload["priority"])
+        count = int(payload["count"])
+        order = int(issue_order.get(key, 0))
+        ranked.append((priority, count, -order, f"{source}: {count}x {label}"))
+
+    ranked.sort(key=lambda item: (-item[0], -item[1], item[2]))
+    info["issue_lines"] = [item[3] for item in ranked[:max_lines]]
+
+
 def _render_aligned_table(headers: list[str], rows: list[list[str]]) -> list[str]:
     """Render an aligned plain-text table for easier scanning in logs."""
     widths = [len(header) for header in headers]
@@ -154,6 +300,7 @@ def main() -> None:
     workflow_tasks: dict[str, dict] = {
         "particle_discovery_worker": _workflow_stage_info(),
         "particle_discovery_merge": _workflow_stage_info(),
+        "tracing": _workflow_stage_info(),
         "run_batch": _workflow_stage_info(),
         "merge_dumps": _workflow_stage_info(),
     }
@@ -166,6 +313,8 @@ def main() -> None:
                 "warnings": 0,
                 "errors": 0,
                 "issue_lines": [],
+                "issue_type_counts": {},
+                "issue_type_order": {},
                 "status": "unknown",
                 "status_seconds": None,
                 "status_error": None,
@@ -239,13 +388,14 @@ def main() -> None:
                             stage_info["failed"] += 1
                 continue
 
-            if ISSUE_RE.search(line):
-                if WARNING_RE.search(line):
+            classified = _classify_issue_line(line)
+            if classified is not None:
+                is_warning, is_error, text = classified
+                if is_warning:
                     info["warnings"] += 1
-                if ERROR_RE.search(line):
+                if is_error:
                     info["errors"] += 1
-                if len(info["issue_lines"]) < 8:
-                    info["issue_lines"].append(f"OUT: {line.strip()}")
+                _record_issue(info, "OUT", text)
 
     err_by_index = {_to_int_suffix(path): path for path in err_logs}
     for index, err_path in err_by_index.items():
@@ -253,13 +403,14 @@ def main() -> None:
             continue
         info = get_batch(index)
         for line in _read_lines(err_path):
-            if ISSUE_RE.search(line):
-                if WARNING_RE.search(line):
+            classified = _classify_issue_line(line)
+            if classified is not None:
+                is_warning, is_error, text = classified
+                if is_warning:
                     info["warnings"] += 1
-                if ERROR_RE.search(line):
+                if is_error:
                     info["errors"] += 1
-                if len(info["issue_lines"]) < 8:
-                    info["issue_lines"].append(f"ERR: {line.strip()}")
+                _record_issue(info, "ERR", text)
 
     workflow_out_logs = sorted(log_dir.glob("*.out"), key=lambda p: (p.name, p.stat().st_mtime))
     for out_path in workflow_out_logs:
@@ -285,6 +436,44 @@ def main() -> None:
                     else:
                         stage_info["failed"] += 1
 
+    # Also search for tracing logs in sibling directories with matching timestamp
+    # This handles cases where tracing job has different ID than batch array job
+    if log_dir.parent.is_dir() and log_dir.name.startswith("logs_"):
+        # Extract timestamp from log directory name (format: logs_JOBID_DATETIME)
+        parts = log_dir.name.split("_", 2)
+        if len(parts) >= 3:
+            target_timestamp = "_".join(parts[2:])  # Get DATETIME part
+            # Search for tracing logs in sibling dirs with same timestamp
+            for sibling_dir in sorted(log_dir.parent.iterdir()):
+                if not sibling_dir.is_dir() or not sibling_dir.name.startswith("logs_"):
+                    continue
+                sibling_parts = sibling_dir.name.split("_", 2)
+                if len(sibling_parts) >= 3 and "_".join(sibling_parts[2:]) == target_timestamp:
+                    # Found sibling with same timestamp, look for tracing logs
+                    tracing_logs = sorted(
+                        sibling_dir.glob("tracing_*.out"),
+                        key=lambda p: (p.name, p.stat().st_mtime)
+                    )
+                    for out_path in tracing_logs:
+                        for line in _read_lines(out_path):
+                            m = WORKFLOW_TASK_RE.match(line)
+                            if not m:
+                                continue
+                            stage = m.group(1)
+                            phase = m.group(3)
+                            epoch = int(m.group(4))
+                            status_group = m.group(5)
+                            stage_info = workflow_tasks.setdefault(stage, _workflow_stage_info())
+                            if phase == "start":
+                                stage_info["starts"].append(epoch)
+                            else:
+                                stage_info["ends"].append(epoch)
+                                if status_group is not None:
+                                    status = int(status_group)
+                                    if status == 0:
+                                        stage_info["ok"] += 1
+                                    else:
+                                        stage_info["failed"] += 1
     for stage_info in workflow_tasks.values():
         starts = len(stage_info["starts"])
         ends = len(stage_info["ends"])
@@ -315,6 +504,9 @@ def main() -> None:
     total_particles = sum(int(batch_data[i]["particles"] or 0) for i in indices)
     total_warnings = sum(int(batch_data[i]["warnings"]) for i in indices)
     total_errors = sum(int(batch_data[i]["errors"]) for i in indices)
+
+    for i in indices:
+        _finalize_issue_lines(batch_data[i], max_lines=8)
 
     summary_lines = []
     now = datetime.now(timezone.utc).isoformat()
@@ -380,7 +572,6 @@ def main() -> None:
     summary_lines.append("Per-batch main-process timings")
     main_stage_header = [
         "batch",
-        "tracing_hms",
         "chemistry_model_hms",
         "batch_total_hms",
     ]
@@ -391,7 +582,6 @@ def main() -> None:
         main_stage_rows.append(
             [
                 str(index),
-                _seconds_to_hms(_stage_seconds(stages, 'tracing')),
                 _seconds_to_hms(_stage_seconds(stages, 'chemistry_model')),
                 _seconds_to_hms(_stage_seconds(stages, 'batch_total')),
             ]
@@ -403,7 +593,7 @@ def main() -> None:
     subprocess_header = [
         "batch",
         "prepare_paths_hms_ms",
-        "prepare_trace_ws_hms_ms",
+        "tracing_load_hms_ms",
         "init_batch_hdf5_hms_ms",
         "prepare_chem_runtime_hms_ms",
         "phys_to_txt_hms_ms",
@@ -420,7 +610,7 @@ def main() -> None:
             [
                 str(index),
                 _seconds_to_hms_ms(_stage_seconds(stages, 'prepare_batch_paths')),
-                _seconds_to_hms_ms(_stage_seconds(stages, 'prepare_trace_workspace')),
+                _seconds_to_hms_ms(_stage_seconds(stages, 'tracing_load')),
                 _seconds_to_hms_ms(_stage_seconds(stages, 'init_batch_hdf5')),
                 _seconds_to_hms_ms(_stage_seconds(stages, 'prepare_chem_runtime')),
                 _seconds_to_hms_ms(_stage_seconds(stages, 'phys_to_txt')),
@@ -504,6 +694,7 @@ def main() -> None:
 
     render_workflow_row("particle_discovery_worker", "particle_discovery_workers", discover_note)
     render_workflow_row("particle_discovery_merge", "particle_discovery_merge", discover_note)
+    render_workflow_row("tracing", "tracing")
     render_workflow_row("run_batch", "run_batch_array")
     render_workflow_row("merge_dumps", "merge_dumps")
     summary_lines.extend(_render_aligned_table(workflow_header, workflow_rows))

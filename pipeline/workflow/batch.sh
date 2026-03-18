@@ -21,11 +21,12 @@ DEFAULT_CONFIG="${PIPELINE_ROOT}/config/pipeline_config.yaml"
 SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/run_batch.slurm"
 MERGE_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/merge_dumps.slurm"
 SUMMARY_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/summarize_batches.slurm"
+TRACING_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/run_tracing.slurm"
 DISCOVER_ARRAY_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/discover_particle_ids_array.slurm"
 DISCOVER_MERGE_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/discover_particle_ids_merge.slurm"
 DISCOVER_SERIAL_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/discover_particle_ids_serial.slurm"
 
-TOTAL_STEPS=8
+TOTAL_STEPS=9
 CURRENT_STEP=0
 STEP_START_EPOCH=0
 
@@ -137,7 +138,7 @@ if int(len(cache_ids)) != int(count_all):
 PY
 then
     DISCOVERY_NEEDED=1
-    TOTAL_STEPS=9
+    TOTAL_STEPS=10
 fi
 step_done
 
@@ -202,6 +203,9 @@ fi
 step_start "Preparing SLURM array and logging paths"
 mkdir -p "${SCRATCH_ROOT}/logs"
 DATETIME=$(date +%Y-%m-%d_%H-%M-%S)
+LOG_DIR=""
+TRACE_LOG_DIR="${SCRATCH_ROOT}/logs/tracing_logs_${DATETIME}"
+mkdir -p "${TRACE_LOG_DIR}"
 
 ARRAY_MAX=$((BATCH_COUNT - 1))
 ARRAY_SPEC="0-${ARRAY_MAX}"
@@ -225,6 +229,8 @@ if [[ "${DISCOVERY_NEEDED}" -eq 1 ]]; then
 else
     echo "Particle IDs    : cache valid (discovery step skipped)"
 fi
+echo "Batch logs      : ${SCRATCH_ROOT}/logs/logs_<array_job_id>_${DATETIME}"
+echo "Tracing logs    : ${TRACE_LOG_DIR}"
 step_done
 
 DISCOVER_ARRAY_JOB_ID=""
@@ -311,11 +317,34 @@ PY
     step_done
 fi
 
-step_start "Submitting run_batch array job"
-ARRAY_DEPENDENCY_ARGS=()
-if [[ -n "${DISCOVER_MERGE_JOB_ID}" ]]; then
-    ARRAY_DEPENDENCY_ARGS=(--dependency="afterok:${DISCOVER_MERGE_JOB_ID}")
+step_start "Submitting tracing job"
+if [[ ! -f "${TRACING_SLURM_SCRIPT}" ]]; then
+    echo "Error: tracing slurm script not found: ${TRACING_SLURM_SCRIPT}"
+    exit 1
 fi
+
+TRACING_DEPENDENCY_ARGS=()
+if [[ -n "${DISCOVER_MERGE_JOB_ID}" ]]; then
+    TRACING_DEPENDENCY_ARGS=(--dependency="afterok:${DISCOVER_MERGE_JOB_ID}")
+fi
+
+TRACING_SUBMIT_OUTPUT=$(sbatch \
+    "${TRACING_DEPENDENCY_ARGS[@]}" \
+    --output="${TRACE_LOG_DIR}/tracing_%A.out" \
+    --error="${TRACE_LOG_DIR}/tracing_%A.err" \
+    --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN}" \
+    "${TRACING_SLURM_SCRIPT}")
+echo "${TRACING_SUBMIT_OUTPUT}"
+
+TRACING_JOB_ID=$(echo "${TRACING_SUBMIT_OUTPUT}" | awk '{print $NF}')
+if [[ -z "${TRACING_JOB_ID}" ]]; then
+    echo "Error: could not parse tracing job id from: ${TRACING_SUBMIT_OUTPUT}"
+    exit 1
+fi
+step_done
+
+step_start "Submitting run_batch array job"
+ARRAY_DEPENDENCY_ARGS=(--dependency="afterok:${TRACING_JOB_ID}")
 
 ARRAY_SUBMIT_OUTPUT=$(sbatch \
     "${ARRAY_DEPENDENCY_ARGS[@]}" \
@@ -333,9 +362,11 @@ if [[ -z "${ARRAY_JOB_ID}" ]]; then
 fi
 
 LOG_DIR="${SCRATCH_ROOT}/logs/logs_${ARRAY_JOB_ID}_${DATETIME}"
+mkdir -p "${LOG_DIR}"
 
 echo "Run-batch array job id : ${ARRAY_JOB_ID}"
-echo "Logs                   : ${LOG_DIR}"
+echo "Batch logs             : ${LOG_DIR}"
+echo "Tracing logs           : ${TRACE_LOG_DIR}"
 step_done
 
 step_start "Submitting merge_dumps job"
@@ -375,6 +406,7 @@ echo "${SUMMARY_SUBMIT_OUTPUT}"
 step_done
 
 echo "Batch submission workflow completed."
-echo "Submitted chain: ${DISCOVER_ARRAY_JOB_ID:+discover_array -> }${DISCOVER_MERGE_JOB_ID:+discover_merge -> }run_batch_array -> merge_dumps -> summarize"
+echo "Submitted chain: ${DISCOVER_ARRAY_JOB_ID:+discover_array -> }${DISCOVER_MERGE_JOB_ID:+discover_merge -> }tracing -> run_batch_array -> merge_dumps -> summarize"
+echo "Tracing job id        : ${TRACING_JOB_ID}"
 echo "Run-batch array job id: ${ARRAY_JOB_ID}"
 echo "Logs: ${LOG_DIR}"
