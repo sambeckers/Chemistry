@@ -434,7 +434,7 @@ def plot_compare_1d_grid(
 
 
 def main():
-    chemistry = "Orich"  # "Crich" or "Orich"
+    chemistry = "Crich"  # "Crich" or "Orich"
     pmf = "wind_v10"
     max_particle_id = None
     start_index = 2
@@ -446,7 +446,7 @@ def main():
     use_select_particle_ids = True
     max_particles = None
 
-    source_dir = BASE_PATH / f"evolving_model/{chemistry}/ev_output"
+    source_dir = BASE_PATH / f"evolving_model/v10_n460_0326_v2/{chemistry}/ev_output"
     save_dir = BASE_PATH / f"figures/Evolution_traces/{chemistry}"
     save_dir.mkdir(parents=True, exist_ok=True)
 
