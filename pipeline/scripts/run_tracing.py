@@ -83,7 +83,7 @@ class TracingRunner:
                 stdout=makefile_handle,
                 check=True,
             )
-
+        print(f"Running terminal command: make analysis ANALYSIS={self.analysis_trace_source.name} SYSTEM={self.analysis_compile_system}")
         subprocess.run(
             [
                 "make",

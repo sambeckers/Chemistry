@@ -229,7 +229,8 @@ if [[ "${DISCOVERY_NEEDED}" -eq 1 ]]; then
 else
     echo "Particle IDs    : cache valid (discovery step skipped)"
 fi
-echo "Logs            : ${SCRATCH_ROOT}/logs/logs_<array_job_id>_${DATETIME} (tracing logs copied into this folder)"
+echo "Batch logs      : ${SCRATCH_ROOT}/logs/logs_<array_job_id>_${DATETIME}"
+echo "Tracing logs    : ${TRACE_LOG_DIR}"
 step_done
 
 DISCOVER_ARRAY_JOB_ID=""
@@ -363,26 +364,9 @@ fi
 LOG_DIR="${SCRATCH_ROOT}/logs/logs_${ARRAY_JOB_ID}_${DATETIME}"
 mkdir -p "${LOG_DIR}"
 
-# Keep a single logical log directory by copying tracing logs into the batch log folder
-# after tracing completes (real files, not symlinks).
-TRACE_COPY_WRAP="set -euo pipefail; for ext in out err; do src=\"${TRACE_LOG_DIR}/tracing_${TRACING_JOB_ID}.\${ext}\"; dst=\"${LOG_DIR}/tracing_${TRACING_JOB_ID}.\${ext}\"; if [[ -f \"\${src}\" ]]; then cp -f \"\${src}\" \"\${dst}\"; fi; done"
-TRACE_COPY_SUBMIT_OUTPUT=$(sbatch \
-    --dependency="afterany:${TRACING_JOB_ID}" \
-    --job-name="trace_log_copy" \
-    --output="${LOG_DIR}/trace_log_copy_%A.out" \
-    --error="${LOG_DIR}/trace_log_copy_%A.err" \
-    --wrap="${TRACE_COPY_WRAP}")
-echo "${TRACE_COPY_SUBMIT_OUTPUT}"
-
-TRACE_COPY_JOB_ID=$(echo "${TRACE_COPY_SUBMIT_OUTPUT}" | awk '{print $NF}')
-if [[ -z "${TRACE_COPY_JOB_ID}" ]]; then
-    echo "Error: could not parse trace log copy job id from: ${TRACE_COPY_SUBMIT_OUTPUT}"
-    exit 1
-fi
-
 echo "Run-batch array job id : ${ARRAY_JOB_ID}"
-echo "Trace-copy job id      : ${TRACE_COPY_JOB_ID}"
-echo "Logs                   : ${LOG_DIR}"
+echo "Batch logs             : ${LOG_DIR}"
+echo "Tracing logs           : ${TRACE_LOG_DIR}"
 step_done
 
 step_start "Submitting merge_dumps job"

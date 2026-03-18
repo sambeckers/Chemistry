@@ -72,11 +72,177 @@ class InteractiveHDF5Inspector:
                 return "all values are NaN/inf"
             return f"min={np.min(finite):.6g}, max={np.max(finite):.6g}, mean={np.mean(finite):.6g}"
 
-        if arr.dtype.kind in {"S", "U", "O"}:
-            uniques = np.unique(arr)
+        if arr.dtype.kind in {"S", "U"}:
+            uniques = np.unique(np.ravel(arr))
             return f"unique={len(uniques)}"
 
+        if arr.dtype.kind == "O":
+            flat = np.ravel(arr)
+            try:
+                uniques = np.unique(flat)
+                return f"unique={len(uniques)}"
+            except Exception:
+                # Object arrays can contain nested arrays that are not safely orderable.
+                try:
+                    normalized = [repr(value) for value in flat]
+                    return f"unique={len(set(normalized))}"
+                except Exception:
+                    return "stats unavailable"
+
         return "stats unavailable"
+
+    @staticmethod
+    def _find_particle_id_dataset(rows: list[tuple[str, h5py.Dataset]]) -> tuple[str, h5py.Dataset] | None:
+        """Find particle-ID dataset, preferring canonical paths."""
+        preferred_paths = ["particles/id", "trace/particles/id", "id", "114"]
+        for preferred in preferred_paths:
+            matches = [(name, dataset) for name, dataset in rows if name == preferred]
+            if len(matches) == 1:
+                return matches[0]
+
+        by_leaf = [(name, dataset) for name, dataset in rows if name.split("/")[-1] in {"id", "114"}]
+        if len(by_leaf) == 1:
+            return by_leaf[0]
+        return None
+
+    @staticmethod
+    def _match_particle_ids(particle_ids: np.ndarray, raw_value: str) -> np.ndarray:
+        """Return matching index positions for a user-entered particle ID."""
+        ids = np.ravel(particle_ids)
+        if ids.size == 0:
+            return np.array([], dtype=np.int64)
+
+        if np.issubdtype(ids.dtype, np.integer):
+            try:
+                target = int(raw_value)
+            except ValueError:
+                return np.array([], dtype=np.int64)
+            return np.where(ids == target)[0]
+
+        if np.issubdtype(ids.dtype, np.floating):
+            try:
+                target = float(raw_value)
+            except ValueError:
+                return np.array([], dtype=np.int64)
+            return np.where(np.isclose(ids, target, equal_nan=True))[0]
+
+        normalized = np.array([value.decode("utf-8", errors="replace") if isinstance(value, bytes) else str(value) for value in ids])
+        return np.where(normalized == raw_value)[0]
+
+    def _interactive_particle_view(
+        self,
+        dataset_name: str,
+        dataset_arr: np.ndarray,
+        particle_ids: np.ndarray | None,
+    ) -> str:
+        """Inspect one dataset entry at a time by index, and by particle ID when available."""
+        ids = np.ravel(particle_ids) if particle_ids is not None else None
+        supports_particle_id = ids is not None and dataset_arr.ndim > 0 and dataset_arr.shape[0] == ids.size
+        item_count = int(dataset_arr.shape[0]) if dataset_arr.ndim > 0 else 1
+
+        print("-" * 80)
+        print(f"Path: /{dataset_name}")
+        print("Select one entry to inspect.")
+        if supports_particle_id:
+            print("Commands: particle ID value, 'i <index>', 'l' (IDs sample), 'li' (index range), 'b', 'q'.")
+        else:
+            print("Commands: 'i <index>' (or index), 'li' (index range), 'b', 'q'.")
+
+        while True:
+            raw = input("particle-id> ").strip()
+            lowered = raw.lower()
+            if lowered == "q":
+                return "quit"
+            if lowered == "b":
+                return "back"
+            if lowered == "li":
+                if item_count == 0:
+                    print("No entries in this dataset.")
+                else:
+                    max_idx = item_count - 1
+                    print(f"Valid index range: 0..{max_idx}")
+                continue
+            if lowered == "l":
+                if supports_particle_id and ids is not None:
+                    shown = ids[: self.preview]
+                    print(f"Particle ID sample: {np.array2string(shown, separator=', ')}")
+                    if ids.size > self.preview:
+                        print(f"(showing {self.preview} of {ids.size})")
+                else:
+                    print("Particle-ID lookup is unavailable for this dataset; use index selection.")
+                continue
+
+            selected_index: int | None = None
+
+            if lowered.startswith("i "):
+                token = raw[2:].strip()
+                if not token:
+                    print("Provide an index after 'i', for example: i 3")
+                    continue
+                try:
+                    selected_index = int(token)
+                except ValueError:
+                    print("Index must be an integer.")
+                    continue
+            elif raw.isdigit() or (raw.startswith("-") and raw[1:].isdigit()):
+                if supports_particle_id:
+                    matches = self._match_particle_ids(ids, raw) if ids is not None else np.array([], dtype=np.int64)
+                    if matches.size == 0:
+                        selected_index = int(raw)
+                    else:
+                        selected_index = int(matches[0])
+                        if matches.size > 1:
+                            print(
+                                f"Found {matches.size} matches for particle ID '{raw}'. "
+                                f"Using first index {selected_index}."
+                            )
+                else:
+                    selected_index = int(raw)
+            else:
+                if supports_particle_id and ids is not None:
+                    matches = self._match_particle_ids(ids, raw)
+                    if matches.size == 0:
+                        print(f"Particle ID '{raw}' not found. Use 'i <index>' for direct index selection.")
+                        continue
+                    selected_index = int(matches[0])
+                    if matches.size > 1:
+                        print(
+                            f"Found {matches.size} matches for particle ID '{raw}'. "
+                            f"Using first index {selected_index}."
+                        )
+                else:
+                    print("Enter 'i <index>' (or an integer index), 'li', 'b', or 'q'.")
+                    continue
+
+            if dataset_arr.ndim == 0:
+                selected_index = 0
+
+            if selected_index is None or selected_index < 0 or selected_index >= item_count:
+                max_idx = item_count - 1
+                print(f"Index out of range (0-{max_idx}).")
+                continue
+
+            particle_data = np.asarray(dataset_arr[selected_index]) if dataset_arr.ndim > 0 else np.asarray(dataset_arr)
+            print("-" * 80)
+            print(f"Path: /{dataset_name}")
+            if supports_particle_id and ids is not None:
+                particle_id_value = ids[selected_index]
+                print(f"Particle ID: {particle_id_value} (index {selected_index})")
+            else:
+                print(f"Index: {selected_index}")
+            print(f"Particle data shape: {particle_data.shape}")
+            print(f"Particle data dtype: {particle_data.dtype}")
+            print(f"Stats: {self._safe_stats(particle_data)}")
+            print(f"Preview: {self._preview_array(particle_data)}")
+            print("Type 'b' to go back to selection, or 'q' to quit.")
+
+            while True:
+                view_cmd = input("particle-view> ").strip().lower()
+                if view_cmd == "q":
+                    return "quit"
+                if view_cmd in {"", "b"}:
+                    break
+                print("Enter 'b' (or Enter) to pick another entry, or 'q' to quit.")
 
     def interactive_dataset_view(self, rows: list[tuple[str, h5py.Dataset]]) -> str:
         """Run REPL loop to inspect one dataset at a time.
@@ -85,8 +251,17 @@ class InteractiveHDF5Inspector:
             "back" to go back to batch selection.
             "quit" to exit the inspector.
         """
+        particle_id_entry = self._find_particle_id_dataset(rows)
+        particle_ids: np.ndarray | None = None
+        particle_id_name: str | None = None
+        if particle_id_entry is not None:
+            particle_id_name, particle_id_dataset = particle_id_entry
+            particle_ids = np.ravel(np.asarray(particle_id_dataset[()]))
+
         print("\nInspect datasets")
-        print("Type a dataset index to preview it, 'r' to reprint summary, 'b' to go back, or 'q' to quit.")
+        print("Type a dataset index to inspect it, 'r' to reprint summary, 'b' to go back, or 'q' to quit.")
+        if particle_ids is not None:
+            print("For non-ID datasets, you can inspect by particle ID or index.")
 
         while True:
             raw = input("dataset> ").strip().lower()
@@ -108,6 +283,43 @@ class InteractiveHDF5Inspector:
 
             name, dataset = rows[idx - 1]
             arr = np.asarray(dataset[()])
+
+            if particle_ids is not None and particle_id_name is not None and name != particle_id_name:
+                print("-" * 80)
+                print(f"Path: /{name}")
+                print(f"Shape: {dataset.shape}")
+                print(f"DType: {dataset.dtype}")
+                print(f"Stats: {self._safe_stats(arr)}")
+                print(f"Preview: {self._preview_array(arr)}")
+
+                if arr.ndim == 0:
+                    print("This dataset is scalar and cannot be opened in particle/item selection mode.")
+                    continue
+
+                supports_particle_id = arr.shape[0] == particle_ids.size
+                if supports_particle_id:
+                    print("Type 'p' to enter particle selection (ID/index), or Enter to return to dataset list.")
+                else:
+                    print("Type 'p' to enter item selection by index, or Enter to return to dataset list.")
+
+                while True:
+                    view_cmd = input("view> ").strip().lower()
+                    if view_cmd == "q":
+                        return "quit"
+                    if view_cmd in {"", "b"}:
+                        break
+                    if view_cmd == "p":
+                        action = self._interactive_particle_view(
+                            name,
+                            arr,
+                            particle_ids if supports_particle_id else None,
+                        )
+                        if action == "quit":
+                            return "quit"
+                        break
+                    print("Enter 'p' to open selection mode, Enter to continue, or 'q' to quit.")
+                continue
+
             print("-" * 80)
             print(f"Path: /{name}")
             print(f"Shape: {dataset.shape}")

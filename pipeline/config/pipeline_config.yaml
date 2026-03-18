@@ -26,10 +26,10 @@ processing:
   time_key_decimals: 0
   batch_size: 10
   n_batches: 10
-  n_boundary: 25000
+  n_boundary: 40000
   chemistry_types:
   - Crich
-  - Orich
+  # - Orich
   compression: gzip
   compression_level: 4
   cleanup_temporary: true

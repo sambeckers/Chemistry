@@ -268,10 +268,34 @@ class SpeciesCatalog:
 
     @staticmethod
     def list_for_chemistry(chemistry_type: str) -> list[str]:
-        """Return the ordered species list expected by evolve_output.pl."""
-        daughters = daughters_Orich if chemistry_type == "Orich" else daughters_Crich
-        species = parents + daughters + daughters_2 + daughters_3 + atoms + atoms_plus
-        return [str(name) for name in species]
+        """Return the ordered species list expected by evolve_output.pl.
+        
+        Reads all 668 species from the .specs file and filters out:
+        - Species starting with 'G' (grains)
+        - Species containing 'Y'
+        """
+        specs_filename = SpeciesCatalog.species_filename(chemistry_type)
+        specs_path = CHEMISTRY_ROOT / "evolving_model" / specs_filename
+        
+        if not specs_path.is_file():
+            raise FileNotFoundError(f"Species catalog not found: {specs_path}")
+        
+        species = []
+        with open(specs_path, "r", encoding="ascii") as handle:
+            for line in handle:
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+                species_name = parts[1]
+                # Filter: exclude species starting with 'G' (grains)
+                if species_name.startswith("G"):
+                    continue
+                # Filter: exclude species containing 'Y'
+                if "Y" in species_name:
+                    continue
+                species.append(species_name)
+        
+        return species
 
     @staticmethod
     def species_filename(chemistry_type: str) -> str:
