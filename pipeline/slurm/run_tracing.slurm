@@ -2,8 +2,8 @@
 # Run one global tracing pass and pack per-batch tracing HDF5 files.
 #SBATCH --job-name=tracing
 #SBATCH --time=2:00:00
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=2G
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=8G
 #SBATCH --output=logs/logs_%A/tracing_%A.out
 #SBATCH --error=logs/logs_%A/tracing_%A.err
 
@@ -21,9 +21,8 @@ fi
 CONFIG_PATH="${PIPELINE_CONFIG:-${ROOT}/config/pipeline_config.yaml}"
 PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
 
-# analysis_trace writes shared batch binary files and is metadata/I/O-heavy.
-# Keep threading explicit to avoid oversubscription and noisy utilization warnings.
-export OMP_NUM_THREADS=1
+# Enable OpenMP multithreading for phantomanalysis to massively speed up tracing
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export PYTHONUNBUFFERED=1
