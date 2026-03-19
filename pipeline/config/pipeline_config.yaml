@@ -24,12 +24,11 @@ processing:
   dump_step: 1
   discovery_mode: serial
   time_key_decimals: 0
-  batch_size: 10
+  batch_size: 100
   n_batches: 10
-  n_boundary: 40000
+  n_boundary: 50000
   chemistry_types:
   - Crich
-  # - Orich
   compression: gzip
   compression_level: 4
   cleanup_temporary: true

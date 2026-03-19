@@ -412,11 +412,16 @@ def main() -> None:
                     info["errors"] += 1
                 _record_issue(info, "ERR", text)
 
-    workflow_out_logs = sorted(log_dir.glob("*.out"), key=lambda p: (p.name, p.stat().st_mtime))
-    for out_path in workflow_out_logs:
-        if out_path.name.startswith("batch_") or out_path.name.startswith("chem_hdf5_batch_"):
-            continue
+    def _scan_workflow_log(out_path: Path):
+        file_stages = set()
+        has_timeout = False
+        has_oom = False
         for line in _read_lines(out_path):
+            if "TIMEOUT" in line or "DUE TO TIME LIMIT" in line:
+                has_timeout = True
+            if "OOM" in line or "OUT_OF_MEMORY" in line or "oom-kill" in line:
+                has_oom = True
+                
             m = WORKFLOW_TASK_RE.match(line)
             if not m:
                 continue
@@ -425,6 +430,9 @@ def main() -> None:
             epoch = int(m.group(4))
             status_group = m.group(5)
             stage_info = workflow_tasks.setdefault(stage, _workflow_stage_info())
+            
+            file_stages.add(stage)
+            
             if phase == "start":
                 stage_info["starts"].append(epoch)
             else:
@@ -435,50 +443,66 @@ def main() -> None:
                         stage_info["ok"] += 1
                     else:
                         stage_info["failed"] += 1
+                        
+        err_path = out_path.with_suffix(".err")
+        if err_path.exists():
+            for line in _read_lines(err_path):
+                if "DUE TO TIME LIMIT" in line or "TIMEOUT" in line:
+                    has_timeout = True
+                if "OOM" in line or "OUT_OF_MEMORY" in line or "oom-kill" in line:
+                    has_oom = True
+                    
+        if has_timeout or has_oom:
+            for stage in file_stages:
+                # If we have unterminated starts for this stage in this file, mark them
+                # Note: This is an approximation if one file has multiple same-stage starts,
+                # but usually there's only 1 workflow task per file
+                stage_info = workflow_tasks.setdefault(stage, _workflow_stage_info())
+                if has_timeout:
+                    stage_info["timeout"] = stage_info.get("timeout", 0) + 1
+                else:
+                    stage_info["oom"] = stage_info.get("oom", 0) + 1
 
-    # Also search for tracing logs in sibling directories with matching timestamp
-    # This handles cases where tracing job has different ID than batch array job
+    workflow_out_logs = sorted(log_dir.glob("*.out"), key=lambda p: (p.name, p.stat().st_mtime))
+    for out_path in workflow_out_logs:
+        if out_path.name.startswith("batch_") or out_path.name.startswith("chem_hdf5_batch_"):
+            continue
+        _scan_workflow_log(out_path)
+
+    # Also search for tracing logs in sibling directories
+    # Find the most recent tracing_logs_* directory that is <= target_timestamp
     if log_dir.parent.is_dir() and log_dir.name.startswith("logs_"):
         # Extract timestamp from log directory name (format: logs_JOBID_DATETIME)
         parts = log_dir.name.split("_", 2)
         if len(parts) >= 3:
             target_timestamp = "_".join(parts[2:])  # Get DATETIME part
-            # Search for tracing logs in sibling dirs with same timestamp
+            
+            best_tracing_dir = None
             for sibling_dir in sorted(log_dir.parent.iterdir()):
-                if not sibling_dir.is_dir() or not sibling_dir.name.startswith("logs_"):
+                if not sibling_dir.is_dir() or not sibling_dir.name.startswith("tracing_logs_"):
                     continue
                 sibling_parts = sibling_dir.name.split("_", 2)
-                if len(sibling_parts) >= 3 and "_".join(sibling_parts[2:]) == target_timestamp:
-                    # Found sibling with same timestamp, look for tracing logs
-                    tracing_logs = sorted(
-                        sibling_dir.glob("tracing_*.out"),
-                        key=lambda p: (p.name, p.stat().st_mtime)
-                    )
-                    for out_path in tracing_logs:
-                        for line in _read_lines(out_path):
-                            m = WORKFLOW_TASK_RE.match(line)
-                            if not m:
-                                continue
-                            stage = m.group(1)
-                            phase = m.group(3)
-                            epoch = int(m.group(4))
-                            status_group = m.group(5)
-                            stage_info = workflow_tasks.setdefault(stage, _workflow_stage_info())
-                            if phase == "start":
-                                stage_info["starts"].append(epoch)
-                            else:
-                                stage_info["ends"].append(epoch)
-                                if status_group is not None:
-                                    status = int(status_group)
-                                    if status == 0:
-                                        stage_info["ok"] += 1
-                                    else:
-                                        stage_info["failed"] += 1
+                if len(sibling_parts) >= 3:
+                    sibling_timestamp = sibling_parts[2]
+                    if sibling_timestamp <= target_timestamp:
+                        best_tracing_dir = sibling_dir
+            
+            if best_tracing_dir:
+                tracing_logs = sorted(
+                    best_tracing_dir.glob("tracing_*.out"),
+                    key=lambda p: (p.name, p.stat().st_mtime)
+                )
+                for out_path in tracing_logs:
+                    _scan_workflow_log(out_path)
+
     for stage_info in workflow_tasks.values():
         starts = len(stage_info["starts"])
         ends = len(stage_info["ends"])
-        if starts > ends:
-            stage_info["running"] = starts - ends
+        unterminated = starts - ends
+        if unterminated > 0:
+            unknown = unterminated - stage_info.get("timeout", 0) - stage_info.get("oom", 0)
+            if unknown > 0:
+                stage_info["running"] = unknown
 
     if not batch_data:
         now = datetime.now(timezone.utc).isoformat()
@@ -499,6 +523,37 @@ def main() -> None:
     total_wall_seconds = 0.0
     if all_starts and all_ends:
         total_wall_seconds = float(max(all_ends) - min(all_starts))
+
+    submission_epoch = None
+    if log_dir.name.startswith("logs_"):
+        parts = log_dir.name.split("_", 2)
+        if len(parts) >= 3:
+            datetime_str = parts[2]
+            try:
+                dt = datetime.strptime(datetime_str, "%Y-%m-%d_%H-%M-%S")
+                submission_epoch = dt.timestamp()
+            except ValueError:
+                pass
+
+    real_wall_seconds = 0.0
+    if submission_epoch is not None and all_ends:
+        real_wall_seconds = float(max(all_ends) - submission_epoch)
+
+    workflow_real_wall_seconds = 0.0
+    if submission_epoch is not None:
+        try:
+            # We only check .out and .err files (and their tracing equivalents).
+            # This prevents manual re-runs of the summary script (writing batch_run_summary.txt)
+            # from skewing the workflow time to the current time.
+            log_files = []
+            log_files.extend(log_dir.glob("*.[oe]*"))
+            if 'best_tracing_dir' in locals() and best_tracing_dir:
+                log_files.extend(best_tracing_dir.glob("*.[oe]*"))
+            latest_mtime = max((p.stat().st_mtime for p in log_files if p.is_file()), default=None)
+            if latest_mtime is not None:
+                workflow_real_wall_seconds = max(0.0, float(latest_mtime - submission_epoch))
+        except OSError:
+            pass
 
     total_status_seconds = sum(batch_data[i]["status_seconds"] or 0.0 for i in indices)
     total_particles = sum(int(batch_data[i]["particles"] or 0) for i in indices)
@@ -521,6 +576,16 @@ def main() -> None:
         "- Batch execution span on allocated workers "
         f"(first BATCH_TASK start -> last BATCH_TASK end, excludes scheduler pending): {_seconds_to_hms(total_wall_seconds)}"
     )
+    if submission_epoch is not None and all_ends:
+        summary_lines.append(
+            "- Batch real-time span "
+            f"(submission -> last BATCH_TASK end, includes scheduler pending): {_seconds_to_hms(real_wall_seconds)}"
+        )
+    if submission_epoch is not None and workflow_real_wall_seconds > 0.0:
+        summary_lines.append(
+            "- Workflow real-time span "
+            f"(submission -> latest log modification, full span): {_seconds_to_hms(workflow_real_wall_seconds)}"
+        )
     summary_lines.append(
         "- Sum of per-batch runtimes from BATCH_STATUS "
         f"(adds batches together, so parallel overlap can make this larger than execution span): {_seconds_to_hms(total_status_seconds)}"
@@ -663,10 +728,13 @@ def main() -> None:
         info = workflow_tasks.get(stage_key, _workflow_stage_info())
         starts = info["starts"]
         ends = info["ends"]
-        ok = int(info["ok"])
-        failed = int(info["failed"])
-        running = int(info["running"])
-        task_count = max(len(starts), len(ends), ok + failed + running)
+        ok = int(info.get("ok", 0))
+        failed = int(info.get("failed", 0))
+        running = int(info.get("running", 0))
+        timeout = int(info.get("timeout", 0))
+        oom = int(info.get("oom", 0))
+        
+        task_count = max(len(starts), ok + failed + running + timeout + oom)
 
         if starts and ends:
             span_hms = _seconds_to_hms(float(max(ends) - min(starts)))
@@ -676,6 +744,12 @@ def main() -> None:
         if task_count == 0:
             status = "skipped"
             notes = fallback_note or "no task markers found"
+        elif timeout > 0:
+            status = "timeout"
+            notes = f"ok={ok}, timeout={timeout}, failed={failed}"
+        elif oom > 0:
+            status = "oom"
+            notes = f"ok={ok}, oom={oom}, failed={failed}"
         elif failed > 0:
             status = "failed"
             notes = f"ok={ok}, failed={failed}, running={running}"

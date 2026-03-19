@@ -6,6 +6,7 @@ from pathlib import Path
 
 import h5py
 import numpy as np
+import matplotlib.pyplot as plt
 
 from common import PipelineConfigManager
 
@@ -106,6 +107,23 @@ class InteractiveHDF5Inspector:
         return None
 
     @staticmethod
+    def _find_time_dataset(rows: list[tuple[str, h5py.Dataset]]) -> np.ndarray | None:
+        """Return a 1-D time array from the HDF5 file, or None if not found."""
+        preferred_paths = ["time", "trace/time", "particles/time", "t"]
+        for preferred in preferred_paths:
+            matches = [(name, ds) for name, ds in rows if name == preferred]
+            if len(matches) == 1:
+                arr = np.ravel(np.asarray(matches[0][1][()]))
+                if arr.ndim == 1 and arr.size > 0:
+                    return arr
+        by_leaf = [(name, ds) for name, ds in rows if name.split("/")[-1] in {"time", "t"}]
+        if len(by_leaf) == 1:
+            arr = np.ravel(np.asarray(by_leaf[0][1][()]))
+            if arr.ndim == 1 and arr.size > 0:
+                return arr
+        return None
+
+    @staticmethod
     def _match_particle_ids(particle_ids: np.ndarray, raw_value: str) -> np.ndarray:
         """Return matching index positions for a user-entered particle ID."""
         ids = np.ravel(particle_ids)
@@ -134,6 +152,7 @@ class InteractiveHDF5Inspector:
         dataset_name: str,
         dataset_arr: np.ndarray,
         particle_ids: np.ndarray | None,
+        rows: list[tuple[str, h5py.Dataset]] | None = None,
     ) -> str:
         """Inspect one dataset entry at a time by index, and by particle ID when available."""
         ids = np.ravel(particle_ids) if particle_ids is not None else None
@@ -234,7 +253,7 @@ class InteractiveHDF5Inspector:
             print(f"Particle data dtype: {particle_data.dtype}")
             print(f"Stats: {self._safe_stats(particle_data)}")
             print(f"Preview: {self._preview_array(particle_data)}")
-            print("Type 'b' to go back to selection, or 'q' to quit.")
+            print("Type 'b' to go back to selection, 'plot' to plot, or 'q' to quit.")
 
             while True:
                 view_cmd = input("particle-view> ").strip().lower()
@@ -242,7 +261,37 @@ class InteractiveHDF5Inspector:
                     return "quit"
                 if view_cmd in {"", "b"}:
                     break
-                print("Enter 'b' (or Enter) to pick another entry, or 'q' to quit.")
+                if view_cmd == "plot":
+                    if particle_data.ndim != 1 or particle_data.size == 0:
+                        print("Plot requires a non-empty 1-D array for this particle entry.")
+                        continue
+                    time_arr = self._find_time_dataset(rows) if rows is not None else None
+                    if time_arr is not None and time_arr.size == particle_data.size:
+                        x = time_arr
+                        xlabel = "Time"
+                    else:
+                        if time_arr is not None:
+                            print(
+                                f"Time dataset length ({time_arr.size}) does not match "
+                                f"particle data length ({particle_data.size}); using index."
+                            )
+                        x = np.arange(particle_data.size)
+                        xlabel = "Index"
+                    fig, ax = plt.subplots()
+                    label = dataset_name.split("/")[-1]
+                    ax.plot(x, particle_data, marker=".", linewidth=1, label=label)
+                    if supports_particle_id and ids is not None:
+                        pid = ids[selected_index]
+                        ax.set_title(f"{dataset_name}  |  particle ID {pid} (index {selected_index})")
+                    else:
+                        ax.set_title(f"{dataset_name}  |  index {selected_index}")
+                    ax.set_xlabel(xlabel)
+                    ax.set_ylabel(label)
+                    ax.legend()
+                    plt.tight_layout()
+                    plt.show()
+                    continue
+                print("Enter 'b' (or Enter) to pick another entry, 'plot' to plot, or 'q' to quit.")
 
     def interactive_dataset_view(self, rows: list[tuple[str, h5py.Dataset]]) -> str:
         """Run REPL loop to inspect one dataset at a time.
@@ -313,6 +362,7 @@ class InteractiveHDF5Inspector:
                             name,
                             arr,
                             particle_ids if supports_particle_id else None,
+                            rows=rows,
                         )
                         if action == "quit":
                             return "quit"

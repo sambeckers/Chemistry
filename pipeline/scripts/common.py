@@ -281,6 +281,23 @@ class SpeciesCatalog:
             raise FileNotFoundError(f"Species catalog not found: {specs_path}")
         
         species = []
+
+        undefined_ab_species = [
+        "F+",
+        "COOCH3+",
+        "C2H4CN",
+        "HC2O",
+        "HCCN",
+        "CH3COOH+",
+        "COOCH3",
+        "CH3COOH2+",
+        "CH3COOH",
+        "CH3CO",
+        "COOH",
+        "He+",
+        "HF+"
+    ]
+
         with open(specs_path, "r", encoding="ascii") as handle:
             for line in handle:
                 parts = line.split()
@@ -292,6 +309,8 @@ class SpeciesCatalog:
                     continue
                 # Filter: exclude species containing 'Y'
                 if "Y" in species_name:
+                    continue
+                if species_name in undefined_ab_species:
                     continue
                 species.append(species_name)
         
