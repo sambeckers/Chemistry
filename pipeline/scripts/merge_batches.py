@@ -199,31 +199,50 @@ class BatchFileMerger:
                             **kwargs,
                         )
 
-    def merge(self) -> list[Path]:
-        """Merge all batches and return output dump file paths."""
+    def merge_one(self, dump_index: int) -> Path:
+        """Merge all batches for a single dump by its 0-based index and return the output path.
+
+        This is the entry point used by the parallel SLURM array job, where each task
+        receives SLURM_ARRAY_TASK_ID as dump_index.
+        """
         batch_files = self.list_batch_files()
         dump_numbers, chemistry_types = self.first_batch_metadata(batch_files)
-        canonical_times = DumpTimeMapper.load_or_build_dump_time_seconds(self.config, dump_numbers)
-        canonical_dump_seconds = {int(dump): float(seconds) for dump, seconds in zip(dump_numbers, canonical_times)}
-        output_files = []
 
-        for dump_number in dump_numbers:
-            trace_data, chemistry_data = self._collect_dump_data(
-                batch_files,
-                dump_number,
-                chemistry_types,
-                canonical_dump_seconds=canonical_dump_seconds,
+        if dump_index < 0 or dump_index >= len(dump_numbers):
+            raise IndexError(
+                f"dump_index {dump_index} is out of range for {len(dump_numbers)} dump(s)"
             )
-            self._assert_single_dump_time(dump_number=dump_number, trace_data=trace_data)
-            output_path = self.final_output_dir / f"dump_{dump_number:05d}.h5"
-            self._write_dump_file(
-                output_path=output_path,
-                dump_number=dump_number,
-                trace_data=trace_data,
-                chemistry_data=chemistry_data,
-                chemistry_types=chemistry_types,
-            )
-            output_files.append(output_path)
+
+        dump_number = dump_numbers[dump_index]
+        canonical_times = DumpTimeMapper.load_or_build_dump_time_seconds(self.config, dump_numbers)
+        canonical_dump_seconds = {int(d): float(s) for d, s in zip(dump_numbers, canonical_times)}
+
+        trace_data, chemistry_data = self._collect_dump_data(
+            batch_files,
+            dump_number,
+            chemistry_types,
+            canonical_dump_seconds=canonical_dump_seconds,
+        )
+        self._assert_single_dump_time(dump_number=dump_number, trace_data=trace_data)
+        output_path = self.final_output_dir / f"dump_{dump_number:05d}.h5"
+        self._write_dump_file(
+            output_path=output_path,
+            dump_number=dump_number,
+            trace_data=trace_data,
+            chemistry_data=chemistry_data,
+            chemistry_types=chemistry_types,
+        )
+        return output_path
+
+    def merge(self) -> list[Path]:
+        """Merge all batches serially and return output dump file paths.
+
+        Kept for backward compatibility and standalone / debugging use.
+        The normal pipeline path uses merge_one() via a SLURM array job.
+        """
+        batch_files = self.list_batch_files()
+        dump_numbers, chemistry_types = self.first_batch_metadata(batch_files)
+        output_files = [self.merge_one(i) for i in range(len(dump_numbers))]
 
         if not bool(self.config["processing"].get("retain_batch_files_after_merge", True)):
             for batch_file in batch_files:
@@ -237,19 +256,34 @@ class MergeCLI:
 
     @staticmethod
     def parse_args() -> argparse.Namespace:
-        """Parse required config argument."""
+        """Parse required config argument and optional dump index."""
         parser = argparse.ArgumentParser(description="Merge batch_*.h5 files into one dump_XXXXX.h5 file per dump.")
         parser.add_argument("--config", required=True)
+        parser.add_argument(
+            "--dump-index",
+            type=int,
+            default=None,
+            help=(
+                "0-based index into the dump list to process. "
+                "When set, only that one dump is merged (used by the SLURM array job, "
+                "where SLURM_ARRAY_TASK_ID is passed as this value). "
+                "Omit to run all dumps serially."
+            ),
+        )
         return parser.parse_args()
 
     @classmethod
     def run(cls) -> None:
-        """Run merge operation and print output count."""
+        """Run merge operation: one dump if --dump-index is given, all dumps otherwise."""
         args = cls.parse_args()
         config = PipelineConfigManager.load(args.config)
         merger = BatchFileMerger(config)
-        output_files = merger.merge()
-        print(f"Merged {len(output_files)} dump file(s)")
+        if args.dump_index is not None:
+            output_file = merger.merge_one(args.dump_index)
+            print(f"Merged dump file: {output_file}")
+        else:
+            output_files = merger.merge()
+            print(f"Merged {len(output_files)} dump file(s)")
 
 
 def main() -> None:

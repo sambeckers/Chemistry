@@ -7,8 +7,8 @@
 #
 # Workflow summary:
 # 1) Resolve config and runtime paths.
-# 2) Query python binary + scratch root from config.
-# 3) Submit merge_dumps.slurm with exported environment values.
+# 2) Query python binary, scratch root, and dump count from config.
+# 3) Submit merge_dumps.slurm as a SLURM array job (one task per dump).
 
 set -euo pipefail
 
@@ -49,24 +49,35 @@ pipeline_root = Path(sys.argv[2]).resolve()
 
 sys.path.insert(0, str(pipeline_root / "scripts"))
 
-from common import PipelineConfigManager  # noqa: E402
+from common import DumpSelection, PipelineConfigManager  # noqa: E402
 
 cfg = PipelineConfigManager.load(config_path)
 python_bin = cfg.get("paths", {}).get("python", "/fred/oz304/beckers/MRP_env/bin/python")
 scratch_root = cfg.get("paths", {}).get("scratch_root", str(pipeline_root / "work"))
+dump_count = len(DumpSelection.target_dump_numbers(cfg))
 
 print(python_bin)
 print(scratch_root)
+print(dump_count)
 PY
 )
 
-if [[ "${#INFO[@]}" -lt 2 ]]; then
+if [[ "${#INFO[@]}" -lt 3 ]]; then
     echo "Error: failed to read merge submission metadata from config."
     exit 1
 fi
 
 PYTHON_BIN="${INFO[0]}"
 SCRATCH_ROOT="${INFO[1]}"
+DUMP_COUNT="${INFO[2]}"
+
+if [[ -z "${DUMP_COUNT}" || "${DUMP_COUNT}" -lt 1 ]]; then
+    echo "Error: invalid dump count '${DUMP_COUNT}'"
+    exit 1
+fi
+
+MERGE_ARRAY_MAX=$((DUMP_COUNT - 1))
+MERGE_ARRAY_SPEC="0-${MERGE_ARRAY_MAX}"
 
 mkdir -p "${SCRATCH_ROOT}/logs"
 DATETIME=$(date +%Y-%m-%d_%H-%M-%S)
@@ -78,11 +89,13 @@ echo "========================================="
 echo "Pipeline root   : ${PIPELINE_ROOT}"
 echo "Config          : ${CONFIG_PATH}"
 echo "Python          : ${PYTHON_BIN}"
+echo "Dump count      : ${DUMP_COUNT} (array ${MERGE_ARRAY_SPEC})"
 echo "Logs            : ${LOG_DIR}"
 
 echo "Submitting..."
 sbatch \
-    --output="${LOG_DIR}/merge_%A.out" \
-    --error="${LOG_DIR}/merge_%A.err" \
+    --array="${MERGE_ARRAY_SPEC}" \
+    --output="${LOG_DIR}/merge_%A_%a.out" \
+    --error="${LOG_DIR}/merge_%A_%a.err" \
     --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN}" \
     "${SLURM_SCRIPT}"

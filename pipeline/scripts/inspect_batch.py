@@ -51,19 +51,22 @@ class InteractiveHDF5Inspector:
             print(f"{idx:4d}  {short_name:<55} {shape:<12} {dtype:<12}")
 
     def _preview_array(self, arr: np.ndarray) -> str:
-        """Preview first N flattened values while preserving total size info."""
+        """Preview first N flattened values while preserving total size info, filtering NaNs."""
         if arr.size == 0:
             return "[]"
         flat = np.ravel(arr)
+        # Filter out NaN values
+        if np.issubdtype(flat.dtype, np.floating):
+            flat = flat[np.isfinite(flat)]
         shown = flat[: self.preview]
         values = np.array2string(shown, precision=6, separator=", ", threshold=self.preview)
         if flat.size > self.preview:
-            return f"{values} ... (total {flat.size} values)"
+            return f"{values} ... (total {flat.size} values, NaNs filtered)"
         return values
 
     @staticmethod
     def _safe_stats(arr: np.ndarray) -> str:
-        """Compute robust quick stats for numeric and categorical arrays."""
+        """Compute robust quick stats for numeric and categorical arrays, filtering NaNs."""
         if arr.size == 0:
             return "empty"
 
@@ -71,7 +74,7 @@ class InteractiveHDF5Inspector:
             finite = arr[np.isfinite(arr)] if np.issubdtype(arr.dtype, np.floating) else arr
             if finite.size == 0:
                 return "all values are NaN/inf"
-            return f"min={np.min(finite):.6g}, max={np.max(finite):.6g}, mean={np.mean(finite):.6g}"
+            return f"min={np.min(finite):.6g}, max={np.max(finite):.6g}, mean={np.mean(finite):.6g} (NaNs filtered)"
 
         if arr.dtype.kind in {"S", "U"}:
             uniques = np.unique(np.ravel(arr))
@@ -249,6 +252,9 @@ class InteractiveHDF5Inspector:
                 continue
 
             particle_data = np.asarray(dataset_arr[selected_index]) if dataset_arr.ndim > 0 else np.asarray(dataset_arr)
+            # Filter out NaNs for display and plotting
+            if np.issubdtype(particle_data.dtype, np.floating):
+                particle_data = particle_data[np.isfinite(particle_data)]
             print("-" * 80)
             print(f"Path: /{dataset_name}")
             if supports_particle_id and ids is not None:
@@ -273,6 +279,10 @@ class InteractiveHDF5Inspector:
                         print("Plot requires a non-empty 1-D array for this particle entry.")
                         continue
                     time_arr = self._find_time_dataset(rows) if rows is not None else None
+                    # Filter out NaNs from time_arr if present
+                    if time_arr is not None:
+                        if np.issubdtype(time_arr.dtype, np.floating):
+                            time_arr = time_arr[np.isfinite(time_arr)]
                     if time_arr is not None and time_arr.size == particle_data.size:
                         x = time_arr
                         xlabel = "Time"

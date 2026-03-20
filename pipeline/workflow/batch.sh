@@ -154,7 +154,7 @@ pipeline_root = Path(sys.argv[2]).resolve()
 
 sys.path.insert(0, str(pipeline_root / "scripts"))
 
-from common import BatchPlanner, PipelineConfigManager  # noqa: E402
+from common import BatchPlanner, DumpSelection, PipelineConfigManager  # noqa: E402
 
 cfg = PipelineConfigManager.load(config_path)
 if cfg.get("processing", {}).get("discovered_particle_count_all") is None:
@@ -170,10 +170,13 @@ if discovery_mode not in {"array", "serial"}:
 python_bin = cfg.get("paths", {}).get("python", "/fred/oz304/beckers/MRP_env/bin/python")
 scratch_root = cfg.get("paths", {}).get("scratch_root", str(pipeline_root / "work"))
 
+dump_count = len(DumpSelection.target_dump_numbers(cfg))
+
 print(count)
 print(python_bin)
 print(scratch_root)
 print(discovery_mode)
+print(dump_count)
 PY
 )
 STATUS=$?
@@ -185,7 +188,7 @@ fi
 step_done
 
 readarray -t INFO <<< "${INFO_RAW}"
-if [[ "${#INFO[@]}" -lt 4 ]]; then
+if [[ "${#INFO[@]}" -lt 5 ]]; then
     echo "Error: failed to read batch submission metadata from config."
     exit 1
 fi
@@ -194,9 +197,15 @@ BATCH_COUNT="${INFO[0]}"
 PYTHON_BIN="${INFO[1]}"
 SCRATCH_ROOT="${INFO[2]}"
 DISCOVERY_MODE="${INFO[3]}"
+DUMP_COUNT="${INFO[4]}"
 
 if [[ -z "${BATCH_COUNT}" || "${BATCH_COUNT}" -lt 1 ]]; then
     echo "Error: invalid batch count '${BATCH_COUNT}'"
+    exit 1
+fi
+
+if [[ -z "${DUMP_COUNT}" || "${DUMP_COUNT}" -lt 1 ]]; then
+    echo "Error: invalid dump count '${DUMP_COUNT}'"
     exit 1
 fi
 
@@ -212,6 +221,12 @@ ARRAY_SPEC="0-${ARRAY_MAX}"
 if [[ -n "${MAX_CONCURRENT}" ]]; then
     ARRAY_SPEC="${ARRAY_SPEC}%${MAX_CONCURRENT}"
 fi
+
+MERGE_ARRAY_MAX=$((DUMP_COUNT - 1))
+MERGE_ARRAY_SPEC="0-${MERGE_ARRAY_MAX}"
+if [[ -n "${MAX_CONCURRENT}" ]]; then
+    MERGE_ARRAY_SPEC="${MERGE_ARRAY_SPEC}%${MAX_CONCURRENT}"
+fi
 step_done
 
 step_start "Printing submission summary"
@@ -221,6 +236,7 @@ echo "========================================="
 echo "Pipeline root   : ${PIPELINE_ROOT}"
 echo "Config          : ${CONFIG_PATH}"
 echo "Batch count     : ${BATCH_COUNT} (array ${ARRAY_SPEC})"
+echo "Dump count      : ${DUMP_COUNT} (merge array ${MERGE_ARRAY_SPEC})"
 echo "Python          : ${PYTHON_BIN}"
 echo "Logs root       : ${SCRATCH_ROOT}/logs/"
 if [[ "${DISCOVERY_NEEDED}" -eq 1 ]]; then
@@ -369,7 +385,7 @@ echo "Batch logs             : ${LOG_DIR}"
 echo "Tracing logs           : ${TRACE_LOG_DIR}"
 step_done
 
-step_start "Submitting merge_dumps job"
+step_start "Submitting merge_dumps array job"
 if [[ ! -f "${MERGE_SLURM_SCRIPT}" ]]; then
     echo "Error: merge slurm script not found: ${MERGE_SLURM_SCRIPT}"
     exit 1
@@ -377,8 +393,9 @@ fi
 
 MERGE_SUBMIT_OUTPUT=$(sbatch \
     --dependency="afterany:${ARRAY_JOB_ID}" \
-    --output="${LOG_DIR}/merge_%A.out" \
-    --error="${LOG_DIR}/merge_%A.err" \
+    --array="${MERGE_ARRAY_SPEC}" \
+    --output="${LOG_DIR}/merge_%A_%a.out" \
+    --error="${LOG_DIR}/merge_%A_%a.err" \
     --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN}" \
     "${MERGE_SLURM_SCRIPT}")
 echo "${MERGE_SUBMIT_OUTPUT}"
@@ -406,7 +423,8 @@ echo "${SUMMARY_SUBMIT_OUTPUT}"
 step_done
 
 echo "Batch submission workflow completed."
-echo "Submitted chain: ${DISCOVER_ARRAY_JOB_ID:+discover_array -> }${DISCOVER_MERGE_JOB_ID:+discover_merge -> }tracing -> run_batch_array -> merge_dumps -> summarize"
+echo "Submitted chain: ${DISCOVER_ARRAY_JOB_ID:+discover_array -> }${DISCOVER_MERGE_JOB_ID:+discover_merge -> }tracing -> run_batch_array -> merge_dumps_array -> summarize"
 echo "Tracing job id        : ${TRACING_JOB_ID}"
 echo "Run-batch array job id: ${ARRAY_JOB_ID}"
+echo "Merge array job id    : ${MERGE_JOB_ID}"
 echo "Logs: ${LOG_DIR}"

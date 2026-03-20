@@ -1,11 +1,12 @@
 #!/bin/bash
-# Merge all batch_*.h5 files into final dump_*.h5 files.
+# Merge all batch_*.h5 files into final dump_*.h5 files — one array task per dump.
 #SBATCH --job-name=merge
-#SBATCH --time=02:00:00
+#SBATCH --time=00:30:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
-#SBATCH --output=logs/logs_%A/merge_%A.out
-#SBATCH --error=logs/logs_%A/merge_%A.err
+#SBATCH --array=0-0
+#SBATCH --output=logs/logs_%A/merge_%A_%a.out
+#SBATCH --error=logs/logs_%A/merge_%A_%a.err
 
 set -euo pipefail
 
@@ -23,10 +24,12 @@ CONFIG_PATH="${PIPELINE_CONFIG:-${ROOT}/config/pipeline_config.yaml}"
 PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
 
 cd "${ROOT}"
-echo "WORKFLOW_TASK|stage=merge_dumps|phase=start|epoch=$(date +%s)"
+echo "WORKFLOW_TASK|stage=merge_dumps|dump_index=${SLURM_ARRAY_TASK_ID}|phase=start|epoch=$(date +%s)"
 set +e
-"${PYTHON_BIN}" "${ROOT}/scripts/merge_batches.py" --config "${CONFIG_PATH}"
+"${PYTHON_BIN}" "${ROOT}/scripts/merge_batches.py" \
+	--config "${CONFIG_PATH}" \
+	--dump-index "${SLURM_ARRAY_TASK_ID}"
 status=$?
 set -e
-echo "WORKFLOW_TASK|stage=merge_dumps|phase=end|epoch=$(date +%s)|status=${status}"
+echo "WORKFLOW_TASK|stage=merge_dumps|dump_index=${SLURM_ARRAY_TASK_ID}|phase=end|epoch=$(date +%s)|status=${status}"
 exit "${status}"

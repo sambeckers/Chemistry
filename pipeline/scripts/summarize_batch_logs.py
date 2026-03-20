@@ -11,7 +11,7 @@ STATUS_RE = re.compile(
 )
 TASK_RE = re.compile(r"^BATCH_TASK\|batch=(\d+)\|phase=(start|end)\|epoch=(\d+)(?:\|status=(\d+))?\s*$")
 WORKFLOW_TASK_RE = re.compile(
-    r"^WORKFLOW_TASK\|stage=([^|]+)(?:\|item=([^|]+))?\|phase=(start|end)\|epoch=(\d+)(?:\|status=(\d+))?\s*$"
+    r"^WORKFLOW_TASK\|stage=([^|]+)(?:\|[^|]+=([^|]+))?\|phase=(start|end)\|epoch=(\d+)(?:\|status=(\d+))?\s*$"
 )
 ISSUE_RE = re.compile(r"\b(warning|warn|error|traceback|exception|failed|failure)\b", re.IGNORECASE)
 WARNING_RE = re.compile(r"\b(warning|warn)\b", re.IGNORECASE)
