@@ -82,29 +82,18 @@ class BatchHDF5Appender:
             particles_group.create_dataset("expected_id", data=np.asarray(particle_ids, dtype=np.int64))
             particles_group.create_dataset("id", shape=(len(particle_ids),), dtype=np.int64, fillvalue=-1)
 
+            n_particles = len(particle_ids)
+            n_dumps = len(dump_numbers)
             trace_particles = handle.create_group("trace").create_group("particles")
-            trace_particles.create_dataset("row_count", shape=(len(particle_ids),), dtype=np.int32, fillvalue=0)
-            cls = BatchHDF5Appender
-            cls._require_vlen_dataset(trace_particles, "dump_number", len(particle_ids), np.int32)
+            trace_particles.create_dataset("density", shape=(n_particles, n_dumps), dtype=np.float64, fillvalue=np.nan)
+            trace_particles.create_dataset("temperature", shape=(n_particles, n_dumps), dtype=np.float64, fillvalue=np.nan)
+            trace_particles.create_dataset("time", shape=(n_particles, n_dumps), dtype=np.float64, fillvalue=np.nan)
+            trace_particles.create_dataset("r", shape=(n_particles, n_dumps), dtype=np.float64, fillvalue=np.nan)
 
             chemistry_group = handle.create_group("chemistry")
             for chemistry_type in chemistry_types:
                 chemistry_particles = chemistry_group.create_group(chemistry_type).create_group("particles")
-                chemistry_particles.create_dataset("row_count", shape=(len(particle_ids),), dtype=np.int32, fillvalue=0)
-                cls._require_vlen_dataset(chemistry_particles, "dump_number", len(particle_ids), np.int32)
-
-    @staticmethod
-    def _require_vlen_dataset(group: h5py.Group, name: str, n_particles: int, base_dtype=np.float64):
-        """Return/create one variable-length dataset indexed by particle slot."""
-        if name in group:
-            return group[name]
-        base_dtype = np.dtype(base_dtype)
-        vlen_dtype = h5py.vlen_dtype(base_dtype)
-        dataset = group.create_dataset(name, shape=(n_particles,), dtype=vlen_dtype)
-        empty = np.asarray([], dtype=base_dtype)
-        for index in range(n_particles):
-            dataset[index] = empty
-        return dataset
+                chemistry_particles.create_dataset("placeholder", shape=(n_particles, n_dumps), dtype=np.float64, fillvalue=np.nan)
 
     @classmethod
     def append_particle_to_batch(
@@ -149,12 +138,6 @@ class BatchHDF5Appender:
 
             n_rows = int(data.shape[0])
 
-            trace_particles = handle["trace/particles"]
-            trace_particles["row_count"][slot] = np.int32(n_rows)
-
-            chemistry_particles = handle[f"chemistry/{chemistry_type}/particles"]
-            chemistry_particles["row_count"][slot] = np.int32(n_rows)
-
             chemistry_group = handle[f"chemistry/{chemistry_type}/particles"]
             name_map = json.loads(chemistry_group.attrs.get("species_name_map_json", "{}"))
 
@@ -191,6 +174,9 @@ class BatchHDF5Appender:
                     )
 
             if mapped_dump_numbers is not None:
+                dump_index_map = {dump: i for i, dump in enumerate(dump_numbers)}
+                indices = np.array([dump_index_map[int(d)] for d in mapped_dump_numbers], dtype=int)
+
                 dump_to_seconds = {
                     int(dump): float(seconds) for dump, seconds in zip(dump_numbers, dump_time_seconds)
                 }
@@ -199,25 +185,31 @@ class BatchHDF5Appender:
                     [dump_to_seconds[int(dump)] for dump in mapped_dump_numbers], dtype=np.float64
                 )
 
-                dump_dataset = cls._require_vlen_dataset(trace_particles, "dump_number", n_particles, np.int32)
-                dump_dataset[slot] = np.asarray(mapped_dump_numbers, dtype=np.int32)
+                trace_particles = handle["trace/particles"]
+                for source_name, dataset_name in TRACE_COLUMN_MAP.items():
+                    if dataset_name not in trace_particles:
+                        trace_particles.create_dataset(
+                            dataset_name,
+                            shape=(n_particles, len(dump_numbers)),
+                            dtype=np.float64,
+                            fillvalue=np.nan,
+                        )
+                    trace_particles[dataset_name][slot, indices] = np.asarray(column_data[source_name], dtype=np.float64)
 
-                chemistry_dump_dataset = cls._require_vlen_dataset(chemistry_particles, "dump_number", n_particles, np.int32)
-                chemistry_dump_dataset[slot] = np.asarray(mapped_dump_numbers, dtype=np.int32)
+                chemistry_particles = handle[f"chemistry/{chemistry_type}/particles"]
+                species_names = [name for name in column_names if name not in TRACE_COLUMN_MAP]
+                for source_name in species_names:
+                    dataset_name = SpeciesCatalog.normalise_name(source_name)
+                    if dataset_name not in chemistry_particles:
+                        chemistry_particles.create_dataset(
+                            dataset_name,
+                            shape=(n_particles, len(dump_numbers)),
+                            dtype=np.float64,
+                            fillvalue=np.nan,
+                        )
+                    chemistry_particles[dataset_name][slot, indices] = np.asarray(column_data[source_name], dtype=np.float64)
 
-            species_names = [name for name in column_names if name not in TRACE_COLUMN_MAP]
-
-            for source_name, dataset_name in TRACE_COLUMN_MAP.items():
-                dataset = cls._require_vlen_dataset(trace_particles, dataset_name, n_particles)
-                dataset[slot] = np.asarray(column_data[source_name], dtype=np.float64)
-
-            for source_name in species_names:
-                dataset_name = SpeciesCatalog.normalise_name(source_name)
-                name_map[source_name] = dataset_name
-                dataset = cls._require_vlen_dataset(chemistry_particles, dataset_name, n_particles)
-                dataset[slot] = np.asarray(column_data[source_name], dtype=np.float64)
-
-            chemistry_group.attrs["species_name_map_json"] = json.dumps(name_map, sort_keys=True)
+                chemistry_group.attrs["species_name_map_json"] = json.dumps(name_map, sort_keys=True)
 
 
 class BatchHDF5CLI:
