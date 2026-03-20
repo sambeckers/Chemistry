@@ -280,10 +280,10 @@ class ChemistryOutputFilter:
             value = int(nonlinear_match.group(1))
             if value > 0:
                 self.nonlinear_failures_total += value
-                outputs.append(
-                    f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
-                    f"nonlinear_convergence_failures={value}"
-                )
+                # outputs.append(
+                #     f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+                #     f"nonlinear_convergence_failures={value}"
+                # )
             return outputs
 
         error_test_match = self._RE_ERROR_TEST.search(text)
@@ -291,10 +291,10 @@ class ChemistryOutputFilter:
             value = int(error_test_match.group(1))
             if value > 0:
                 self.error_test_failures_total += value
-                outputs.append(
-                    f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
-                    f"error_test_failures={value}"
-                )
+                # outputs.append(
+                #     f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+                #     f"error_test_failures={value}"
+                # )
             return outputs
 
         index_err_match = self._RE_INDEX_ERR.search(text)
@@ -302,10 +302,10 @@ class ChemistryOutputFilter:
             value = int(index_err_match.group(1))
             if value > 0:
                 self.max_index_component_error = max(self.max_index_component_error, value)
-                outputs.append(
-                    f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
-                    f"index_component_largest_error={value}"
-                )
+                # outputs.append(
+                #     f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+                #     f"index_component_largest_error={value}"
+                # )
             return outputs
 
         # Keep only high-signal DVODE failures / NaN tolerance diagnostics.

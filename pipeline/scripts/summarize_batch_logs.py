@@ -248,6 +248,15 @@ def _finalize_issue_lines(info: dict, max_lines: int = 8) -> None:
     ranked: list[tuple[int, int, int, str]] = []
     for key, payload in issue_counts.items():
         source, label = key
+        # Filter out unwanted error summary lines
+        if any(
+            label.startswith("No. error test failures")
+            or label.startswith("CHEM_SUMMARY nonzero: error test failures")
+            or label.startswith("CHEM_SUMMARY nonzero: nonlinear convergence failures, error test failures")
+            or label.startswith("nonlinear convergence failures > 0")
+            for label in [label]
+        ):
+            continue
         priority = int(payload["priority"])
         count = int(payload["count"])
         order = int(issue_order.get(key, 0))
