@@ -21,6 +21,11 @@ class TracingRunner:
     """Run one global phantomanalysis call and stage per-batch binary trace files."""
 
     def __init__(self, config_path: Path) -> None:
+        """Initalize variables and directories
+
+        Args:
+            config_path (Path): Path to the pipeline configuration file.
+        """
         self.config_path = config_path.resolve()
         self.config = PipelineConfigManager.load(self.config_path)
 
@@ -66,7 +71,11 @@ class TracingRunner:
         return False, "binary is up to date"
 
     def _compile_phantomanalysis(self, reason: str) -> None:
-        """Rebuild phantomanalysis analysis target in the *_out directory."""
+        """Rebuild phantomanalysis analysis target in the *_out directory.
+
+        Args:
+            reason (str): Reason for compilation.
+        """
         if not self.phantom_writemake_script.is_file():
             raise FileNotFoundError(f"writemake.sh not found: {self.phantom_writemake_script}")
 
@@ -124,15 +133,6 @@ class TracingRunner:
             )
 
     @staticmethod
-    def _ensure_link(source: Path, destination: Path) -> None:
-        if destination.exists() or destination.is_symlink():
-            if destination.is_dir() and not destination.is_symlink():
-                shutil.rmtree(destination)
-            else:
-                destination.unlink()
-        os.symlink(source, destination)
-
-    @staticmethod
     def _write_trace_cfg(
         path: Path,
         id_start: int,
@@ -140,6 +140,15 @@ class TracingRunner:
         batch_count: int,
         batch_map_file: str,
     ) -> None:
+        """Write trace_config file.
+
+        Args:
+            path (Path): Path to write the trace_config file to.
+            id_start (int): Starting particle ID.
+            id_end (int): Ending particle ID.
+            batch_count (int): Number of batches.
+            batch_map_file (str): Path to the batch map file.
+        """
         path.write_text(
             "&trace_config\n"
             f"  id_start = {id_start}\n"
@@ -152,21 +161,32 @@ class TracingRunner:
 
     @staticmethod
     def _write_batch_map(path: Path, selected_ids: np.ndarray, layout: list[tuple[int, int]]) -> None:
-        """Write particle->batch map consumed by analysis_trace.f90."""
+        """Write particle->batch map consumed by analysis_trace.f90.
+
+        Args:
+            path (Path): Path to write the batch map file to.
+            selected_ids (np.ndarray): Array of selected particle IDs.
+            layout (list[tuple[int, int]]): List of (start, end) tuples representing the layout of batches.
+        """
         with open(path, "w", encoding="ascii") as handle:
             for batch_index, (start, end) in enumerate(layout):
                 for pid in selected_ids[start:end].tolist():
                     handle.write(f"{int(pid)} {int(batch_index)}\n")
 
     def _load_particles_and_layout(self) -> tuple[np.ndarray, list[tuple[int, int]]]:
-        ids_all = ParticleIdStore.load_cached(self.config)
+        """Load particles and layout.
+
+        Returns:
+            tuple[np.ndarray, list[tuple[int, int]]]: Tuple containing the array of selected particle IDs and the layout of batches.
+        """
+        ids_all = ParticleIdStore.load_cached(self.config) # Load all particle IDs from cache
         if ids_all is None:
             raise RuntimeError(
                 "Particle ID cache is missing/stale. Run ./workflow/submit_discover_particle_ids.sh first."
             )
-        n_boundary = int(self.processing.get("n_boundary", 0))
+        n_boundary = int(self.processing.get("n_boundary", 0)) 
         selected_ids = ParticleIdStore.apply_n_boundary(ids_all, n_boundary)
-        layout = BatchPlanner.compute_layout(
+        layout = BatchPlanner.compute_layout( # Compute layout of batches
             total_particles=int(len(selected_ids)),
             batch_size=self.processing.get("batch_size"),
             n_batches=self.processing.get("n_batches"),
@@ -177,16 +197,39 @@ class TracingRunner:
 
     @staticmethod
     def _planned_ids_for_layout(selected_ids: np.ndarray, layout: list[tuple[int, int]]) -> np.ndarray:
-        """Return only IDs that are actually covered by the configured batch layout."""
+        """Return only IDs that are actually covered by the configured batch layout.
+
+        Args:
+            selected_ids (np.ndarray): Array of selected particle IDs.
+            layout (list[tuple[int, int]]): List of (start, end) tuples representing the layout of batches.
+
+        Returns:
+            np.ndarray: The particle IDs that fit into the planned batches.
+        """
         max_end = int(layout[-1][1])
         if max_end <= 0:
             raise RuntimeError("Invalid batch layout: max_end must be > 0")
         return selected_ids[:max_end]
 
     def _run_phantomanalysis_once(self, selected_ids: np.ndarray, selected_dumps: list[int], layout: list[tuple[int, int]]) -> Path:
+        """Run phantomanalysis once for a given set of particle IDs and dumps.
+
+        Args:
+            selected_ids (np.ndarray): Array of selected particle IDs.
+            selected_dumps (list[int]): List of dump numbers to trace.
+            layout (list[tuple[int, int]]): List of (start, end) tuples representing the layout of batches.
+
+        Raises:
+            RuntimeError: No selected particle IDs for tracing.
+            RuntimeError: Batch layout is empty; check processing.batch_size/n_batches.
+
+        Returns:
+            Path: Path to the trace output directory.
+        """
         if selected_ids.size == 0:
             raise RuntimeError("No selected particle IDs for tracing")
 
+        # Ensure clean directory for tracing
         FileSystemTools.ensure_clean_directory(self.tracing_root)
         if self.trace_work_dir.exists():
             shutil.rmtree(self.trace_work_dir)
@@ -205,8 +248,9 @@ class TracingRunner:
             batch_count=len(layout),
             batch_map_file=batch_map_path.name,
         )
-        self._ensure_link(self.av_dir, self.trace_work_dir / "AV")
+        FileSystemTools.ensure_link(self.av_dir, self.trace_work_dir / "AV") # Link to AV directory
 
+        # Copy phantomanalysis binary to trace work directory
         binary = self.trace_work_dir / "phantomanalysis"
         shutil.copy2(self.phantomanalysis_binary, binary)
         binary.chmod(0o755)
@@ -267,6 +311,14 @@ class TracingRunner:
 
     @staticmethod
     def _read_batch_binary_records(path: Path) -> np.ndarray:
+        """Read batch trace binary records from a file.
+
+        Args:
+            path (Path): Path to the batch trace binary file.
+
+        Returns:
+            np.ndarray: Array of batch trace binary records.
+        """
         if not path.is_file():
             raise FileNotFoundError(f"Missing batch trace binary: {path}")
         record_dtype = np.dtype(
@@ -285,6 +337,14 @@ class TracingRunner:
 
     @staticmethod
     def _format_phys_line(record: np.void) -> str:
+        """Format a single trace record as a line in the .phys trace file.
+
+        Args:
+            record (np.void): A single trace record.
+
+        Returns:
+            str: A formatted line.
+        """
         return (
             f"{float(record['time']):16.8E} "
             f"{float(record['x']):14.7E} "
@@ -296,7 +356,15 @@ class TracingRunner:
         )
 
     def _stage_batch_binaries(self, trace_output_dir: Path, batch_count: int) -> Path:
-        """Move per-batch binaries from temporary trace output into persistent tracing storage."""
+        """Move per-batch binaries from temporary trace output into persistent tracing storage.
+
+        Args:
+            trace_output_dir (Path): Path to the temporary trace output directory.
+            batch_count (int): Number of batches.
+
+        Returns:
+            Path: Path to the persistent tracing storage directory.
+        """
         if self.trace_binary_dir.exists():
             shutil.rmtree(self.trace_binary_dir)
         self.trace_binary_dir.mkdir(parents=True, exist_ok=True)
@@ -309,14 +377,19 @@ class TracingRunner:
             shutil.move(str(src), str(dst))
         return self.trace_binary_dir
 
-
-
     def _write_metadata_and_update_config(
         self,
         selected_ids: np.ndarray,
         layout: list[tuple[int, int]],
         selected_dumps: list[int],
     ) -> None:
+        """Write trace metadata and update config.
+
+        Args:
+            selected_ids (np.ndarray): Array of selected particle IDs.
+            layout (list[tuple[int, int]]): List of (start, end) tuples representing the layout of batches.
+            selected_dumps (list[int]): List of dump numbers to trace.
+        """
         payload = {
             "trace_binary_batches_dir": str(self.trace_binary_dir.resolve()),
             "batch_count": int(len(layout)),
@@ -337,10 +410,15 @@ class TracingRunner:
             yaml.safe_dump(cfg, handle, sort_keys=False)
 
     def run(self) -> None:
+        """Run tracing"""
+        # 1. Verify analysis trace source file exists
         if not self.analysis_trace_source.is_file():
             raise FileNotFoundError(f"analysis_trace source file not found: {self.analysis_trace_source}")
 
+        # 2. Verify analysis trace compatibility
         self._verify_analysis_trace_compatibility()
+        
+        # 3. Compile phantomanalysis if needed
         if self.auto_compile_analysis:
             should_compile, reason = self._compile_required()
             if should_compile:
@@ -350,8 +428,13 @@ class TracingRunner:
         else:
             print("Auto-compile disabled (processing.auto_compile_analysis=false); using existing phantomanalysis binary")
 
+        # 4. Select dumps
         selected_dumps = DumpSelection.selected_dump_numbers(self.config)
+        
+        # 5. Load particles and batch layout
         selected_ids, layout = self._load_particles_and_layout()
+        
+        # 6. Plan IDs for batches
         planned_ids = self._planned_ids_for_layout(selected_ids, layout)
 
         print(
@@ -360,22 +443,29 @@ class TracingRunner:
         )
         print("Tracing boundary mode: boundary filtering done in Python selection; Fortran uses particle type only")
 
+        # 7. Run phantomanalysis
         print(f"Tracing with analysis source: {self.analysis_trace_source}")
         trace_output_dir = self._run_phantomanalysis_once(
             selected_ids=planned_ids,
             selected_dumps=selected_dumps,
             layout=layout,
-        )
+        )   
+        
+        # 8. Stage batch binaries
         trace_binary_dir = self._stage_batch_binaries(trace_output_dir=trace_output_dir, batch_count=len(layout))
+        
+        # 9. Write metadata and update config
         self._write_metadata_and_update_config(
             selected_ids=planned_ids,
             layout=layout,
             selected_dumps=selected_dumps,
         )
 
+        # 10. Cleanup temporary files
         if bool(self.processing.get("cleanup_temporary", True)) and self.trace_work_dir.exists():
             shutil.rmtree(self.trace_work_dir)
 
+        # 11. Print summary
         print(json.dumps({
             "status": "ok",
             "trace_binary_batches_dir": str(trace_binary_dir.resolve()),
@@ -385,7 +475,7 @@ class TracingRunner:
 
 
 class TracingCLI:
-    """CLI front-end for one-shot tracing."""
+    """CLI front-end for tracing."""
 
     @staticmethod
     def parse_args() -> argparse.Namespace:

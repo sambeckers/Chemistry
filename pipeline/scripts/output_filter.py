@@ -213,3 +213,135 @@ class ProgressTracker:
         """Terminate in-place progress line with a newline."""
         if self.current_dump > 0:
             print("", file=file, flush=True)
+
+
+class ChemistryOutputFilter:
+    """Filter noisy evolving-model stdout while preserving critical failures."""
+
+    _RE_NONLINEAR = re.compile(r"No\.\s*nonlinear convergence failures\s*=\s*(-?\d+)", re.IGNORECASE)
+    _RE_ERROR_TEST = re.compile(r"No\.\s*error test failures\s*=\s*(-?\d+)", re.IGNORECASE)
+    _RE_INDEX_ERR = re.compile(r"Index\s*compenent\s*largest\s*error\s*=\s*(-?\d+)", re.IGNORECASE)
+    _RE_PROGRESS_STEP = re.compile(r"^\.\.\.\s*\d+\s*/\s*\d+\s*$")
+
+    def __init__(self, batch_index: int, particle_id: int, chemistry_type: str, verbose: bool) -> None:
+        self.batch_index = int(batch_index)
+        self.particle_id = int(particle_id)
+        self.chemistry_type = str(chemistry_type)
+        self.verbose = bool(verbose)
+        self.nonlinear_failures_total = 0
+        self.error_test_failures_total = 0
+        self.max_index_component_error = 0
+        self.dvode_messages: list[str] = []
+
+    @staticmethod
+    def _is_banner_or_path_noise(text: str) -> bool:
+        noise_markers = (
+            "ENVELOPE CHEMICAL MODEL",
+            "Version 1.",
+            "++++++++++++++++++++++++++++++++",
+            "Input file =",
+            "Physical conditions",
+            "Chemical network",
+            "Species file",
+            "Binding energies",
+            "Reaction parameters",
+            "Grain parameters",
+            "Radiation parameters",
+            "Output file",
+            "Rates file",
+            "Opening and reading physical conditions file",
+            "Beginning to run model",
+            "Preparing output files",
+            "Progress =",
+            "No. steps =",
+            "No. f-s =",
+            "No. J-s =",
+            "No. LU-s =",
+            "No. nonlinear iterations =",
+            "Last step size used =",
+        )
+        if ChemistryOutputFilter._RE_PROGRESS_STEP.match(text):
+            return True
+        return any(marker in text for marker in noise_markers)
+
+    def process_line(self, raw_line: str) -> list[str]:
+        line = raw_line.rstrip("\n\r")
+        text = line.strip()
+        if not text:
+            return []
+
+        if self.verbose:
+            return [text]
+
+        outputs: list[str] = []
+
+        nonlinear_match = self._RE_NONLINEAR.search(text)
+        if nonlinear_match:
+            value = int(nonlinear_match.group(1))
+            if value > 0:
+                self.nonlinear_failures_total += value
+                outputs.append(
+                    f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+                    f"nonlinear_convergence_failures={value}"
+                )
+            return outputs
+
+        error_test_match = self._RE_ERROR_TEST.search(text)
+        if error_test_match:
+            value = int(error_test_match.group(1))
+            if value > 0:
+                self.error_test_failures_total += value
+                outputs.append(
+                    f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+                    f"error_test_failures={value}"
+                )
+            return outputs
+
+        index_err_match = self._RE_INDEX_ERR.search(text)
+        if index_err_match:
+            value = int(index_err_match.group(1))
+            if value > 0:
+                self.max_index_component_error = max(self.max_index_component_error, value)
+                outputs.append(
+                    f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+                    f"index_component_largest_error={value}"
+                )
+            return outputs
+
+        # Keep only high-signal DVODE failures / NaN tolerance diagnostics.
+        dvode_markers = (
+            "DVODE--",
+            "corrector convergence failed repeatedly",
+            "too much accuracy",
+            "TOLSF",
+            "R1 =",
+            "NaN",
+        )
+        if any(marker in text for marker in dvode_markers):
+            self.dvode_messages.append(text)
+            outputs.append(
+                f"CHEM_ERROR|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|dvode={text}"
+            )
+            return outputs
+
+        if self._is_banner_or_path_noise(text):
+            return []
+
+        # Suppress any remaining evolving-model chatter in non-verbose mode.
+        return []
+
+    def summary_line(self) -> str | None:
+        if (
+            self.nonlinear_failures_total <= 0
+            and self.error_test_failures_total <= 0
+            and self.max_index_component_error <= 0
+            and not self.dvode_messages
+        ):
+            return None
+        return (
+            f"CHEM_SUMMARY|batch={self.batch_index}|particle={self.particle_id}|chem={self.chemistry_type}|"
+            f"nonlinear_failures_total={self.nonlinear_failures_total}|"
+            f"error_test_failures_total={self.error_test_failures_total}|"
+            f"max_index_component_largest_error={self.max_index_component_error}|"
+            f"dvode_messages={len(self.dvode_messages)}"
+        )

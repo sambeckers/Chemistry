@@ -108,7 +108,14 @@ class InteractiveHDF5Inspector:
 
     @staticmethod
     def _find_time_dataset(rows: list[tuple[str, h5py.Dataset]]) -> np.ndarray | None:
-        """Return a 1-D time array from the HDF5 file, or None if not found."""
+        """Return the trace/particles/time array if present, else fallback to other time arrays."""
+        # Always prioritize trace/particles/time
+        for name, ds in rows:
+            if name == "trace/particles/time":
+                arr = np.ravel(np.asarray(ds[()]))
+                if arr.ndim == 1 and arr.size > 0:
+                    return arr
+        # Fallback to other preferred paths
         preferred_paths = ["time", "trace/time", "particles/time", "t"]
         for preferred in preferred_paths:
             matches = [(name, ds) for name, ds in rows if name == preferred]
@@ -287,7 +294,7 @@ class InteractiveHDF5Inspector:
                         ax.set_title(f"{dataset_name}  |  index {selected_index}")
                     ax.set_xlabel(xlabel)
                     ax.set_ylabel(label)
-                    ax.legend()
+                    ax.set_yscale('log')
                     plt.tight_layout()
                     plt.show()
                     continue

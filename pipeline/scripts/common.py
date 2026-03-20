@@ -4,12 +4,12 @@ import os
 import re
 import sys
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
 import sarracen
 import yaml
-
 
 PIPELINE_ROOT = Path(__file__).resolve().parents[1]
 CHEMISTRY_ROOT = Path(__file__).resolve().parents[2]
@@ -17,7 +17,7 @@ CHEMISTRY_ROOT = Path(__file__).resolve().parents[2]
 if str(CHEMISTRY_ROOT) not in sys.path:
     sys.path.insert(0, str(CHEMISTRY_ROOT))
 
-from molecules import (  # noqa: E402
+from molecules import (
     atoms,
     atoms_plus,
     daughters_2,
@@ -37,7 +37,6 @@ TRACE_COLUMN_MAP = {
     "AV": "av",
     "TIME": "time",
 }
-
 
 class DumpTimeMapper:
     """Build and use dump-number <-> real-time mappings with fixed-precision keys."""
@@ -71,7 +70,15 @@ class DumpTimeMapper:
 
     @classmethod
     def _build_dump_time_seconds(cls, config: dict, dump_numbers: list[int]) -> list[float]:
-        """Read PHANTOM dump params and return real-time seconds in dump order."""
+        """Read PHANTOM dump params and return real-time seconds in dump order.
+
+        Args:
+            config (dict): Pipeline configuration.
+            dump_numbers (list[int]): List of dump numbers.
+
+        Returns:
+            list[float]: List of real-time seconds in dump order.
+        """
         paths = config["paths"]
         simulation = config["simulation"]
         data_dir = Path(paths["phantom_dump_dir"])
@@ -127,7 +134,16 @@ class DumpTimeMapper:
         dump_time_seconds: list[float],
         decimals: int,
     ) -> dict[int, int]:
-        """Build key->dump lookup and fail if duplicate keys appear."""
+        """Build key->dump lookup and fail if duplicate keys appear.
+
+        Args:
+            dump_numbers (list[int]): List of dump numbers.
+            dump_time_seconds (list[float]): List of real-time seconds in dump order.
+            decimals (int): Decimal precision for time-key matching.
+
+        Returns:
+            dict[int, int]: Dictionary mapping time keys to dump numbers.
+        """
         lookup: dict[int, int] = {}
         for dump_number, seconds in zip(dump_numbers, dump_time_seconds):
             key = cls._time_key(seconds, decimals)
@@ -154,6 +170,16 @@ class DumpTimeMapper:
         - values are already in seconds
         - values are in years and need conversion to seconds
         The hypothesis with more exact key matches is selected.
+
+        Args:
+            time_values (np.ndarray): Array of time values.
+            dump_numbers (list[int]): List of dump numbers.
+            dump_time_seconds (list[float]): List of real-time seconds in dump order.
+            decimals (int): Decimal precision for time-key matching.
+            unit_hint (str | None, optional): Hint for the unit of the time values. Defaults to None.
+
+        Returns:
+            np.ndarray: Array of dump numbers corresponding to the time values.
         """
         times = np.asarray(time_values, dtype=np.float64)
         unit_mode = "auto" if unit_hint is None else str(unit_hint).strip().lower()
@@ -212,7 +238,14 @@ class PipelineConfigManager:
 
     @staticmethod
     def _expand_value(value):
-        """Recursively expand env vars and user home markers in config values."""
+        """Go through all settings and replace environment variables and home folder shortcuts with their full paths.
+
+        Args:
+            value (Any): Value to expand.
+
+        Returns:
+            Any: Expanded value.
+        """
         if isinstance(value, str):
             return os.path.expandvars(os.path.expanduser(value))
         if isinstance(value, list):
@@ -273,6 +306,13 @@ class SpeciesCatalog:
         Reads all 668 species from the .specs file and filters out:
         - Species starting with 'G' (grains)
         - Species containing 'Y'
+        - A hardcoded list of undefined species
+
+        Args:
+            chemistry_type (str): Type of chemistry.
+
+        Returns:
+            list[str]: List of species names.
         """
         specs_filename = SpeciesCatalog.species_filename(chemistry_type)
         specs_path = CHEMISTRY_ROOT / "evolving_model" / specs_filename
@@ -381,7 +421,6 @@ class DumpSelection:
     def target_dump_numbers(cls, config: dict) -> list[int]:
         """Return target dumps for chemistry batching and merged output files."""
         return cls.selected_dump_numbers(config)
-
 
 class ParticleIdStore:
     """Discover, cache, and validate selected particle ID arrays."""
@@ -549,3 +588,15 @@ class FileSystemTools:
         path = Path(path)
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    @staticmethod
+    def ensure_link(source: str | Path, destination: str | Path) -> None:
+        """Create or replace symlink destination -> source."""
+        source = Path(source)
+        destination = Path(destination)
+        if destination.exists() or destination.is_symlink():
+            if destination.is_dir() and not destination.is_symlink():
+                shutil.rmtree(destination)
+            else:
+                destination.unlink()
+        os.symlink(source, destination)
