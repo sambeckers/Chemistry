@@ -1,7 +1,7 @@
 #!/bin/bash
 # One array task = one pipeline batch index.
 #SBATCH --job-name=batch
-#SBATCH --time=8:00:00
+#SBATCH --time=100:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=4G
 #SBATCH --array=0-0
@@ -28,13 +28,19 @@ if [[ ! -f "${ROOT}/workflow/batch.sh" ]]; then
 fi
 
 cd "${ROOT}"
-echo "BATCH_TASK|batch=${SLURM_ARRAY_TASK_ID}|phase=start|epoch=$(date +%s)"
+
+# BATCH_INDEX_OFFSET is exported by batch.sh when submitting chunked arrays.
+# It is 0 for small runs that fit within MaxArraySize (no chunking needed).
+BATCH_INDEX_OFFSET="${BATCH_INDEX_OFFSET:-0}"
+BATCH_INDEX=$(( SLURM_ARRAY_TASK_ID + BATCH_INDEX_OFFSET ))
+
+echo "BATCH_TASK|batch=${BATCH_INDEX}|phase=start|epoch=$(date +%s)"
 
 # Unified workflow script executes one batch task in run mode.
 set +e
-"${ROOT}/workflow/batch.sh" --run-index "${SLURM_ARRAY_TASK_ID}"
+"${ROOT}/workflow/batch.sh" --run-index "${BATCH_INDEX}"
 status=$?
 set -e
 
-echo "BATCH_TASK|batch=${SLURM_ARRAY_TASK_ID}|phase=end|epoch=$(date +%s)|status=${status}"
+echo "BATCH_TASK|batch=${BATCH_INDEX}|phase=end|epoch=$(date +%s)|status=${status}"
 exit "${status}"

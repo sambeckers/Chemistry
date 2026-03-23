@@ -24,11 +24,12 @@ processing:
   dump_step: 1
   discovery_mode: serial
   time_key_decimals: 0
-  batch_size: 100
-  n_batches: 10
+  # batch_size: 100
+  n_batches: 8397
   n_boundary: 50000
   chemistry_types:
   - Crich
+  - Orich
   compression: gzip
   compression_level: 4
   cleanup_temporary: true
@@ -37,7 +38,7 @@ processing:
   retain_batch_files_after_merge: true
   discovered_particle_count_all: 4099320
   discovered_particle_count: 4079320
-  discovered_batch_count: 10
+  discovered_batch_count: 8397
   verbose_tracing: false
   auto_compile_analysis: true
   force_recompile_analysis: false

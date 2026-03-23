@@ -27,6 +27,7 @@ DISCOVER_MERGE_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/discover_particle_ids_merge.
 DISCOVER_SERIAL_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/discover_particle_ids_serial.slurm"
 
 TOTAL_STEPS=9
+MAX_ARRAY_SIZE=2048
 CURRENT_STEP=0
 STEP_START_EPOCH=0
 
@@ -216,11 +217,21 @@ LOG_DIR=""
 TRACE_LOG_DIR="${SCRATCH_ROOT}/logs/tracing_logs_${DATETIME}"
 mkdir -p "${TRACE_LOG_DIR}"
 
-ARRAY_MAX=$((BATCH_COUNT - 1))
-ARRAY_SPEC="0-${ARRAY_MAX}"
-if [[ -n "${MAX_CONCURRENT}" ]]; then
-    ARRAY_SPEC="${ARRAY_SPEC}%${MAX_CONCURRENT}"
-fi
+# Split into chunks of MAX_ARRAY_SIZE. Each chunk submits array 0-N with an
+# offset exported as BATCH_INDEX_OFFSET so run_batch.slurm computes the real index.
+ARRAY_CHUNK_OFFSETS=()   # start index of each chunk
+ARRAY_CHUNK_SIZES=()     # number of tasks in each chunk
+CHUNK_START=0
+while [[ "${CHUNK_START}" -lt "${BATCH_COUNT}" ]]; do
+    CHUNK_END=$(( CHUNK_START + MAX_ARRAY_SIZE - 1 ))
+    if [[ "${CHUNK_END}" -ge "${BATCH_COUNT}" ]]; then
+        CHUNK_END=$(( BATCH_COUNT - 1 ))
+    fi
+    ARRAY_CHUNK_OFFSETS+=("${CHUNK_START}")
+    ARRAY_CHUNK_SIZES+=("$(( CHUNK_END - CHUNK_START + 1 ))")
+    CHUNK_START=$(( CHUNK_END + 1 ))
+done
+ARRAY_SPEC="0-$(( MAX_ARRAY_SIZE - 1 )) x${#ARRAY_CHUNK_OFFSETS[@]} chunks"  # display only
 
 MERGE_ARRAY_MAX=$((DUMP_COUNT - 1))
 MERGE_ARRAY_SPEC="0-${MERGE_ARRAY_MAX}"
@@ -235,7 +246,7 @@ echo "Chemistry HDF5 End-to-End Submit"
 echo "========================================="
 echo "Pipeline root   : ${PIPELINE_ROOT}"
 echo "Config          : ${CONFIG_PATH}"
-echo "Batch count     : ${BATCH_COUNT} (array ${ARRAY_SPEC})"
+echo "Batch count     : ${BATCH_COUNT} (${#ARRAY_CHUNK_OFFSETS[@]} chunk(s) of up to ${MAX_ARRAY_SIZE}, offsets: ${ARRAY_CHUNK_OFFSETS[*]})"
 echo "Dump count      : ${DUMP_COUNT} (merge array ${MERGE_ARRAY_SPEC})"
 echo "Python          : ${PYTHON_BIN}"
 echo "Logs root       : ${SCRATCH_ROOT}/logs/"
@@ -359,30 +370,77 @@ if [[ -z "${TRACING_JOB_ID}" ]]; then
 fi
 step_done
 
-step_start "Submitting run_batch array job"
-ARRAY_DEPENDENCY_ARGS=(--dependency="afterok:${TRACING_JOB_ID}")
+step_start "Submitting run_batch array job(s)"
+ARRAY_JOB_IDS=()
+ARRAY_JOB_ID=""  # first chunk job id, used for LOG_DIR name
 
-ARRAY_SUBMIT_OUTPUT=$(sbatch \
-    "${ARRAY_DEPENDENCY_ARGS[@]}" \
-    --array="${ARRAY_SPEC}" \
-    --output="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/batch_%A_%a.out" \
-    --error="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/batch_%A_%a.err" \
-    --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN}" \
-    "${SLURM_SCRIPT}")
-echo "${ARRAY_SUBMIT_OUTPUT}"
+# Submit chunks in groups of CHUNKS_PER_WAVE simultaneously. Each wave depends
+# on the last chunk of the previous wave so only one wave is in the queue at a
+# time, keeping total submitted jobs within the QOS MaxSubmitPU limit.
+# Overhead from tracing + merge array + summary = ~1603 jobs, leaving ~8397
+# slots for batch tasks. At MaxArraySize=2048, CHUNKS_PER_WAVE=4 uses 4x2048
+# =8192 slots safely. The final wave may be smaller.
+CHUNKS_PER_WAVE=4
+PREV_WAVE_LAST_JOB_ID=""
 
-ARRAY_JOB_ID=$(echo "${ARRAY_SUBMIT_OUTPUT}" | awk '{print $NF}')
-if [[ -z "${ARRAY_JOB_ID}" ]]; then
-    echo "Error: could not parse batch array job id from: ${ARRAY_SUBMIT_OUTPUT}"
-    exit 1
-fi
+CHUNK_COUNT="${#ARRAY_CHUNK_OFFSETS[@]}"
+i=0
+while [[ "${i}" -lt "${CHUNK_COUNT}" ]]; do
+    # Collect the indices for this wave
+    WAVE_JOB_IDS=()
+    WAVE_END=$(( i + CHUNKS_PER_WAVE ))
+    if [[ "${WAVE_END}" -gt "${CHUNK_COUNT}" ]]; then
+        WAVE_END="${CHUNK_COUNT}"
+    fi
+
+    for (( j=i; j<WAVE_END; j++ )); do
+        CHUNK_OFFSET="${ARRAY_CHUNK_OFFSETS[$j]}"
+        CHUNK_SIZE="${ARRAY_CHUNK_SIZES[$j]}"
+        CHUNK_ARRAY_MAX=$(( CHUNK_SIZE - 1 ))
+        CHUNK_ARRAY_SPEC="0-${CHUNK_ARRAY_MAX}"
+        if [[ -n "${MAX_CONCURRENT}" ]]; then
+            CHUNK_ARRAY_SPEC="${CHUNK_ARRAY_SPEC}%${MAX_CONCURRENT}"
+        fi
+
+        # First wave depends on tracing; subsequent waves depend on the last
+        # chunk of the previous wave (afterany so failed batches don't block).
+        if [[ -z "${PREV_WAVE_LAST_JOB_ID}" ]]; then
+            CHUNK_DEPENDENCY="afterok:${TRACING_JOB_ID}"
+        else
+            CHUNK_DEPENDENCY="afterany:${PREV_WAVE_LAST_JOB_ID}"
+        fi
+
+        CHUNK_SUBMIT_OUTPUT=$(sbatch \
+            --dependency="${CHUNK_DEPENDENCY}" \
+            --array="${CHUNK_ARRAY_SPEC}" \
+            --output="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/batch_%A_%a.out" \
+            --error="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/batch_%A_%a.err" \
+            --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},BATCH_INDEX_OFFSET=${CHUNK_OFFSET}" \
+            "${SLURM_SCRIPT}")
+        echo "${CHUNK_SUBMIT_OUTPUT}"
+        CHUNK_JOB_ID=$(echo "${CHUNK_SUBMIT_OUTPUT}" | awk '{print $NF}')
+        if [[ -z "${CHUNK_JOB_ID}" ]]; then
+            echo "Error: could not parse batch array job id from: ${CHUNK_SUBMIT_OUTPUT}"
+            exit 1
+        fi
+        ARRAY_JOB_IDS+=("${CHUNK_JOB_ID}")
+        WAVE_JOB_IDS+=("${CHUNK_JOB_ID}")
+        if [[ -z "${ARRAY_JOB_ID}" ]]; then
+            ARRAY_JOB_ID="${CHUNK_JOB_ID}"
+        fi
+    done
+
+    # Next wave depends on the last chunk of this wave
+    PREV_WAVE_LAST_JOB_ID="${WAVE_JOB_IDS[-1]}"
+    i="${WAVE_END}"
+done
 
 LOG_DIR="${SCRATCH_ROOT}/logs/logs_${ARRAY_JOB_ID}_${DATETIME}"
 mkdir -p "${LOG_DIR}"
 
-echo "Run-batch array job id : ${ARRAY_JOB_ID}"
-echo "Batch logs             : ${LOG_DIR}"
-echo "Tracing logs           : ${TRACE_LOG_DIR}"
+echo "Run-batch chunk job ids : ${ARRAY_JOB_IDS[*]}"
+echo "Batch logs              : ${LOG_DIR}"
+echo "Tracing logs            : ${TRACE_LOG_DIR}"
 step_done
 
 step_start "Submitting merge_dumps array job"
@@ -391,8 +449,10 @@ if [[ ! -f "${MERGE_SLURM_SCRIPT}" ]]; then
     exit 1
 fi
 
+ALL_BATCH_JOB_IDS=$(IFS=:; echo "${ARRAY_JOB_IDS[*]}")
+
 MERGE_SUBMIT_OUTPUT=$(sbatch \
-    --dependency="afterany:${ARRAY_JOB_ID}" \
+    --dependency="afterany:${ALL_BATCH_JOB_IDS}" \
     --array="${MERGE_ARRAY_SPEC}" \
     --output="${LOG_DIR}/merge_%A_%a.out" \
     --error="${LOG_DIR}/merge_%A_%a.err" \
@@ -423,8 +483,8 @@ echo "${SUMMARY_SUBMIT_OUTPUT}"
 step_done
 
 echo "Batch submission workflow completed."
-echo "Submitted chain: ${DISCOVER_ARRAY_JOB_ID:+discover_array -> }${DISCOVER_MERGE_JOB_ID:+discover_merge -> }tracing -> run_batch_array -> merge_dumps_array -> summarize"
-echo "Tracing job id        : ${TRACING_JOB_ID}"
-echo "Run-batch array job id: ${ARRAY_JOB_ID}"
-echo "Merge array job id    : ${MERGE_JOB_ID}"
+echo "Submitted chain: ${DISCOVER_ARRAY_JOB_ID:+discover_array -> }${DISCOVER_MERGE_JOB_ID:+discover_merge -> }tracing -> run_batch_array (${#ARRAY_JOB_IDS[@]} chunk(s)) -> merge_dumps_array -> summarize"
+echo "Tracing job id          : ${TRACING_JOB_ID}"
+echo "Run-batch chunk job ids : ${ARRAY_JOB_IDS[*]}"
+echo "Merge array job id      : ${MERGE_JOB_ID}"
 echo "Logs: ${LOG_DIR}"

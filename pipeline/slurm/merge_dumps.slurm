@@ -1,9 +1,9 @@
 #!/bin/bash
 # Merge all batch_*.h5 files into final dump_*.h5 files — one array task per dump.
 #SBATCH --job-name=merge
-#SBATCH --time=00:30:00
+#SBATCH --time=8:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=4G
+#SBATCH --mem-per-cpu=4G
 #SBATCH --array=0-0
 #SBATCH --output=logs/logs_%A/merge_%A_%a.out
 #SBATCH --error=logs/logs_%A/merge_%A_%a.err
