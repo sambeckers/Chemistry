@@ -4,6 +4,13 @@
 # Usage:
 #   ./workflow/submit_merge.sh
 #   ./workflow/submit_merge.sh --config /path/to/pipeline_config.yaml
+#   ./workflow/submit_merge.sh --after 12346:12347:12348   (colon-separated batch job IDs)
+#   ./workflow/submit_merge.sh --log-dir /path/to/logs_JOBID_DATETIME
+#
+# When --log-dir is given, merge logs land in the same dated folder created by
+# submit_batch.sh.  Without it a new logs_%A_<DATETIME> folder is used.
+# Prints "Merge job ID: <id>" at the end so it can be passed to
+# submit_summary.sh --after.
 #
 # Workflow summary:
 # 1) Resolve config and runtime paths.
@@ -18,6 +25,8 @@ DEFAULT_CONFIG="${PIPELINE_ROOT}/config/pipeline_config.yaml"
 SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/merge_dumps.slurm"
 
 CONFIG_PATH="${DEFAULT_CONFIG}"
+AFTER_JOB_ID=""
+EXTERNAL_LOG_DIR=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -25,9 +34,17 @@ while [[ $# -gt 0 ]]; do
             CONFIG_PATH="$2"
             shift 2
             ;;
+        --after)
+            AFTER_JOB_ID="$2"
+            shift 2
+            ;;
+        --log-dir)
+            EXTERNAL_LOG_DIR="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: ./workflow/submit_merge.sh [--config PATH]"
+            echo "Usage: ./workflow/submit_merge.sh [--config PATH] [--after JOB_IDS] [--log-dir PATH]"
             exit 1
             ;;
     esac
@@ -81,7 +98,15 @@ MERGE_ARRAY_SPEC="0-${MERGE_ARRAY_MAX}"
 
 mkdir -p "${SCRATCH_ROOT}/logs"
 DATETIME=$(date +%Y-%m-%d_%H-%M-%S)
-LOG_DIR="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}"
+
+# Use the caller-supplied log dir (from submit_batch.sh) when available;
+# otherwise create a new dated directory.
+if [[ -n "${EXTERNAL_LOG_DIR}" ]]; then
+    LOG_DIR="${EXTERNAL_LOG_DIR}"
+    mkdir -p "${LOG_DIR}"
+else
+    LOG_DIR="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}"
+fi
 
 echo "========================================="
 echo "Chemistry HDF5 Merge Submit"
@@ -91,11 +116,28 @@ echo "Config          : ${CONFIG_PATH}"
 echo "Python          : ${PYTHON_BIN}"
 echo "Dump count      : ${DUMP_COUNT} (array ${MERGE_ARRAY_SPEC})"
 echo "Logs            : ${LOG_DIR}"
+if [[ -n "${AFTER_JOB_ID}" ]]; then
+    echo "Dependency      : afterany:${AFTER_JOB_ID}"
+fi
 
-echo "Submitting..."
-sbatch \
+DEPENDENCY_ARGS=()
+if [[ -n "${AFTER_JOB_ID}" ]]; then
+    DEPENDENCY_ARGS=(--dependency="afterany:${AFTER_JOB_ID}")
+fi
+
+MERGE_SUBMIT_OUTPUT=$(sbatch \
+    "${DEPENDENCY_ARGS[@]}" \
     --array="${MERGE_ARRAY_SPEC}" \
     --output="${LOG_DIR}/merge_%A_%a.out" \
     --error="${LOG_DIR}/merge_%A_%a.err" \
     --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN}" \
-    "${SLURM_SCRIPT}"
+    "${SLURM_SCRIPT}")
+echo "${MERGE_SUBMIT_OUTPUT}"
+
+MERGE_JOB_ID=$(echo "${MERGE_SUBMIT_OUTPUT}" | awk '{print $NF}')
+if [[ -z "${MERGE_JOB_ID}" ]]; then
+    echo "Error: could not parse merge job id from: ${MERGE_SUBMIT_OUTPUT}"
+    exit 1
+fi
+
+echo "Merge job ID: ${MERGE_JOB_ID}"
