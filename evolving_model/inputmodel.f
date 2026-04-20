@@ -30,6 +30,7 @@ C NGRID = number of disk model grid points
        CHARACTER*70 OUTFILE,RATESFILE,ANAFILE
        
        LOGICAL ANA
+       LOGICAL WRITE_RATE_COEFFS
 
 C INPFILE = master file containing filenames 
 C PHYSFILE = disk physical input filename
@@ -249,12 +250,16 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       WRITE(*,*)
       
       OPEN(UNIT=9, FILE=OUTFILE)
-      OPEN(UNIT=10,FILE=RATESFILE)
+
+      WRITE_RATE_COEFFS = .FALSE.
+      IF (WRITE_RATE_COEFFS) THEN
+         OPEN(UNIT=10,FILE=RATESFILE)
       
-      WRITE(10,*) '+++++++++++++++++++++++++++++++++++++++++++++++++++'
-      WRITE(10,*) '+++++++++   Reaction Rate Coefficients   ++++++++++'
-      WRITE(10,*) '+++++++++++++++++++++++++++++++++++++++++++++++++++'
-      
+         WRITE(10,*) '++++++++++++++++++++++++++++++++++++++++++++++++'
+         WRITE(10,*) '++++++++   Reaction Rate Coefficients   ++++++++'
+         WRITE(10,*) '++++++++++++++++++++++++++++++++++++++++++++++++'
+      ENDIF
+
       WRITE(9,*) '+++++++++++++++++++++++++++++++++++++++++++++++++++'       
       WRITE(9,*) '++++++        ENVELOPE CHEMICAL MODEL         +++++'
       WRITE(9,*) '+++++++++++++++++++++++++++++++++++++++++++++++++++'
@@ -265,7 +270,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       DO 200 I = 1, NGRID
 
       WRITE(*,'(X,A4,I4,A2,I4)') '... ', I, ' /', NGRID
-      WRITE(10,'(X,A4,I4,A2,I4)') '... ', I, ' /', NGRID
+      IF (WRITE_RATE_COEFFS) WRITE(10,'(X,A4,I4,A2,I4)') '... ', I, ' /', NGRID
 
       IF (.NOT. (ANA .AND. (I .GT. IANA))) THEN
 
@@ -304,7 +309,7 @@ C Write preamble for grid point in output file
      *      AV(I),'MAG'
          WRITE(9,*)
 
-         WRITE(10,*)
+         IF (WRITE_RATE_COEFFS) WRITE(10,*)
        
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C     Output Routine
@@ -328,7 +333,7 @@ c       END DO
 300    CONTINUE
                                    
       CLOSE(UNIT=9)
-      CLOSE(UNIT=10)
+      IF (WRITE_RATE_COEFFS) CLOSE(UNIT=10)
                             
       WRITE(*,*)
       WRITE(*,*) '   ... DONE!'

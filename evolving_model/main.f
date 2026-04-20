@@ -201,51 +201,94 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       DATA (FRAC(I),I=1,NELEM)
      *   /9.75e-02,1.40e-04,7.50e-05,3.20e-04,8.00e-09,8.00e-08,
      *    3.00e-09,2.00e-09,7.00e-09,4.00e-09 /
-            
+
+C Common block for reaction parameters to avoid repeated file reopening
+      LOGICAL INIT_REACFILE
+      DATA INIT_REACFILE /.FALSE./
+      COMMON /REACPARAMS/ RE1,RE2,RE3,
+     *              P1,P2,P3,P4,P5,
+     *              ALPHA,BETA,GAMMA,LOWTEMP,UPTEMP,
+     *              RTYPE,NREAC,INIT_REACFILE
+
+C Same for BINDFILE
+      LOGICAL INIT_BINDFILE
+      DATA INIT_BINDFILE /.FALSE./
+      COMMON /BINDPARAMS/ SICE,BIND,YIELD,NICE,INIT_BINDFILE
+
+C Same for RADFILE
+      LOGICAL INIT_RADFILE
+      DATA INIT_RADFILE /.FALSE./
+      COMMON /RADPARAMS/ HABING,ZISM,CRPHOT,INIT_RADFILE
+
+C Same for GRAINFILE
+      LOGICAL INIT_GRAINFILE
+      DATA INIT_GRAINFILE /.FALSE./
+      COMMON /GRAINPARAMS/ GRAD,ALBEDO,BARRIER,SITES,HOPRATIO,
+     *               DUTY,CRTEMP,BRANCH,MODRATES,RDCOMP,
+     *               INIT_GRAINFILE
+
+C Same for SWITCHFILE
+      LOGICAL INIT_SWITCHFILE
+      DATA INIT_SWITCHFILE /.FALSE./
+      COMMON /SWITCHPARAMS/ NSWITCH,SWITCH,INIT_SWITCHFILE
+
+C Flag to indicate whether to write rate coefficients to file
+      LOGICAL WRITE_RATE_COEFFS
+
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C     Open and read reaction file
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       
-      OPEN(UNIT=1,FILE=REACFILE)
+      IF (.NOT. INIT_REACFILE) THEN
+         OPEN(UNIT=1,FILE=REACFILE)
       
-      I = 1
-      NREAC = 0
+         I = 1
+         NREAC = 0
       
-100   READ(1,10,END=101) RE1(I),RE2(I),RE3(I),
-     1   P1(I),P2(I),P3(I),P4(I),P5(I),
-     2   ALPHA(I),BETA(I),GAMMA(I),LOWTEMP(I),UPTEMP(I),
-     3   RTYPE(I)
+100      READ(1,10,END=101) RE1(I),RE2(I),RE3(I),
+     1      P1(I),P2(I),P3(I),P4(I),P5(I),
+     2      ALPHA(I),BETA(I),GAMMA(I),LOWTEMP(I),UPTEMP(I),
+     3      RTYPE(I)
           
-      I = I + 1
-      NREAC = NREAC + 1
+         I = I + 1
+         NREAC = NREAC + 1
             
-      GO TO 100
+         GO TO 100
       
-101   CONTINUE
+101      CONTINUE
 
-10    FORMAT(5X,8(A10),E8.2,F9.2,F10.1,2(I5),X,I2,X,1PE8.2) 
+10       FORMAT(5X,8(A10),E8.2,F9.2,F10.1,2(I5),X,I2,X,1PE8.2) 
 
-      CLOSE(UNIT=1)  
+         CLOSE(UNIT=1)
+
+         INIT_REACFILE = .TRUE.
+      ENDIF
+
+      print*,'iPOINT=',IPOINT,' NREAC=',NREAC
+      print*,'INIT_REACFILE=',INIT_REACFILE
       
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C     Open and read binding energies file
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      
-      OPEN(UNIT=1,FILE=BINDFILE)
-      
-      I = 1
-      NICE = 0
+      IF (.NOT. INIT_BINDFILE) THEN
+         OPEN(UNIT=1,FILE=BINDFILE)
 
-300   READ(1,*,END=301) SICE(I),BIND(I),DUMMY,YIELD(I)
-      
-      I = I + 1
-      NICE = NICE + 1
-      
-      GO TO 300
-      
-301   CONTINUE
+         I = 1
+         NICE = 0
 
-      CLOSE(UNIT=1)
+300      READ(1,*,END=301) SICE(I),BIND(I),DUMMY,YIELD(I)
+      
+         I = I + 1
+         NICE = NICE + 1
+
+         GO TO 300
+
+301      CONTINUE
+
+         CLOSE(UNIT=1)
+
+         INIT_BINDFILE = .TRUE.
+      ENDIF
  
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C     Set total number of species (include conserved species)
@@ -256,52 +299,58 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C     Open and read radiation parameters
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+      IF (.NOT. INIT_RADFILE) THEN
+         OPEN(UNIT=1,FILE=RADFILE)
+      
+         READ(1,*)
+         READ(1,*)
+         READ(1,*) GISM
+         READ(1,*)
+         READ(1,*) HABING
+         READ(1,*)
+         READ(1,*) ZISM
+         READ(1,*)
+         READ(1,*) CRPHOT
+      
+         CLOSE(UNIT=1)
 
-      OPEN(UNIT=1,FILE=RADFILE)
-      
-      READ(1,*)
-      READ(1,*)
-      READ(1,*) GISM
-      READ(1,*)
-      READ(1,*) HABING
-      READ(1,*)
-      READ(1,*) ZISM
-      READ(1,*)
-      READ(1,*) CRPHOT
-      
-      CLOSE(UNIT=1)
+         INIT_RADFILE = .TRUE.
+      ENDIF
 
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C      Open and read grain parameters 
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+      IF (.NOT. INIT_GRAINFILE) THEN
+         OPEN(UNIT=1,FILE=GRAINFILE)
 
-      OPEN(UNIT=1,FILE=GRAINFILE)
-
-      READ(1,*)
-      READ(1,*)
-      READ(1,*) GRAD
-      READ(1,*)
-      READ(1,*) ALBEDO
-      READ(1,*)
-      READ(1,*) BARRIER
-      READ(1,*)
-      READ(1,*) SITES
-      READ(1,*)
-      READ(1,*) HOPRATIO
-      READ(1,*)
-      READ(1,*) NMONO
-      READ(1,*)
-      READ(1,*) DUTY
-      READ(1,*)
-      READ(1,*) CRTEMP
-      READ(1,*)
-      READ(1,*) BRANCH
-      READ(1,*)
-      READ(1,*) MODRATES
-      READ(1,*)
-      READ(1,*) RDCOMP
+         READ(1,*)
+         READ(1,*)
+         READ(1,*) GRAD
+         READ(1,*)
+         READ(1,*) ALBEDO
+         READ(1,*)
+         READ(1,*) BARRIER
+         READ(1,*)
+         READ(1,*) SITES
+         READ(1,*)
+         READ(1,*) HOPRATIO
+         READ(1,*)
+         READ(1,*) NMONO
+         READ(1,*)
+         READ(1,*) DUTY
+         READ(1,*)
+         READ(1,*) CRTEMP
+         READ(1,*)
+         READ(1,*) BRANCH
+         READ(1,*)
+         READ(1,*) MODRATES
+         READ(1,*)
+         READ(1,*) RDCOMP
     
-      CLOSE(UNIT=1)
+         CLOSE(UNIT=1)
+
+         INIT_GRAINFILE = .TRUE.
+      ENDIF
 
 C Total number of surface sites per grain (no units)  
 
@@ -310,16 +359,19 @@ C Total number of surface sites per grain (no units)
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C      Open and read reaction parameters 
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-
-      OPEN(UNIT=1,FILE=SWITCHFILE)
-      READ(1,*)
-      READ(1,*)
-      READ(1,*) NSWITCH
-      READ(1,*)
+      IF (.NOT. INIT_SWITCHFILE) THEN
+         OPEN(UNIT=1,FILE=SWITCHFILE)
+         READ(1,*)
+         READ(1,*)
+         READ(1,*) NSWITCH
+         READ(1,*)
       
-      IF (NSWITCH.NE.0) READ(1,*) (SWITCH(I),I=1,NSWITCH)
+         IF (NSWITCH.NE.0) READ(1,*) (SWITCH(I),I=1,NSWITCH)
 
-      CLOSE(UNIT=1)
+         CLOSE(UNIT=1)
+
+         INIT_SWITCHFILE = .TRUE.
+      ENDIF
 
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C     UV photon flux
@@ -365,7 +417,7 @@ C Add on electrons to total number of species
       
       DO I=1,NCON
          X(I) = 0.0
-     	 SPEC(NSPEC+I)='e-'         
+     	   SPEC(NSPEC+I)='e-'         
       END DO	
 
       TOTAL = X(1)*DENS
@@ -807,9 +859,13 @@ C Write reactions and rate coefficients to file
 
       IF(K(I).LT.1D-50) K(I) = 0.0
 
-      WRITE(10,'(I4,X,7(A10),1PE15.5)') I,RE1(I),RE2(I),RE3(I),
-     *   P1(I),P2(I),P3(I),P4(I),K(I)
-                              
+C Only write if unit 10 has been opened
+      INQUIRE(UNIT=10,OPENED=WRITE_RATE_COEFFS)
+      IF (WRITE_RATE_COEFFS) THEN
+         WRITE(10,'(I4,X,7(A10),1PE15.5)') I,RE1(I),RE2(I),RE3(I),
+     *      P1(I),P2(I),P3(I),P4(I),K(I)
+      ENDIF
+ 
       END DO
                                                 
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
