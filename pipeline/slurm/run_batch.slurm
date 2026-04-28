@@ -29,10 +29,36 @@ fi
 
 cd "${ROOT}"
 
-# BATCH_INDEX_OFFSET is exported by batch.sh when submitting chunked arrays.
-# It is 0 for small runs that fit within MaxArraySize (no chunking needed).
+# ---------------------------------------------------------------------------
+# Resolve real batch index
+#
+# Two modes:
+#
+#   Normal mode  (no PENDING_BATCH_FILE):
+#     BATCH_INDEX = SLURM_ARRAY_TASK_ID + BATCH_INDEX_OFFSET
+#     BATCH_INDEX_OFFSET is 0 for single-chunk runs, or the chunk's start
+#     index for multi-chunk submissions.
+#
+#   Resume mode  (PENDING_BATCH_FILE is set):
+#     BATCH_INDEX is read from line (SLURM_ARRAY_TASK_ID + BATCH_INDEX_OFFSET + 1)
+#     of the pending-batch file written by submit_batch.sh --resume.
+#     BATCH_INDEX_OFFSET is the line offset for this chunk (0, 2048, 4096, …).
+# ---------------------------------------------------------------------------
 BATCH_INDEX_OFFSET="${BATCH_INDEX_OFFSET:-0}"
-BATCH_INDEX=$(( SLURM_ARRAY_TASK_ID + BATCH_INDEX_OFFSET ))
+
+if [[ -n "${PENDING_BATCH_FILE:-}" ]]; then
+	# Resume mode: map task position → real batch index via the pending file.
+	LINE_NUM=$(( SLURM_ARRAY_TASK_ID + BATCH_INDEX_OFFSET + 1 ))
+	BATCH_INDEX=$(sed -n "${LINE_NUM}p" "${PENDING_BATCH_FILE}")
+	if [[ -z "${BATCH_INDEX}" ]]; then
+		echo "Error: no entry at line ${LINE_NUM} in PENDING_BATCH_FILE=${PENDING_BATCH_FILE}"
+		echo "  SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}  BATCH_INDEX_OFFSET=${BATCH_INDEX_OFFSET}"
+		exit 1
+	fi
+else
+	# Normal mode: arithmetic offset.
+	BATCH_INDEX=$(( SLURM_ARRAY_TASK_ID + BATCH_INDEX_OFFSET ))
+fi
 
 echo "BATCH_TASK|batch=${BATCH_INDEX}|phase=start|epoch=$(date +%s)"
 

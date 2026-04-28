@@ -10,6 +10,17 @@
 #   ./workflow/batch.sh --config /path/to/pipeline_config.yaml
 #   ./workflow/batch.sh --max-concurrent 256
 #
+# Resume mode — skip already-COMPLETED batches:
+#   ./workflow/batch.sh --resume /path/to/batch_status.txt
+#   ./workflow/batch.sh --resume /path/to/batch_status.txt --max-concurrent 256
+#
+#   batch_status.txt must have lines of the form "<index> <STATUS>" (as
+#   written by scan_batch_status.py).  Any batch whose status is not
+#   "COMPLETED" will be re-submitted; COMPLETED batches are skipped entirely
+#   and never queued.  A pending-batch index file is written to the scratch
+#   logs directory and passed to SLURM tasks via PENDING_BATCH_FILE so that
+#   run_batch.slurm can look up the real batch index from the array task id.
+#
 # Usage (run mode, usually from SLURM):
 #   ./workflow/batch.sh --run-index 42
 
@@ -75,6 +86,7 @@ step_note() {
 CONFIG_PATH="${PIPELINE_CONFIG:-${DEFAULT_CONFIG}}"
 MAX_CONCURRENT=""
 RUN_INDEX=""
+RESUME_STATUS_FILE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -90,9 +102,13 @@ while [[ $# -gt 0 ]]; do
             RUN_INDEX="$2"
             shift 2
             ;;
+        --resume)
+            RESUME_STATUS_FILE="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: ./workflow/batch.sh [--config PATH] [--max-concurrent N] [--run-index INDEX]"
+            echo "Usage: ./workflow/batch.sh [--config PATH] [--max-concurrent N] [--run-index INDEX] [--resume STATUS_FILE]"
             exit 1
             ;;
     esac
@@ -112,6 +128,10 @@ echo "Starting batch submission workflow..."
 step_start "Validating configuration"
 if [[ ! -f "${CONFIG_PATH}" ]]; then
     echo "Error: config not found: ${CONFIG_PATH}"
+    exit 1
+fi
+if [[ -n "${RESUME_STATUS_FILE}" && ! -f "${RESUME_STATUS_FILE}" ]]; then
+    echo "Error: resume status file not found: ${RESUME_STATUS_FILE}"
     exit 1
 fi
 step_note "Config: ${CONFIG_PATH}"
@@ -194,14 +214,14 @@ if [[ "${#INFO[@]}" -lt 5 ]]; then
     exit 1
 fi
 
-BATCH_COUNT="${INFO[0]}"
+TOTAL_BATCH_COUNT="${INFO[0]}"
 PYTHON_BIN="${INFO[1]}"
 SCRATCH_ROOT="${INFO[2]}"
 DISCOVERY_MODE="${INFO[3]}"
 DUMP_COUNT="${INFO[4]}"
 
-if [[ -z "${BATCH_COUNT}" || "${BATCH_COUNT}" -lt 1 ]]; then
-    echo "Error: invalid batch count '${BATCH_COUNT}'"
+if [[ -z "${TOTAL_BATCH_COUNT}" || "${TOTAL_BATCH_COUNT}" -lt 1 ]]; then
+    echo "Error: invalid batch count '${TOTAL_BATCH_COUNT}'"
     exit 1
 fi
 
@@ -217,9 +237,55 @@ LOG_DIR=""
 TRACE_LOG_DIR="${SCRATCH_ROOT}/logs/tracing_logs_${DATETIME}"
 mkdir -p "${TRACE_LOG_DIR}"
 
+# ---------------------------------------------------------------------------
+# Resume mode: build the pending-batch index file
+# ---------------------------------------------------------------------------
+PENDING_BATCH_FILE=""
+BATCH_COUNT="${TOTAL_BATCH_COUNT}"
+
+if [[ -n "${RESUME_STATUS_FILE}" ]]; then
+    PENDING_DIR="${SCRATCH_ROOT}/logs"
+    PENDING_BATCH_FILE="${PENDING_DIR}/pending_batches_${DATETIME}.txt"
+
+    /fred/oz304/beckers/MRP_env/bin/python - \
+            "${RESUME_STATUS_FILE}" "${TOTAL_BATCH_COUNT}" "${PENDING_BATCH_FILE}" <<'PY'
+import sys
+from pathlib import Path
+
+status_file = Path(sys.argv[1])
+total_count = int(sys.argv[2])
+out_file    = Path(sys.argv[3])
+
+completed: set[int] = set()
+for line in status_file.read_text().splitlines():
+    line = line.strip()
+    if not line or line.startswith("#"):
+        continue
+    parts = line.split()
+    if len(parts) < 2:
+        continue
+    idx, status = int(parts[0]), parts[1].upper()
+    if status == "COMPLETED":
+        completed.add(idx)
+
+pending = sorted(i for i in range(total_count) if i not in completed)
+out_file.write_text("\n".join(str(i) for i in pending) + "\n")
+print(f"Resume: {len(completed)} COMPLETED, {len(pending)} pending out of {total_count} total")
+print(f"Pending index file: {out_file}")
+PY
+
+    BATCH_COUNT=$(wc -l < "${PENDING_BATCH_FILE}" | tr -d ' ')
+    if [[ "${BATCH_COUNT}" -eq 0 ]]; then
+        echo "All ${TOTAL_BATCH_COUNT} batches are already COMPLETED — nothing to submit."
+        exit 0
+    fi
+    step_note "Resume mode: ${BATCH_COUNT} pending / ${TOTAL_BATCH_COUNT} total"
+    step_note "Pending file: ${PENDING_BATCH_FILE}"
+fi
+
 # Split into chunks of MAX_ARRAY_SIZE. Each chunk submits array 0-N with an
-# offset exported as BATCH_INDEX_OFFSET so run_batch.slurm computes the real index.
-ARRAY_CHUNK_OFFSETS=()   # start index of each chunk
+# offset into the pending file (resume mode) or arithmetic batch index (normal).
+ARRAY_CHUNK_OFFSETS=()   # start position of each chunk (line offset in resume, abs index otherwise)
 ARRAY_CHUNK_SIZES=()     # number of tasks in each chunk
 CHUNK_START=0
 while [[ "${CHUNK_START}" -lt "${BATCH_COUNT}" ]]; do
@@ -246,6 +312,13 @@ echo "Chemistry HDF5 End-to-End Submit"
 echo "========================================="
 echo "Pipeline root   : ${PIPELINE_ROOT}"
 echo "Config          : ${CONFIG_PATH}"
+if [[ -n "${RESUME_STATUS_FILE}" ]]; then
+    echo "Resume mode     : YES (${BATCH_COUNT} pending / ${TOTAL_BATCH_COUNT} total)"
+    echo "Status file     : ${RESUME_STATUS_FILE}"
+    echo "Pending file    : ${PENDING_BATCH_FILE}"
+else
+    echo "Resume mode     : NO (submitting all ${BATCH_COUNT} batches)"
+fi
 echo "Batch count     : ${BATCH_COUNT} (${#ARRAY_CHUNK_OFFSETS[@]} chunk(s) of up to ${MAX_ARRAY_SIZE}, offsets: ${ARRAY_CHUNK_OFFSETS[*]})"
 echo "Dump count      : ${DUMP_COUNT} (merge array ${MERGE_ARRAY_SPEC})"
 echo "Python          : ${PYTHON_BIN}"
@@ -374,19 +447,13 @@ step_start "Submitting run_batch array job(s)"
 ARRAY_JOB_IDS=()
 ARRAY_JOB_ID=""  # first chunk job id, used for LOG_DIR name
 
-# Submit chunks in groups of CHUNKS_PER_WAVE simultaneously. Each wave depends
-# on the last chunk of the previous wave so only one wave is in the queue at a
-# time, keeping total submitted jobs within the QOS MaxSubmitPU limit.
-# Overhead from tracing + merge array + summary = ~1603 jobs, leaving ~8397
-# slots for batch tasks. At MaxArraySize=2048, CHUNKS_PER_WAVE=4 uses 4x2048
-# =8192 slots safely. The final wave may be smaller.
+# Submit chunks in groups of CHUNKS_PER_WAVE simultaneously.
 CHUNKS_PER_WAVE=4
 PREV_WAVE_LAST_JOB_ID=""
 
 CHUNK_COUNT="${#ARRAY_CHUNK_OFFSETS[@]}"
 i=0
 while [[ "${i}" -lt "${CHUNK_COUNT}" ]]; do
-    # Collect the indices for this wave
     WAVE_JOB_IDS=()
     WAVE_END=$(( i + CHUNKS_PER_WAVE ))
     if [[ "${WAVE_END}" -gt "${CHUNK_COUNT}" ]]; then
@@ -402,12 +469,16 @@ while [[ "${i}" -lt "${CHUNK_COUNT}" ]]; do
             CHUNK_ARRAY_SPEC="${CHUNK_ARRAY_SPEC}%${MAX_CONCURRENT}"
         fi
 
-        # First wave depends on tracing; subsequent waves depend on the last
-        # chunk of the previous wave (afterany so failed batches don't block).
         if [[ -z "${PREV_WAVE_LAST_JOB_ID}" ]]; then
             CHUNK_DEPENDENCY="afterok:${TRACING_JOB_ID}"
         else
             CHUNK_DEPENDENCY="afterany:${PREV_WAVE_LAST_JOB_ID}"
+        fi
+
+        # Build the export string; add PENDING_BATCH_FILE only in resume mode.
+        EXPORT_VARS="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},BATCH_INDEX_OFFSET=${CHUNK_OFFSET}"
+        if [[ -n "${PENDING_BATCH_FILE}" ]]; then
+            EXPORT_VARS="${EXPORT_VARS},PENDING_BATCH_FILE=${PENDING_BATCH_FILE}"
         fi
 
         CHUNK_SUBMIT_OUTPUT=$(sbatch \
@@ -415,7 +486,7 @@ while [[ "${i}" -lt "${CHUNK_COUNT}" ]]; do
             --array="${CHUNK_ARRAY_SPEC}" \
             --output="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/batch_%A_%a.out" \
             --error="${SCRATCH_ROOT}/logs/logs_%A_${DATETIME}/batch_%A_%a.err" \
-            --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},BATCH_INDEX_OFFSET=${CHUNK_OFFSET}" \
+            --export="${EXPORT_VARS}" \
             "${SLURM_SCRIPT}")
         echo "${CHUNK_SUBMIT_OUTPUT}"
         CHUNK_JOB_ID=$(echo "${CHUNK_SUBMIT_OUTPUT}" | awk '{print $NF}')
@@ -430,13 +501,17 @@ while [[ "${i}" -lt "${CHUNK_COUNT}" ]]; do
         fi
     done
 
-    # Next wave depends on the last chunk of this wave
     PREV_WAVE_LAST_JOB_ID="${WAVE_JOB_IDS[-1]}"
     i="${WAVE_END}"
 done
 
 LOG_DIR="${SCRATCH_ROOT}/logs/logs_${ARRAY_JOB_ID}_${DATETIME}"
 mkdir -p "${LOG_DIR}"
+
+# Copy the pending-batch file into the log dir for safe-keeping.
+if [[ -n "${PENDING_BATCH_FILE}" ]]; then
+    cp "${PENDING_BATCH_FILE}" "${LOG_DIR}/pending_batches.txt"
+fi
 
 echo "Run-batch chunk job ids : ${ARRAY_JOB_IDS[*]}"
 echo "Batch logs              : ${LOG_DIR}"
