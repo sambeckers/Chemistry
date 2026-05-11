@@ -13,6 +13,22 @@ gather task checks this attribute before touching any group structure, so
 files with no contribution to the target dump are skipped after a single
 small attribute read.
 
+Scatter file format expected (written by scatter_batches.py):
+
+    scatter_NNNNN.h5
+      attrs:
+        dump_numbers_json    "[0, 1, 2, …]"
+        chemistry_types_json '["Crich"]'
+        dumps_present_json   "[3, 7, 12, …]"
+        trace_fields_json    '["x", "y", "z", "temp", …]'
+        species_json         '{"Crich": ["c", "c2", …]}'
+      /dump_00003/
+        attrs: dump_number, n_particles
+        id            (int64,   1-D: n_particles)
+        trace         (float64, 2-D: n_particles × n_trace_fields)
+        Crich/
+          abundances  (float64, 2-D: n_particles × n_species)
+
 The final output format is identical to the original merge_batches.py output,
 ensuring downstream consumers see no difference.
 """
@@ -53,12 +69,25 @@ class ScatterGatherer:
         return files
 
     @staticmethod
-    def _first_file_metadata(scatter_files: list[Path]) -> tuple[list[int], list[str]]:
-        """Read global dump list and chemistry types from the first scatter file."""
+    def _first_file_metadata(
+        scatter_files: list[Path],
+    ) -> tuple[list[int], list[str], list[str], dict[str, list[str]]]:
+        """
+        Read global metadata from the first scatter file.
+
+        Returns
+        -------
+        dump_numbers    : ordered list of all dump numbers in the run
+        chemistry_types : e.g. ["Crich"]
+        trace_fields    : ordered list of trace field names
+        species_names   : {ctype: [species, …]} mapping
+        """
         with h5py.File(scatter_files[0], "r") as f:
             dump_numbers = [int(v) for v in json.loads(f.attrs["dump_numbers_json"])]
             chemistry_types = list(json.loads(f.attrs["chemistry_types_json"]))
-        return dump_numbers, chemistry_types
+            trace_fields = list(json.loads(f.attrs["trace_fields_json"]))
+            species_names: dict[str, list[str]] = json.loads(f.attrs["species_json"])
+        return dump_numbers, chemistry_types, trace_fields, species_names
 
     @staticmethod
     def _write_kwargs(compression: str | None, level: int | None) -> dict:
@@ -91,10 +120,14 @@ class ScatterGatherer:
         final dump_XXXXX.h5.
 
         For each scatter file only the target dump's HDF5 group is accessed —
-        O(n_particles_per_batch × n_datasets) bytes per file, not O(file_size).
+        O(n_particles_per_batch × n_fields) bytes per file, not O(file_size).
+        The 2-D trace and abundance blocks written by scatter_batches.py are
+        sliced into individual named arrays here before writing the final file.
         """
         scatter_files = self.list_scatter_files()
-        dump_numbers, chemistry_types = self._first_file_metadata(scatter_files)
+        dump_numbers, chemistry_types, trace_fields, species_names = (
+            self._first_file_metadata(scatter_files)
+        )
 
         if dump_index < 0 or dump_index >= len(dump_numbers):
             raise IndexError(
@@ -114,9 +147,11 @@ class ScatterGatherer:
 
         # ---- accumulators ---------------------------------------------------
         ids_list: list[np.ndarray] = []
-        trace_lists: dict[str, list[np.ndarray]] = {}
-        chem_lists: dict[str, dict[str, list[np.ndarray]]] = {
-            ctype: {} for ctype in chemistry_types
+        # trace_blocks accumulates 2-D slices [n_particles_i, n_trace_fields]
+        trace_blocks: list[np.ndarray] = []
+        # chem_blocks[ctype] accumulates 2-D slices [n_particles_i, n_species]
+        chem_blocks: dict[str, list[np.ndarray]] = {
+            ctype: [] for ctype in chemistry_types
         }
 
         for scatter_path in scatter_files:
@@ -133,24 +168,16 @@ class ScatterGatherer:
                 grp = src[dump_key]
                 ids_list.append(grp["id"][:].astype(np.int64))
 
-                # Collect trace datasets (everything that is not a chemistry group).
-                ctype_set = set(chemistry_types)
-                for name in grp.keys():
-                    if name == "id" or name in ctype_set:
-                        continue
-                    trace_lists.setdefault(name, []).append(
-                        grp[name][:].astype(np.float64)
-                    )
+                # trace block: [n_particles_i, n_trace_fields]
+                trace_blocks.append(grp["trace"][:].astype(np.float64))
 
-                # Collect chemistry datasets.
+                # chemistry blocks: [n_particles_i, n_species] per ctype
                 for ctype in chemistry_types:
                     if ctype not in grp:
                         continue
-                    chem_subgrp = grp[ctype]
-                    for name in chem_subgrp.keys():
-                        chem_lists[ctype].setdefault(name, []).append(
-                            chem_subgrp[name][:].astype(np.float64)
-                        )
+                    chem_blocks[ctype].append(
+                        grp[ctype]["abundances"][:].astype(np.float64)
+                    )
 
         if not ids_list:
             raise RuntimeError(
@@ -160,25 +187,33 @@ class ScatterGatherer:
 
         # ---- concatenate ----------------------------------------------------
         merged_ids = np.concatenate(ids_list)
+        n_total = merged_ids.shape[0]
 
-        merged_trace: dict[str, np.ndarray] = {}
-        for name, arrays in trace_lists.items():
-            merged = np.concatenate(arrays) if arrays else np.array([], dtype=np.float64)
-            if name == "time":
-                # Replace raw per-particle times with the single canonical value.
-                merged = np.full(merged_ids.shape[0], canonical_seconds, dtype=np.float64)
-            merged_trace[name] = merged
-
+        # Unpack the stacked trace block into a dict keyed by field name.
+        # merged_trace_block shape: [n_total, n_trace_fields]
+        merged_trace_block = np.concatenate(trace_blocks, axis=0)
+        merged_trace: dict[str, np.ndarray] = {
+            name: merged_trace_block[:, i] for i, name in enumerate(trace_fields)
+        }
+        # Replace raw per-particle times with the single canonical value.
         if "time" in merged_trace:
+            merged_trace["time"] = np.full(n_total, canonical_seconds, dtype=np.float64)
             self._assert_single_dump_time(dump_number, merged_trace["time"])
 
-        merged_chem: dict[str, dict[str, np.ndarray]] = {
-            ctype: {
-                name: np.concatenate(arrs) if arrs else np.array([], dtype=np.float64)
-                for name, arrs in chem_lists[ctype].items()
+        # Unpack chemistry blocks into {ctype: {species: array}} dicts.
+        merged_chem: dict[str, dict[str, np.ndarray]] = {}
+        for ctype in chemistry_types:
+            blocks = chem_blocks[ctype]
+            if blocks:
+                merged_block = np.concatenate(blocks, axis=0)
+            else:
+                n_species = len(species_names.get(ctype, []))
+                merged_block = np.empty((0, n_species), dtype=np.float64)
+
+            merged_chem[ctype] = {
+                name: merged_block[:, i]
+                for i, name in enumerate(species_names[ctype])
             }
-            for ctype in chemistry_types
-        }
 
         # ---- write ----------------------------------------------------------
         output_path = self.final_output_dir / f"dump_{dump_number:05d}.h5"

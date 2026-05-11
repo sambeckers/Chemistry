@@ -8,11 +8,15 @@
 #   - resume mode
 #   - dependency chaining
 #   - wave submission compatible with OzSTAR limits
+#   - serial batching of scatter tasks (--scatter-tasks-per-job)
 #
 # Examples:
 #
-# First scatter run:
+# First scatter run (10 batches per task -> ~1000 array tasks for 10K batches):
 #   ./workflow/submit_scatter_gather.sh --scatter-only
+#
+# Custom batching (e.g. 20 batches per task -> ~500 array tasks):
+#   ./workflow/submit_scatter_gather.sh --scatter-only --scatter-tasks-per-job 20
 #
 # First gather run:
 #   ./workflow/submit_scatter_gather.sh --gather-only
@@ -38,6 +42,10 @@ SCATTER_SLURM="${PIPELINE_ROOT}/slurm/scatter_batches.slurm"
 GATHER_SLURM="${PIPELINE_ROOT}/slurm/gather_dumps.slurm"
 
 MAX_ARRAY_SIZE=2048
+
+# Number of batch files each scatter SLURM task processes serially.
+# Reduce scheduler overhead for fast-running batches.
+SCATTER_TASKS_PER_JOB=10
 
 CONFIG_PATH="${DEFAULT_CONFIG}"
 
@@ -86,6 +94,11 @@ while [[ $# -gt 0 ]]; do
         --gather-only)
             GATHER_ONLY=1
             shift
+            ;;
+
+        --scatter-tasks-per-job)
+            SCATTER_TASKS_PER_JOB="$2"
+            shift 2
             ;;
 
         *)
@@ -242,14 +255,21 @@ build_pending_file \
 SCATTER_COUNT=$(wc -l < "${SCATTER_PENDING_FILE}" | tr -d ' ')
 GATHER_COUNT=$(wc -l < "${GATHER_PENDING_FILE}" | tr -d ' ')
 
+# Number of SLURM array tasks needed for scatter after serial grouping.
+SCATTER_TASK_COUNT=$(( (SCATTER_COUNT + SCATTER_TASKS_PER_JOB - 1) / SCATTER_TASKS_PER_JOB ))
+
 echo "========================================="
 echo "Scatter/Gather Submission"
 echo "========================================="
-echo "Scatter tasks : ${SCATTER_COUNT}/${TOTAL_BATCH_COUNT}"
-echo "Gather tasks  : ${GATHER_COUNT}/${TOTAL_DUMP_COUNT}"
-echo "Log directory : ${LOG_DIR}"
+echo "Scatter batches   : ${SCATTER_COUNT}/${TOTAL_BATCH_COUNT}"
+echo "Scatter array size: ${SCATTER_TASK_COUNT} (${SCATTER_TASKS_PER_JOB} batches/task)"
+echo "Gather tasks      : ${GATHER_COUNT}/${TOTAL_DUMP_COUNT}"
+echo "Log directory     : ${LOG_DIR}"
 echo "========================================="
 
+# submit_chunks submits one or more sbatch waves to stay within MAX_ARRAY_SIZE.
+# For scatter, extra_export carries SCATTER_TASKS_PER_JOB so the SLURM script
+# knows how many lines of the pending file belong to each task.
 submit_chunks() {
 
     local task_count="$1"
@@ -257,9 +277,9 @@ submit_chunks() {
     local slurm_file="$3"
     local stage_name="$4"
     local dependency="$5"
+    local extra_export="${6:-}"
 
     local submitted_jobs=()
-
     local start=0
 
     while [[ "${start}" -lt "${task_count}" ]]; do
@@ -278,12 +298,18 @@ submit_chunks() {
             dep_args+=(--dependency="afterany:${dependency}")
         fi
 
+        local base_export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},PENDING_INDEX_FILE=${pending_file},INDEX_OFFSET=${start}"
+        local full_export="${base_export}"
+        if [[ -n "${extra_export}" ]]; then
+            full_export="${base_export},${extra_export}"
+        fi
+
         OUT=$(sbatch \
             "${dep_args[@]}" \
             --array="0-$((chunk_size - 1))" \
             --output="${LOG_DIR}/${stage_name}_%A_%a.out" \
             --error="${LOG_DIR}/${stage_name}_%A_%a.err" \
-            --export="PIPELINE_ROOT=${PIPELINE_ROOT},PIPELINE_CONFIG=${CONFIG_PATH},PIPELINE_PYTHON=${PYTHON_BIN},PENDING_INDEX_FILE=${pending_file},INDEX_OFFSET=${start}" \
+            --export="${full_export}" \
             "${slurm_file}"
         )
 
@@ -311,11 +337,12 @@ if [[ "${GATHER_ONLY}" -eq 0 ]]; then
 
     SCATTER_JOB_IDS=$(
         submit_chunks \
-            "${SCATTER_COUNT}" \
+            "${SCATTER_TASK_COUNT}" \
             "${SCATTER_PENDING_FILE}" \
             "${SCATTER_SLURM}" \
             "scatter" \
-            "${AFTER_JOB_ID}"
+            "${AFTER_JOB_ID}" \
+            "SCATTER_TASKS_PER_JOB=${SCATTER_TASKS_PER_JOB}"
     )
 
     echo
