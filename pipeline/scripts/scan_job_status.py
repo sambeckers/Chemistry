@@ -75,7 +75,7 @@ RE_JOB_REPORT = re.compile(
 
 # WORKFLOW_TASK|stage=scatter_batches|global_task=7|n_batches=100|phase=end|epoch=…|status=0
 RE_WORKFLOW_END = re.compile(
-    r"WORKFLOW_TASK\|[^|]*\|[^|]*\|[^|]*\|phase=end\|[^|]*\|status=(?P<status>\d+)"
+    r"WORKFLOW_TASK\|.*phase=end.*status=(?P<status>\d+)"
 )
 
 # "Task 7: processing 100 batch(es): 0 1 2 … 99"

@@ -36,15 +36,15 @@ from matplotlib.ticker import LogLocator, NullFormatter
 # ---------------------------------------------------------------------------
 
 def _collect_xy(axes_list) -> tuple[list[float], list[float]]:
-    """Collect all valid positive x and y values from a list of axes."""
     all_x: list[float] = []
     all_y: list[float] = []
     for ax in axes_list:
         for line in ax.get_lines():
             xd = np.asarray(line.get_xdata(), dtype=float)
             yd = np.asarray(line.get_ydata(), dtype=float)
-            all_x.extend(xd[np.isfinite(xd) & (xd > 0)].tolist())
-            all_y.extend(yd[np.isfinite(yd) & (yd > 0)].tolist())
+            valid = np.isfinite(xd) & np.isfinite(yd) & (xd > 0) & (yd > 0)  # ← added y check
+            all_x.extend(xd[valid].tolist())
+            all_y.extend(yd[valid].tolist())
     return all_x, all_y
 
 
