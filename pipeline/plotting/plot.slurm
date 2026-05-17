@@ -17,7 +17,7 @@ echo "Plotting  chemistry=${CHEMISTRY}  n_tasks=${N_TASKS}"
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate /fred/oz304/beckers/KB
 
-python /fred/oz304/beckers/Chemistry/pipeline/plotting/plot_abmean_3dvs1d.py \
-    --mode       plot         \
+python /fred/oz304/beckers/Chemistry/pipeline/plotting/plot_stats.py \
+    --mode       plot-compare         \
     --chemistry  "${CHEMISTRY}"     \
     --n-tasks    "${N_TASKS}"

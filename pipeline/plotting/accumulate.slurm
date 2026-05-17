@@ -18,7 +18,7 @@ echo "Array task ${SLURM_ARRAY_TASK_ID} / ${N_TASKS}  chemistry=${CHEMISTRY}"
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate /fred/oz304/beckers/KB
 
-python /fred/oz304/beckers/Chemistry/pipeline/plotting/plot_abmean_3dvs1d.py \
+python /fred/oz304/beckers/Chemistry/pipeline/plotting/plot_stats.py \
     --mode       accumulate         \
     --chemistry  "${CHEMISTRY}"     \
     --task-id    "${SLURM_ARRAY_TASK_ID}" \
