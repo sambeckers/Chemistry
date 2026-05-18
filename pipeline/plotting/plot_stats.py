@@ -79,7 +79,7 @@ from code_chem.run_plot_single_config_1D_model import (
     TARGET_MLOSS,
     TARGET_VELOCITY,
 )
-from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks
+from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, _collect_xy
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +239,7 @@ def _accumulate_dump(path: Path, species_list: list[str]):
                 except KeyError:
                     continue
 
+                # Mask unphysical values
                 mask = (
                     np.isfinite(r)  &
                     np.isfinite(ab) &
@@ -259,10 +260,10 @@ def _accumulate_dump(path: Path, species_list: list[str]):
                 idx   = np.digitize(r_ok, R_EDGES) - 1
                 valid = (idx >= 0) & (idx < N_BINS)
                 bin_sum   = np.bincount(idx[valid], weights=ab_ok[valid],
-                                        minlength=N_BINS)
+                                        minlength=N_BINS) # Sum of abundances in each radial bin
                 bin_count = np.bincount(idx[valid],
-                                        minlength=N_BINS).astype(np.int64)
-                hist_2d, _, _ = np.histogram2d(
+                                        minlength=N_BINS).astype(np.int64) # Count of particles in each radial bin
+                hist_2d, _, _ = np.histogram2d( 
                     r_ok, ab_ok,
                     bins=[R_EDGES, AB_EDGES],
                 )
@@ -493,7 +494,7 @@ def smooth_mean(
     sigma: float = SMOOTH_SIGMA,
 ) -> np.ndarray:
     with np.errstate(invalid="ignore", divide="ignore"):
-        mean = np.where(bin_count >= min_count, bin_sum / bin_count, np.nan)
+        mean = np.where(bin_count >= min_count, bin_sum / bin_count, np.nan) # Mean abundance in each radial bin
     if sigma <= 0:
         return mean
     log_mean = np.log10(mean)
@@ -582,7 +583,7 @@ def compute_percentile_bands(
                 continue
             idx = np.searchsorted(norm[i], frac, side="left")
             if idx < n_val_bins:
-                bands[i] = bin_centres[idx]
+                bands[i] = bin_centres[idx] # Value at the p-th percentile for this radial bin
         result[p] = bands
     return result
 
@@ -715,20 +716,6 @@ def plot_phys_params(
     """
     Three-panel figure (one panel per physical parameter) showing the
     radial mean alongside 16th–84th percentile shading.
-
-    Layout: three panels stacked vertically so they share the same
-    x-axis (radius).  Each panel uses independent y-axis limits derived
-    from the data, with log scales on both axes.
-
-    Design notes
-    ------------
-    •   Mean (solid line) is computed as the simple arithmetic mean per
-        radial bin — exactly as for chemical abundances.
-    •   Percentile bands are derived from the 2-D histogram accumulated
-        during the SLURM array job, so they are fully consistent with the
-        particle statistics and require no re-reading of dump files.
-    •   Unlike abundance plots there is no ≤ 1 upper-bound clipping;
-        smooth_mean_phys / smooth_band_phys are used instead.
     """
     n_params = len(PHYS_PARAMS)
     fig, axes = plt.subplots(
@@ -775,13 +762,15 @@ def plot_phys_params(
         ax.set_yscale("log")
         add_log_ticks(ax)
         ax.set_ylabel(cfg["label"], fontsize=13)
+        all_x, all_y = _collect_xy([ax])
+        ax.set_xlim(min(all_x), max(all_x))
         ax.legend(loc="best", fontsize=11)
 
         print(f"  {param}: {n_populated}/{N_BINS} bins above "
               f"MIN_COUNT={MIN_COUNT}, total particles = {n_particles:,}")
 
     axes[-1].set_xlabel("Radius [cm]", fontsize=14)
-    fig.suptitle("3D mean physical parameters vs radius", fontsize=14, y=1.01)
+    # fig.suptitle("3D mean physical parameters vs radius", fontsize=14, y=1.01)
 
     plt.tight_layout()
     fig.savefig(save_path, bbox_inches="tight", dpi=300)

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import numpy as np
 from matplotlib.ticker import LogLocator, NullFormatter
+from matplotlib import pyplot as plt
 
 
 # ---------------------------------------------------------------------------
@@ -158,3 +159,37 @@ def add_log_ticks(ax) -> None:
 
     # Dashed grid
     ax.grid(True, linestyle="--", alpha=0.8)
+
+def set_plot_style(dark_mode: bool = False) -> None:
+    if dark_mode:
+        plt.rcParams.update({
+            "text.usetex": True,
+            "font.family": "Times New Roman",
+            "font.sans-serif": "helvetica",
+
+            "figure.facecolor": "black",
+            "axes.facecolor": "black",
+            "savefig.facecolor": "black",
+
+            "text.color": "white",
+            "axes.labelcolor": "white",
+            "xtick.color": "white",
+            "ytick.color": "white",
+            "axes.edgecolor": "white",
+        })
+    else:
+        plt.rcParams.update({
+            "text.usetex": True,
+            "font.family": "Times New Roman",
+            "font.sans-serif": "helvetica",
+
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+
+            "text.color": "black",
+            "axes.labelcolor": "black",
+            "xtick.color": "black",
+            "ytick.color": "black",
+            "axes.edgecolor": "black",
+        })

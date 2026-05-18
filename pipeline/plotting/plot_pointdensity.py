@@ -2,12 +2,11 @@
 """
 plot_pointdensity.py
 
-Visualises the 2-D particle density (radius × value) for a single molecule
+Visualises the 2-D point density (radius × value) for a single molecule
 OR a physical parameter (temperature, AV, density) by reading the partial
 .npz files produced by the accumulate step of plot_stats.py.
 
-NO RE-RUNNING OF THE ACCUMULATION IS NEEDED — this script is purely a
-post-processing visualisation step that reuses what is already on disk.
+NO RE-RUNNING OF THE ACCUMULATION IS NEEDED
 
 Usage
 -----
@@ -19,7 +18,7 @@ Usage
     python plot_pointdensity.py --phys-param av           --chemistry Crich --n-tasks 32
     python plot_pointdensity.py --phys-param density      --chemistry Crich --n-tasks 32
 
-    # All three physical parameters in one go
+    # All three physical parameters in one go (single figure, 3 shared-x panels)
     python plot_pointdensity.py --phys-param all --chemistry Crich --n-tasks 32
 
 Optional flags
@@ -27,23 +26,8 @@ Optional flags
     --overlay-stats / --no-overlay-stats
         Overplot the mean and 16th/84th percentile bands (default: on).
 
-    --vmin, --vmax
-        Manual colour-scale limits. Useful when a handful of very dense
-        bins wash out the rest.
-
     --show
         Display the plot interactively.
-
-Why pcolormesh instead of hexbin?
-----------------------------------
-matplotlib's hexbin() requires all raw (x, y) pairs in memory.  With
-~6 billion data points that is not feasible.  The partial .npz files
-already contain a 2-D histogram H[r_bin, val_bin] accumulated in the same
-log-spaced grids used throughout this project.  Plotting that histogram
-with pcolormesh gives the same visual information as hexbin — colour
-encodes local density — while respecting the log-spaced geometry of the
-bins.  Hexagonal tiling would actually be *worse* here because our optimal
-bin boundaries already account for the logarithmic axes.
 """
 from __future__ import annotations
 
@@ -56,23 +40,9 @@ import matplotlib.colors as mcolors
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "Times New Roman",
-    "font.sans-serif": "helvetica",
-    "figure.facecolor": "black",
-    "axes.facecolor": "black",
-    "savefig.facecolor": "black",
-    "text.color": "white",
-    "axes.labelcolor": "white",
-    "xtick.color": "white",
-    "ytick.color": "white",
-    "axes.edgecolor": "white",
-})
-
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config import BASE_PATH
-from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks
+from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, set_plot_style, _collect_xy
 
 # ---------------------------------------------------------------------------
 # Grid constants — MUST match plot_stats.py exactly
@@ -335,24 +305,26 @@ def compute_stats(
 
 
 # ---------------------------------------------------------------------------
-# Core plot function (shared by species and physical parameters)
+# Plot functions
 # ---------------------------------------------------------------------------
 
 def plot_density(
-    title:          str,
     hist_2d:        np.ndarray,
     val_edges:      np.ndarray,
     val_label:      str,
     bin_sum:        np.ndarray,
     bin_count:      np.ndarray,
     val_centres:    np.ndarray,
-    clip_at_one:    bool        = False,
-    apply_ab_limits: bool       = False,
-    overlay_stats:  bool        = True,
+    title:          str | None = None,
+    param:          str | None = None,
+    clip_at_one:    bool         = False,
+    apply_ab_limits: bool        = False,
+    overlay_stats:  bool         = True,
     vmin:           float | None = None,
     vmax:           float | None = None,
     save_path:      Path | None  = None,
     show:           bool         = False,
+    dark_mode:      bool         = False,
 ) -> None:
     """
     Generic 2-D density plot on a log(r) × log(value) grid.
@@ -371,6 +343,7 @@ def plot_density(
     vmin, vmax     : manual colour-scale limits
     save_path      : where to write the figure (None = don't save)
     show           : call plt.show()
+    dark_mode      : use a dark background and colour scheme
     """
     h_float  = hist_2d.astype(np.float64)
     h_masked = np.ma.masked_where(h_float == 0, h_float)
@@ -380,7 +353,7 @@ def plot_density(
     _vmax   = vmax if vmax is not None else nonzero.max()
     norm    = mcolors.LogNorm(vmin=_vmin, vmax=_vmax)
 
-    fig, ax = plt.subplots(figsize=(9, 6), dpi=600)
+    fig, ax = plt.subplots(figsize=(9, 6), dpi=300)
 
     # pcolormesh: X = R_EDGES, Y = val_edges, C = h.T
     # hist_2d shape is (N_BINS [r], n_val_bins [value]);
@@ -402,23 +375,34 @@ def plot_density(
             val_centres=val_centres,
             clip_at_one=clip_at_one,
         )
+        primary_c_white = "white" if dark_mode else "k"
+        primary_c_k = "k" if dark_mode else "white"
         ax.plot(R_CENTRES, stats["mean"], lw=2.0, ls="-",
-                color="white", label="Mean", zorder=5)
+                color=primary_c_white, label="Mean", zorder=5)
         ax.plot(R_CENTRES, stats["p50"], lw=1.5, ls=":",
-                color="white", alpha=0.8, label="Median", zorder=5)
-        ax.fill_between(
-            R_CENTRES, stats["p16"], stats["p84"],
-            color="white", alpha=0.20, zorder=4,
-            label=r"16th–84th pct.",
-        )
+                color=primary_c_white, alpha=0.8, label="Median", zorder=5)
+        # ax.fill_between(
+        #     R_CENTRES, stats["p16"], stats["p84"],
+        #     color="white", alpha=0.20, zorder=4,
+        #     label=r"16th–84th pct.",
+        # )
         ax.legend(loc="lower left", fontsize=12,
-                  framealpha=0.6, labelcolor="white",
-                  facecolor="black")
+                  framealpha=0.6, labelcolor=primary_c_white,
+                  facecolor=primary_c_k)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
     if apply_ab_limits:
         apply_abundance_axis_limits(ax)
+    else:
+        all_x, all_y = _collect_xy([ax])
+        ax.set_xlim(min(all_x), max(all_x))
+        if param == "temperature":
+            ax.set_ylim(min(all_y), max(all_y)*4)  # add a bit of headroom to the upper limit
+        elif param == "av":
+            ax.set_ylim(min(all_y), max(all_y)*2)  # add a bit of headroom to the upper limit
+        elif param == "density":
+            ax.set_ylim(min(all_y), max(all_y)*10)  # add a bit of headroom to the upper limit
     add_log_ticks(ax)
 
     ax.set_xlabel("Radius [cm]", fontsize=13)
@@ -427,7 +411,7 @@ def plot_density(
 
     plt.tight_layout()
     if save_path is not None:
-        fig.savefig(save_path, bbox_inches="tight", dpi=600)
+        fig.savefig(save_path, bbox_inches="tight", dpi=300)
         print(f"Saved: {save_path}")
     if show:
         plt.show()
@@ -436,69 +420,102 @@ def plot_density(
 
 
 # ---------------------------------------------------------------------------
-# Convenience wrappers
+# Combined 3-panel figure for all physical parameters (shared x-axis)
 # ---------------------------------------------------------------------------
 
-def plot_molecule_density(
-    molecule:      str,
-    chemistry:     str,
-    bin_sum:       np.ndarray,
-    bin_count:     np.ndarray,
-    hist_2d:       np.ndarray,
-    overlay_stats: bool        = True,
-    vmin:          float | None = None,
-    vmax:          float | None = None,
-    save_path:     Path | None  = None,
-    show:          bool         = False,
+def plot_density_all_phys(
+    data_per_param: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
+    overlay_stats:  bool         = True,
+    vmin:           float | None = None,
+    vmax:           float | None = None,
+    save_path:      Path | None  = None,
+    show:           bool         = False,
+    dark_mode:      bool         = False,
 ) -> None:
-    """Density plot for a chemical species (abundance axis)."""
-    plot_density(
-        title           = rf"\textbf{{{molecule}}} — point density",
-        hist_2d         = hist_2d,
-        val_edges       = AB_EDGES,
-        val_label       = r"Abundance (wrt H$_{\mathrm{nuc}}$)",
-        bin_sum         = bin_sum,
-        bin_count       = bin_count,
-        val_centres     = AB_CENTRES,
-        clip_at_one     = True,
-        apply_ab_limits = True,
-        overlay_stats   = overlay_stats,
-        vmin            = vmin,
-        vmax            = vmax,
-        save_path       = save_path,
-        show            = show,
+    """
+    Plot all three physical parameters in a single figure with three
+    vertically stacked panels that share the x (radius) axis.
+
+    Parameters
+    ----------
+    data_per_param : dict mapping each param name to the
+                     (bin_sum, bin_count, hist_2d) tuple returned by
+                     aggregate_phys_param().
+    All other arguments have the same meaning as in plot_density().
+    """
+    params = list(PHYS_PARAMS)   # ["temperature", "av", "density"]
+    n      = len(params)
+
+    fig, axes = plt.subplots(
+        n, 1,
+        figsize=(9, 6 * n / 2.2),   # roughly the same height-per-panel as the single plots
+        sharex=True,
+        dpi=300,
     )
 
+    headroom = {"temperature": 4, "av": 2, "density": 10}
 
-def plot_phys_density(
-    param:         str,
-    bin_sum:       np.ndarray,
-    bin_count:     np.ndarray,
-    hist_2d:       np.ndarray,
-    overlay_stats: bool        = True,
-    vmin:          float | None = None,
-    vmax:          float | None = None,
-    save_path:     Path | None  = None,
-    show:          bool         = False,
-) -> None:
-    """Density plot for a physical parameter (param-specific value axis)."""
-    cfg = PHYS_PARAMS[param]
-    plot_density(
-        title           = rf"\textbf{{{param}}} — point density",
-        hist_2d         = hist_2d,
-        val_edges       = cfg["edges"],
-        val_label       = cfg["label"],
-        bin_sum         = bin_sum,
-        bin_count       = bin_count,
-        val_centres     = cfg["centres"],
-        clip_at_one     = False,   # physical params have no ≤ 1 constraint
-        apply_ab_limits = False,
-        overlay_stats   = overlay_stats,
-        vmin            = vmin,
-        vmax            = vmax,
-        save_path       = save_path,
-        show            = show,
-    )
+    for ax, param in zip(axes, params):
+        cfg                         = PHYS_PARAMS[param]
+        bin_sum, bin_count, hist_2d = data_per_param[param]
+
+        h_float  = hist_2d.astype(np.float64)
+        h_masked = np.ma.masked_where(h_float == 0, h_float)
+
+        nonzero = h_float[h_float > 0]
+        _vmin   = vmin if vmin is not None else nonzero.min()
+        _vmax   = vmax if vmax is not None else nonzero.max()
+        norm    = mcolors.LogNorm(vmin=_vmin, vmax=_vmax)
+
+        pcm = ax.pcolormesh(
+            R_EDGES, cfg["edges"],
+            h_masked.T,
+            cmap="plasma",
+            norm=norm,
+            rasterized=True,
+            shading="flat",
+        )
+        cbar = fig.colorbar(pcm, ax=ax, pad=0.02)
+        cbar.set_label("Particle count per bin", fontsize=10)
+
+        if overlay_stats:
+            stats = compute_stats(
+                bin_sum, bin_count, hist_2d,
+                val_centres=cfg["centres"],
+                clip_at_one=False,
+            )
+            primary_c_white = "white" if dark_mode else "k"
+            primary_c_k     = "k"     if dark_mode else "white"
+            ax.plot(R_CENTRES, stats["mean"], lw=2.0, ls="-",
+                    color=primary_c_white, label="Mean", zorder=5)
+            ax.plot(R_CENTRES, stats["p50"], lw=1.5, ls=":",
+                    color=primary_c_white, alpha=0.8, label="Median", zorder=5)
+            ax.legend(loc="lower left", fontsize=10,
+                      framealpha=0.6, labelcolor=primary_c_white,
+                      facecolor=primary_c_k)
+
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+
+        # y-axis limits (reuse the same headroom factors as plot_density)
+        all_x, all_y = _collect_xy([ax])
+        ax.set_xlim(min(all_x), max(all_x))
+        ax.set_ylim(min(all_y), max(all_y) * headroom[param])
+
+        add_log_ticks(ax)
+        ax.set_ylabel(cfg["label"], fontsize=12)
+
+    # x-label only on the bottom panel
+    axes[-1].set_xlabel("Radius [cm]", fontsize=13)
+
+    plt.tight_layout()
+    if save_path is not None:
+        fig.savefig(save_path, bbox_inches="tight", dpi=300)
+        print(f"Saved: {save_path}")
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
@@ -532,7 +549,7 @@ def main() -> None:
         choices=[*PHYS_PARAMS, "all"],
         help=(
             "Physical parameter to plot: 'temperature', 'av', 'density', "
-            "or 'all' to produce a separate figure for each."
+            "or 'all' to produce a single figure with all three panels."
         ),
     )
 
@@ -554,14 +571,17 @@ def main() -> None:
     parser.add_argument("--vmax", type=float, default=None,
                         help="Manual colour-scale upper limit.")
     parser.add_argument("--show", action="store_true")
+    parser.add_argument("--dark-mode", action="store_true",)
 
     if is_interactive():
         args = parser.parse_args([
-            "--phys-param",     "all",
+            # "--phys-param",     "all",
+            "--molecule",       "CH3CN",
             "--chemistry",      "Crich",
             "--n-tasks",        "32",
             "--overlay-stats",
             "--show",
+            # "--dark-mode",
         ])
     else:
         args = parser.parse_args()
@@ -569,40 +589,73 @@ def main() -> None:
     save_dir = SAVE_DIR_BASE / args.chemistry
     save_dir.mkdir(parents=True, exist_ok=True)
 
+    set_plot_style(args.dark_mode)
+
+    save_ext = "pdf" if args.dark_mode else "png"  # PDF better for dark
+
     if args.molecule:
         bin_sum, bin_count, hist_2d = aggregate_molecule(
             args.molecule, args.chemistry, args.n_tasks
         )
-        plot_molecule_density(
-            molecule      = args.molecule,
-            chemistry     = args.chemistry,
-            bin_sum       = bin_sum,
-            bin_count     = bin_count,
-            hist_2d       = hist_2d,
-            overlay_stats = args.overlay_stats,
-            vmin          = args.vmin,
-            vmax          = args.vmax,
-            save_path     = save_dir / f"particle_density_{args.molecule}.pdf",
-            show          = args.show,
-        )
+        plot_density(
+        title           = rf"{args.molecule}",
+        hist_2d         = hist_2d,
+        val_edges       = AB_EDGES,
+        val_label       = r"Abundance (wrt H$_{\mathrm{nuc}}$)",
+        bin_sum         = bin_sum,
+        bin_count       = bin_count,
+        val_centres     = AB_CENTRES,
+        clip_at_one     = True,
+        apply_ab_limits = True,
+        overlay_stats   = args.overlay_stats,
+        vmin            = args.vmin,
+        vmax            = args.vmax,
+        save_path       = save_dir / f"point_density_{args.molecule}.{save_ext}",
+        show            = args.show,
+        dark_mode       = args.dark_mode,
+    )
 
     else:
-        # Physical parameter(s)
-        params = list(PHYS_PARAMS) if args.phys_param == "all" else [args.phys_param]
-        for param in params:
+        if args.phys_param == "all":
+            # Aggregate all three parameters and plot them in one figure.
+            data_per_param = {}
+            for param in PHYS_PARAMS:
+                data_per_param[param] = aggregate_phys_param(
+                    param, args.chemistry, args.n_tasks
+                )
+            plot_density_all_phys(
+                data_per_param = data_per_param,
+                overlay_stats  = args.overlay_stats,
+                vmin           = args.vmin,
+                vmax           = args.vmax,
+                save_path      = save_dir / f"point_density_phys_all.{save_ext}",
+                show           = args.show,
+                dark_mode      = args.dark_mode,
+            )
+        else:
+            # Single physical parameter
+            param = args.phys_param
             bin_sum, bin_count, hist_2d = aggregate_phys_param(
                 param, args.chemistry, args.n_tasks
             )
-            plot_phys_density(
-                param         = param,
-                bin_sum       = bin_sum,
-                bin_count     = bin_count,
-                hist_2d       = hist_2d,
-                overlay_stats = args.overlay_stats,
-                vmin          = args.vmin,
-                vmax          = args.vmax,
-                save_path     = save_dir / f"particle_density_{param}.pdf",
-                show          = args.show,
+            cfg = PHYS_PARAMS[param]
+            plot_density(
+                hist_2d         = hist_2d,
+                val_edges       = cfg["edges"],
+                val_label       = cfg["label"],
+                bin_sum         = bin_sum,
+                bin_count       = bin_count,
+                val_centres     = cfg["centres"],
+                title           = None,
+                param           = param,
+                clip_at_one     = False,   # physical params have no ≤ 1 constraint
+                apply_ab_limits = False,
+                overlay_stats   = args.overlay_stats,
+                vmin            = args.vmin,
+                vmax            = args.vmax,
+                save_path       = save_dir / f"point_density_{param}.{save_ext}",
+                show            = args.show,
+                dark_mode       = args.dark_mode,
             )
 
 
