@@ -151,7 +151,7 @@ for _cfg in PHYS_PARAMS.values():
     _cfg["centres"] = np.sqrt(_cfg["edges"][:-1] * _cfg["edges"][1:])
 
 # Gaussian smooth width in bins (log-spaced); set 0 to disable
-SMOOTH_SIGMA = 0
+SMOOTH_SIGMA = 3
 
 # Bins with fewer particles than this are masked as NaN
 MIN_COUNT = 30
@@ -680,10 +680,10 @@ def plot_single_molecule_uncertainty(
     color = "#2166ac"
 
     ax.fill_between(r_grid, lo, hi, color=color, alpha=0.25,
-                    label=rf"${PERCENTILE_LO}$th–${PERCENTILE_HI}$th percentile")
-    ax.plot(r_grid, med, lw=1.5, ls=":", color=color, label="Median (50th pct.)")
-    ax.plot(r_grid, mean, lw=2.5, ls="-", color=color,
-            label=rf"Mean  ($N={n_particles:,}$)")
+                    label=rf"${PERCENTILE_LO}$th–${PERCENTILE_HI}$th pct.")
+    ax.plot(r_grid, med, lw=2.5, ls="-", color=color, label="Median")
+    ax.plot(r_grid, mean, lw=1.5, ls=":", color=color,
+            label=rf"Mean")
 
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -754,9 +754,9 @@ def plot_phys_params(
             label=rf"${PERCENTILE_LO}$th–${PERCENTILE_HI}$th percentile",
         )
         ax.plot(r_grid, med, lw=1.5, ls=":", color=color,
-                label="Median (50th pct.)")
+                label="Median")
         ax.plot(r_grid, mean, lw=2.5, ls="-", color=color,
-                label=rf"Mean  ($N={n_particles:,}$, {n_populated}/{N_BINS} bins)")
+                label=rf"Mean")
 
         ax.set_xscale("log")
         ax.set_yscale("log")
@@ -799,13 +799,13 @@ def plot_avg_abundances_compare_1d(
 
     for sp in parent_species:
         ax_par_3d.plot(r_grid, averages[sp], lw=3, color=species_colors[sp],
-                       label=f"{sp} (N={contributors[sp]:,})")
+                       label=f"{sp}")
     for sp in daughter_species:
         ax_dau_3d.plot(r_grid, averages[sp], lw=3, color=species_colors[sp],
-                       label=f"{sp} (N={contributors[sp]:,})")
+                       label=f"{sp}")
 
-    ax_par_3d.set_title("Parents — 3D average", fontsize=14)
-    ax_dau_3d.set_title("Daughters — 3D average", fontsize=14)
+    ax_par_3d.set_title("Parents — 3D median", fontsize=14)
+    ax_dau_3d.set_title("Daughters — 3D median", fontsize=14)
 
     for sp in parent_species:
         frac = get_fractional_abundance(fracs_1d, sp)
@@ -814,6 +814,7 @@ def plot_avg_abundances_compare_1d(
             continue
         ax_par_1d.plot(radius_1d, frac, lw=3, color=species_colors[sp],
                        label=sp)
+
     for sp in daughter_species:
         frac = get_fractional_abundance(fracs_1d, sp)
         if frac is None:
@@ -832,15 +833,17 @@ def plot_avg_abundances_compare_1d(
     for ax in axes.flat:
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.legend(loc="best", fontsize=9, ncol=3)
+        ax.legend(loc="best", fontsize=12, ncol=3)
         apply_abundance_axis_limits(ax)
         add_log_ticks(ax)
         ax.set_xlabel("Radius [cm]", fontsize=14)
+
     for ax in axes[:, 0]:
         ax.set_ylabel("Abundance (wrt H$_{nuc}$)", fontsize=14)
 
     plt.tight_layout()
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
+
     if show:
         plt.show()
     else:
@@ -852,47 +855,111 @@ def plot_avg_abundances_compare_1d(
 # ---------------------------------------------------------------------------
 
 def plot_compare_1d_grid(
-    r_grid, averages, contributors, chemistry, save_path,
-    show=False, n_per_panel=3,
+    r_grid,
+    averages,
+    contributors,
+    chemistry,
+    save_path,
+    histograms=None,
+    percentile_shading=False,
+    show=False,
+    n_per_panel=3,
+    max_rows=3,
 ):
-    parent_species, daughter_species, species_colors = get_species_and_colors(
+    FIXED_COLORS = ['k', '#1f77b4', '#ff7f0e']
+
+    parent_species, daughter_species, _ = get_species_and_colors(
         chemistry, set(averages)
     )
+
     radius_1d, fracs_1d, mloss_label, vinf_label = load_1d_data(chemistry)
 
     all_species = parent_species + [
         s for s in daughter_species if s not in parent_species
     ]
-    groups   = [all_species[i:i + n_per_panel]
-                for i in range(0, len(all_species), n_per_panel)]
+
+    groups = [
+        all_species[i:i + n_per_panel]
+        for i in range(0, len(all_species), n_per_panel)
+    ]
+
+    # Apply max_rows truncation
+    if max_rows is not None and max_rows > 0:
+        # Determine how many panels we would normally have
+        n_cols = min(3, len(groups))
+        max_panels = max_rows * n_cols
+        if len(groups) > max_panels:
+            groups = groups[:max_panels]
+
+    # Recompute grid dimensions based on the (possibly truncated) groups
     n_panels = len(groups)
-    n_cols   = min(4, n_panels)
+    n_cols   = min(3, n_panels)
     n_rows   = math.ceil(n_panels / n_cols)
 
     fig, axes = plt.subplots(
-        n_rows, n_cols,
+        n_rows,
+        n_cols,
         figsize=(5.2 * n_cols, 4.5 * n_rows),
-        dpi=300, sharex=True, sharey=False,
+        dpi=300,
+        sharex=True,
+        sharey=False,
     )
+
+    # Handle case where only one subplot exists
+    if n_rows == 1 and n_cols == 1:
+        axes = np.array([[axes]])
     axes_arr  = np.array(axes).reshape(n_rows, n_cols)
     axes_flat = axes_arr.flatten()
 
     for panel_idx, group in enumerate(groups):
         ax = axes_flat[panel_idx]
-        for sp in group:
-            color = species_colors[sp]
+
+        for i, sp in enumerate(group):
+            color = FIXED_COLORS[i % len(FIXED_COLORS)]
+
             if sp in averages:
-                ax.plot(r_grid, averages[sp], lw=3, color=color, ls="-",
-                        label=f"{sp} (N={contributors.get(sp, 0):,})")
+                if percentile_shading and histograms is not None:
+                    bands = compute_percentile_bands(
+                        histograms[sp],
+                        bin_centres=AB_CENTRES,
+                        percentiles=[PERCENTILE_LO, PERCENTILE_HI],
+                    )
+                    lo = smooth_band(bands[PERCENTILE_LO])
+                    hi = smooth_band(bands[PERCENTILE_HI])
+                    ax.fill_between(
+                        r_grid,
+                        lo,
+                        hi,
+                        color=color,
+                        alpha=0.15,
+                    )
+
+                ax.plot(
+                    r_grid,
+                    averages[sp],
+                    lw=3,
+                    color=color,
+                    ls="-",
+                    label=f"{sp}",
+                )
+
             frac_1d = get_fractional_abundance(fracs_1d, sp)
             if frac_1d is not None:
-                ax.plot(radius_1d, frac_1d, lw=3, color=color, ls="--")
+                ax.plot(
+                    radius_1d,
+                    frac_1d,
+                    lw=3,
+                    color=color,
+                    ls="--",
+                )
+
         ax.set_xscale("log")
         ax.set_yscale("log")
         ax.legend(loc="best", fontsize=12, ncol=1)
         apply_abundance_axis_limits(ax)
         add_log_ticks(ax)
 
+    # Hide any unused subplots (if truncation left some axes unused)
     for idx in range(n_panels, len(axes_flat)):
         axes_flat[idx].set_visible(False)
 
@@ -900,65 +967,100 @@ def plot_compare_1d_grid(
         for row_idx in range(n_rows - 1, -1, -1):
             if row_idx * n_cols + col_idx < n_panels:
                 axes_arr[row_idx, col_idx].set_xlabel(
-                    "Radius [cm]", fontsize=13
+                    "Radius [cm]",
+                    fontsize=13,
                 )
                 break
 
     for row_idx in range(n_rows):
         if row_idx * n_cols < n_panels:
             axes_arr[row_idx, 0].set_ylabel(
-                r"Abundance (wrt H$_{\mathrm{nuc}}$)", fontsize=13
+                r"Abundance (wrt H$_{\mathrm{nuc}}$)",
+                fontsize=13,
             )
 
     style_handles = [
-        Line2D([0], [0], color="k", lw=3, ls="-",  label="3D average"),
-        Line2D([0], [0], color="k", lw=3, ls="--",
-               label=f"1D ({mloss_label}, {vinf_label})"),
+        Line2D([0], [0], color="k", lw=3, ls="-", label="3D median"),
+        Line2D([0], [0], color="k", lw=3, ls="--", label=f"1D ({mloss_label}, {vinf_label})"),
     ]
-    fig.legend(handles=style_handles, loc="lower center", ncol=2,
-               fontsize=12, bbox_to_anchor=(0.5, 0.0), frameon=True)
+
+    fig.legend(
+        handles=style_handles,
+        loc="lower center",
+        ncol=2,
+        fontsize=12,
+        bbox_to_anchor=(0.5, 0.0),
+        frameon=True,
+    )
 
     plt.tight_layout(rect=[0, 0.04, 1, 1])
     fig.savefig(save_path, bbox_inches="tight", dpi=300)
+
     if show:
         plt.show()
     else:
         plt.close(fig)
-
-
 # ---------------------------------------------------------------------------
 # SLURM mode: plot-compare
 # ---------------------------------------------------------------------------
 
 def run_plot_compare(chemistry: str, n_tasks: int, show: bool = False) -> None:
     """Aggregate partials → smooth → produce 1D-comparison plots."""
+
     species_totals, _phys = aggregate_partials(chemistry, n_tasks)
 
     averages: dict[str, np.ndarray] = {}
     contributors: dict[str, int]    = {}
-    for sp, (bin_sum, bin_count, _hist) in species_totals.items():
-        averages[sp]     = smooth_mean(bin_sum, bin_count)
-        contributors[sp] = int(bin_count.sum())
-        n_pop = int((bin_count >= MIN_COUNT).sum())
-        print(f"  {sp}: {n_pop}/{N_BINS} bins above MIN_COUNT={MIN_COUNT}, "
-              f"total particles = {contributors[sp]:,}")
 
-    save_dir = SAVE_DIR_BASE / chemistry
+    for sp, (bin_sum, bin_count, hist_2d) in species_totals.items():
+
+        bands = compute_percentile_bands(
+            hist_2d,
+            bin_centres=AB_CENTRES,
+            percentiles=[50],
+        )
+
+        averages[sp] = smooth_band(bands[50])
+
+        contributors[sp] = int(bin_count.sum())
+
+        n_pop = int((bin_count >= MIN_COUNT).sum())
+
+        print(
+            f"  {sp}: {n_pop}/{N_BINS} bins above "
+            f"MIN_COUNT={MIN_COUNT}, "
+            f"total particles = {contributors[sp]:,}"
+        )
+
+    save_dir = SAVE_DIR_BASE / chemistry / 'ab'
     save_dir.mkdir(parents=True, exist_ok=True)
 
     plot_avg_abundances_compare_1d(
-        R_CENTRES, averages, contributors, chemistry,
-        save_dir / "ab_mean_compare1D.png",
+        R_CENTRES,
+        averages,
+        contributors,
+        chemistry,
+        save_dir / "ab_median_compare1D.png",
         show=show,
     )
-    print(f"Saved: {save_dir / 'ab_mean_compare1D.png'}")
+
+    print(f"Saved: {save_dir / 'ab_median_compare1D.png'}")
 
     plot_compare_1d_grid(
-        R_CENTRES, averages, contributors, chemistry,
-        save_dir / "ab_mean_compare1D_grid.png",
+        R_CENTRES,
+        averages,
+        contributors,
+        chemistry,
+        save_dir / "ab_median_compare1D_grid.png",
+        histograms={
+            sp: hist
+            for sp, (_, _, hist) in species_totals.items()
+        },
+        percentile_shading=True,
         show=show,
     )
-    print(f"Saved: {save_dir / 'ab_mean_compare1D_grid.png'}")
+
+    print(f"Saved: {save_dir / 'ab_median_compare1D_grid.png'}")
 
 
 # ---------------------------------------------------------------------------
@@ -989,7 +1091,7 @@ def run_plot_single(
     print(f"  {molecule}: {n_pop}/{N_BINS} bins with >= {MIN_COUNT} particles, "
           f"total = {int(bin_count.sum()):,}")
 
-    save_dir = SAVE_DIR_BASE / chemistry
+    save_dir = SAVE_DIR_BASE / chemistry / 'ab'
     save_dir.mkdir(parents=True, exist_ok=True)
 
     plot_single_molecule_uncertainty(
@@ -1024,7 +1126,7 @@ def run_plot_phys(
     """
     _species, phys_totals = aggregate_partials(chemistry, n_tasks)
 
-    save_dir = SAVE_DIR_BASE / chemistry
+    save_dir = SAVE_DIR_BASE / chemistry / 'ab'
     save_dir.mkdir(parents=True, exist_ok=True)
 
     plot_phys_params(
@@ -1090,7 +1192,7 @@ def main() -> None:
 
     if is_interactive():
         args = parser.parse_args([
-            "--mode",      "plot-phys",
+            "--mode",      "plot",
             "--chemistry", "Crich",
             "--n-tasks",   "32",
             "--show",

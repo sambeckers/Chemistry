@@ -63,9 +63,6 @@ SAVE_DIR_BASE = BASE_PATH / "figures/v10a09_out"
 N_SLICE_BINS  = 512     # bins per spatial axis (single-dump mode)
 MIN_PER_CELL  = 1       # cells with fewer particles are shown as NaN
 
-# Coordinate range used in accumulated mode (must match plot_stats_slice_patch.py)
-COORD_MAX_CM  = 1.05e17  # cm
-
 # Physical-parameter → HDF5 dataset key  (mirrors plot_stats.py)
 PHYS_HDF5_KEY: dict[str, str] = {
     "density":     "density",
