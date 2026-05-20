@@ -86,7 +86,7 @@ from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_t
 # Configuration — edit to match your setup
 # ---------------------------------------------------------------------------
 
-DUMP_DIR    = Path("/aphid/scratch-3month/sbeckers/v10a09_out/output/dumps")
+DUMP_DIR    = Path("/fred/oz304/beckers/v10a09_out/output/dumps")
 SCRATCH_DIR = Path("/aphid/scratch-3month/sbeckers/v10a09_out/accum_scratch")
 SAVE_DIR_BASE = BASE_PATH / "figures/v10a09_out"
 

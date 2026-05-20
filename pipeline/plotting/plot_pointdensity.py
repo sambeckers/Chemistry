@@ -34,6 +34,9 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+import os
+import contextlib
+import io
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -43,6 +46,16 @@ from scipy.ndimage import gaussian_filter1d
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config import BASE_PATH
 from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, set_plot_style, _collect_xy
+
+from code_chem.run_plot_single_config_1D_model import (
+    run_model,
+    find_star_for_config,
+    get_fractional_abundance,
+    TARGET_MLOSS,
+    TARGET_VELOCITY,
+)
+from kb.modeling.tools import CodeIO
+from kb import path as kb_path
 
 # ---------------------------------------------------------------------------
 # Grid constants — MUST match plot_stats.py exactly
@@ -98,6 +111,66 @@ for _cfg in PHYS_PARAMS.values():
                                   _cfg["n_bins"] + 1)
     _cfg["centres"] = np.sqrt(_cfg["edges"][:-1] * _cfg["edges"][1:])
 
+# ---------------------------------------------------------------------------
+# 1-D model loader 
+# ---------------------------------------------------------------------------
+
+def load_1d_data(chemistry: str):
+    if chemistry == "Crich":
+        inputfile = str(BASE_PATH /
+                        "KoekenBak/input/20251015_Sam_Mdot_Vinf_Crich.dat")
+    else:
+        inputfile = str(BASE_PATH /
+                        "KoekenBak/input/20251015_Sam_Mdot_Vinf_Orich.dat")
+    with contextlib.redirect_stdout(io.StringIO()), \
+         contextlib.redirect_stderr(io.StringIO()):
+            model = run_model(inputfile)
+            idx, star, mloss_label, vinf_label = find_star_for_config(
+                model, TARGET_MLOSS, TARGET_VELOCITY
+            )
+            folder = (os.path.join(kb_path.cout, "models",
+                                star["LAST_CHEMISTRY_MODEL"]) + "/")
+            radius_1d = CodeIO.getChemistryPhysPar(
+                folder + "csphyspar_smooth.out", "RADIUS"
+            )
+            fracs_1d  = CodeIO.getChemistryAbundances(folder + "csfrac_smooth.out")
+    print(f"Loaded 1D model")
+    return radius_1d, fracs_1d, mloss_label, vinf_label
+
+# ---------------------------------------------------------------------------
+# 1-D profile overlay
+# ---------------------------------------------------------------------------
+
+def overlay_1d_profile(
+    ax,
+    molecule:   str,
+    chemistry:  str,
+    color:      str  = "k",
+    lw:         float = 2.0,
+    ls:         str   = "-.",
+    label:      str | None = None,
+) -> None:
+    """
+    Overlay the 1-D chemistry model profile for *molecule* on *ax*.
+
+    Parameters
+    ----------
+    ax        : matplotlib Axes
+    molecule  : species name as it appears in the 1-D model output
+    chemistry : "Crich" or "Orich"
+    color     : line colour (default cyan for visibility on the plasma colourmap)
+    lw        : line width
+    ls        : line style
+    label     : legend label; if None, auto-generates "1D (<mloss>, <vinf>)"
+    """
+    radius_1d, fracs_1d, mloss_label, vinf_label = load_1d_data(chemistry)
+    frac = get_fractional_abundance(fracs_1d, molecule)
+    if frac is None:
+        print(f"  overlay_1d_profile: '{molecule}' not found in 1-D model — skipping.")
+        return
+    _label = label if label is not None else f"1D ({mloss_label}, {vinf_label})"
+    ax.plot(radius_1d, frac, lw=lw, ls=ls, color=color,
+            label=_label, zorder=6)
 
 # ---------------------------------------------------------------------------
 # Load & aggregate — chemical species
@@ -315,11 +388,14 @@ def plot_density(
     bin_sum:        np.ndarray,
     bin_count:      np.ndarray,
     val_centres:    np.ndarray,
-    title:          str | None = None,
-    param:          str | None = None,
+    title:          str | None   = None,
+    param:          str | None   = None,
     clip_at_one:    bool         = False,
     apply_ab_limits: bool        = False,
     overlay_stats:  bool         = True,
+    overlay_1d:     bool         = False,   
+    molecule:       str | None   = None,   
+    chemistry:      str          = "Crich",
     vmin:           float | None = None,
     vmax:           float | None = None,
     save_path:      Path | None  = None,
@@ -377,10 +453,10 @@ def plot_density(
         )
         primary_c_white = "white" if dark_mode else "k"
         primary_c_k = "k" if dark_mode else "white"
-        ax.plot(R_CENTRES, stats["mean"], lw=2.0, ls="-",
-                color=primary_c_white, label="Mean", zorder=5)
-        ax.plot(R_CENTRES, stats["p50"], lw=1.5, ls=":",
-                color=primary_c_white, alpha=0.8, label="Median", zorder=5)
+        ax.plot(R_CENTRES, stats["mean"], lw=1.5, ls=":",
+                color=primary_c_white, alpha=0.8, label="Mean", zorder=5)
+        ax.plot(R_CENTRES, stats["p50"], lw=2.0, ls="-",
+                color=primary_c_white, label="Median", zorder=5)
         # ax.fill_between(
         #     R_CENTRES, stats["p16"], stats["p84"],
         #     color="white", alpha=0.20, zorder=4,
@@ -389,11 +465,20 @@ def plot_density(
         ax.legend(loc="lower left", fontsize=12,
                   framealpha=0.6, labelcolor=primary_c_white,
                   facecolor=primary_c_k)
+        
+    if overlay_1d and molecule is not None:
+        overlay_1d_profile(ax, molecule=molecule, chemistry=chemistry)
+        ax.legend(loc="lower left", fontsize=12, framealpha=0.6)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
     if apply_ab_limits:
         apply_abundance_axis_limits(ax)
+        occupied_r = np.where(hist_2d.sum(axis=1) > 0)[0]
+        if len(occupied_r) > 0:
+            rmin = R_EDGES[occupied_r[0]]
+            rmax = R_EDGES[occupied_r[-1] + 1]
+            ax.set_xlim(rmin, rmax)
     else:
         all_x, all_y = _collect_xy([ax])
         ax.set_xlim(min(all_x), max(all_x))
@@ -541,8 +626,10 @@ def main() -> None:
 
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument(
-        "--molecule", type=str,
-        help="Chemical species to plot (e.g. CO, HCl).",
+        "--molecule",
+        nargs="+",
+        type=str,
+        help="Chemical species to plot (e.g. CO HCl SiO).",
     )
     target.add_argument(
         "--phys-param",
@@ -566,6 +653,10 @@ def main() -> None:
     parser.add_argument(
         "--no-overlay-stats", dest="overlay_stats", action="store_false",
     )
+    parser.add_argument(
+        "--overlay-1d", action="store_true", default=False,
+        help="Overlay the 1-D chemistry model profile (molecule mode only).",
+    )
     parser.add_argument("--vmin", type=float, default=None,
                         help="Manual colour-scale lower limit.")
     parser.add_argument("--vmax", type=float, default=None,
@@ -573,16 +664,16 @@ def main() -> None:
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dark-mode", action="store_true",)
 
+    mol_list = ["CO", "CH2", "CH3", "CH4", "HCl", "CH3CN", "SiO"]
     if is_interactive():
-        args = parser.parse_args([
-            # "--phys-param",     "all",
-            "--molecule",       "CH3CN",
-            "--chemistry",      "Crich",
-            "--n-tasks",        "32",
-            "--overlay-stats",
-            "--show",
-            # "--dark-mode",
-        ])
+            args = parser.parse_args([
+                "--molecule",       *mol_list,
+                "--chemistry",      "Crich",
+                "--n-tasks",        "32",
+                "--overlay-stats",
+                "--overlay-1d",
+                "--show",
+            ])
     else:
         args = parser.parse_args()
 
@@ -594,27 +685,34 @@ def main() -> None:
     save_ext = "pdf" if args.dark_mode else "png"  # PDF better for dark
 
     if args.molecule:
-        bin_sum, bin_count, hist_2d = aggregate_molecule(
-            args.molecule, args.chemistry, args.n_tasks
-        )
-        plot_density(
-        title           = rf"{args.molecule}",
-        hist_2d         = hist_2d,
-        val_edges       = AB_EDGES,
-        val_label       = r"Abundance (wrt H$_{\mathrm{nuc}}$)",
-        bin_sum         = bin_sum,
-        bin_count       = bin_count,
-        val_centres     = AB_CENTRES,
-        clip_at_one     = True,
-        apply_ab_limits = True,
-        overlay_stats   = args.overlay_stats,
-        vmin            = args.vmin,
-        vmax            = args.vmax,
-        save_path       = save_dir / f"point_density_{args.molecule}.{save_ext}",
-        show            = args.show,
-        dark_mode       = args.dark_mode,
-    )
+        for molecule in args.molecule:
 
+            print(f"\nProcessing molecule: {molecule}")
+
+            bin_sum, bin_count, hist_2d = aggregate_molecule(
+                molecule, args.chemistry, args.n_tasks
+            )
+
+            plot_density(
+                title           = rf"{molecule}",
+                hist_2d         = hist_2d,
+                val_edges       = AB_EDGES,
+                val_label       = r"Abundance (wrt H$_{\mathrm{nuc}}$)",
+                bin_sum         = bin_sum,
+                bin_count       = bin_count,
+                val_centres     = AB_CENTRES,
+                clip_at_one     = True,
+                apply_ab_limits = True,
+                overlay_stats   = args.overlay_stats,
+                overlay_1d      = args.overlay_1d,
+                molecule        = molecule,
+                chemistry       = args.chemistry,
+                vmin            = args.vmin,
+                vmax            = args.vmax,
+                save_path       = save_dir / f"point_density_{molecule}.{save_ext}",
+                show            = args.show,
+                dark_mode       = args.dark_mode,
+            )
     else:
         if args.phys_param == "all":
             # Aggregate all three parameters and plot them in one figure.
