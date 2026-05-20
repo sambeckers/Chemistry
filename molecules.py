@@ -4,7 +4,7 @@
 # Used in: convert_trace__run_models.py, convert_trace__run_models_parallel.py,
 #          inspect_particles.py, plot_evolution_all.py
 parents = ["CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN",
-           "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS"]
+           "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS", "SiC", "SiN"]
 
 # Parent molecules with He, Mg, Na, Fe (extended)
 # Used in: run_plot_models_Mdot_Vinf_var.py
@@ -14,7 +14,7 @@ parents_He_extended = ["He", "CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H
 # Daughter molecules — C-rich (includes CN)
 # Used in: convert_trace__run_models.py, convert_trace__run_models_parallel.py,
 #          inspect_particles.py, plot_evolution_all.py
-daughters_Crich = ['CN', 'CH2', 'CH3', 'C2H', 'C4H', 'C6H', 'CH3CN', 'HC3N', 'HC5N', 'HC7N']
+daughters_Crich = ['CN', 'CH2', 'CH3', 'C2H', 'C4H', 'C6H', 'CH3CN', 'HC3N', 'HC5N', 'HC7N', 'H2CS', 'H2CO']
 
 # Daughter molecules — C-rich (excludes CN)
 # Used in: run_plot_single_config_Mdot_Vinf.py (active),

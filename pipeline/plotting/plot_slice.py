@@ -4,7 +4,7 @@ plot_slice.py
 
 Plots a 2-D spatial slice (xy or xz plane) of any scalar field — or a
 product of two fields, e.g. n × CO fractional abundance — either from a
-*single HDF5 snapshot*
+single HDF5 snapshot
 
 Single-dump mode  (default, reads one snapshot directly)
 ---------------------------------------------------------
@@ -61,7 +61,6 @@ SAVE_DIR_BASE = BASE_PATH / "figures/v10a09_out"
 # ---------------------------------------------------------------------------
 
 N_SLICE_BINS  = 512     # bins per spatial axis (single-dump mode)
-SLICE_FRAC    = 0.02    # slab half-thickness as fraction of r_max
 MIN_PER_CELL  = 1       # cells with fewer particles are shown as NaN
 
 # Coordinate range used in accumulated mode (must match plot_stats_slice_patch.py)
@@ -252,9 +251,16 @@ def build_slice_map(
         q1 = read_field(f, quantity)
         q2 = read_field(f, times) if times is not None else None
 
-    q_label = f"{quantity} × {times}" if times is not None else quantity
+    if quantity == 'density':
+        q_label = rf"n{times} [m$^{-3}$]" if times is not None else r"$n$ [m$^{-3}$]"
+    elif quantity == 'temperature':
+        q_label = rf"$T${times} [K]" if times is not None else r"$T$ [K]"
+    elif quantity == 'av':
+        q_label = rf"$A_V${times} [mag]" if times is not None else r"$A_V$ [mag]"
+    else:
+        q_label = rf"{quantity} abundance (wrt H$_{{\mathrm{{nuc}}}}$)"
 
-    # Axis mapping (no slab: all particles projected onto the plane)
+    # Axis mapping
     if plane == "xy":
         ah, av_arr = x_all, y_all
         lh, lv     = "x [cm]", "y [cm]"
@@ -304,7 +310,7 @@ def build_slice_map(
         "h_label":   lh,
         "v_label":   lv,
         "q_label":   q_label,
-        "dump_name": dump_path.name,
+        "dump_name": dump_path.name.split(".")[0].split("_")[1],  # e.g. "dump_0042"
         "n_total":   n_total,
         "n_valid":   n_valid,
         "plane":     plane,
@@ -320,11 +326,11 @@ def plot_slice_map(
     yedges:    np.ndarray,
     mean_map:  np.ndarray,
     meta:      dict,
+    quantity:  str,
     log_scale: bool         = True,
     cmap:      str          = "inferno",
     vmin:      float | None = None,
     vmax:      float | None = None,
-    molecule:   str          = None,
     save_path: Path | None  = None,
     show:      bool         = False,
     dark_mode: bool         = False,
@@ -344,24 +350,21 @@ def plot_slice_map(
 
     fig, ax = plt.subplots(figsize=(8, 7), dpi=300)
 
-    data = mean_map.T * cm3_to_m3          # → (n_bins_v, n_bins_h)
+    data = mean_map.T * cm3_to_m3 if quantity == "density" else mean_map.T       
 
     finite_pos = data[np.isfinite(data) & (data > 0)]
     if len(finite_pos) == 0:
         print("  Warning: no finite positive values to plot — figure will be empty.")
         plt.close(fig)
         return
-
+    
     if log_scale:
-        _vmin = (vmin * cm3_to_m3) if vmin is not None else float(finite_pos.min())
-        _vmax = (vmax * cm3_to_m3) if vmax is not None else float(finite_pos.max())
-        norm  = mcolors.LogNorm(vmin=_vmin, vmax=_vmax)
+        norm = mcolors.LogNorm(vmin=finite_pos.min(), vmax=finite_pos.max())  
     else:
-        _vmin = (vmin * cm3_to_m3) if vmin is not None else float(data[np.isfinite(data)].min())
-        _vmax = (vmax * cm3_to_m3) if vmax is not None else float(data[np.isfinite(data)].max())
-        norm  = mcolors.Normalize(vmin=_vmin, vmax=_vmax)
+        norm = mcolors.Normalize(vmin=data[np.isfinite(data)].min(), vmax=data[np.isfinite(data)].max())
 
     masked = np.ma.masked_invalid(data)
+    
     pcm = ax.pcolormesh(
         xedges_kAU, yedges_kAU, masked,   # ← converted edges
         cmap       = cmap,
@@ -370,20 +373,18 @@ def plot_slice_map(
         shading    = "flat",
     )
     cbar = fig.colorbar(pcm, ax=ax, pad=0.02, fraction=0.046)
-    # cbar.set_label(meta["q_label"], fontsize=12)
-    cbar.set_label(rf"n$\mathrm{{{molecule}}}$ [m$^{{-3}}$]", fontsize=12)
+    cbar.set_label(meta["q_label"], fontsize=12)
+    # cbar.set_label(rf"n$\mathrm{{{molecule}}}$ [m$^{{-3}}$]", fontsize=12)
 
     h_label = meta["h_label"].replace("[cm]", r"[$10^3$ AU]")
     v_label = meta["v_label"].replace("[cm]", r"[$10^3$ AU]")
     ax.set_xlabel(h_label, fontsize=13)
     ax.set_ylabel(v_label, fontsize=13)
 
-
-    title = (
-        f"\n{meta['dump_name']}  |  "
+    title = (f"Dump {meta['dump_name']}"
 
     )
-    ax.set_title(title, fontsize=10)
+    ax.set_title(title, fontsize=14)
     ax.set_aspect("equal")
     ax.set_facecolor("black")
     ax.ticklabel_format(style="plain") 
@@ -436,14 +437,6 @@ def main() -> None:
         "--list-dumps", action="store_true",
         help="Print all available dump files with indices and sizes, then exit.",
     )
-    src.add_argument(
-        "--from-accum", action="store_true",
-        help=(
-            "Read from pre-accumulated slice histograms in the partial .npz "
-            "files (requires plot_stats.py run with --collect-slices). "
-            "Requires --chemistry and --n-tasks."
-        ),
-    )
 
     parser.add_argument(
         "--dump-dir", type=str, default=str(DUMP_DIR),
@@ -454,13 +447,6 @@ def main() -> None:
     parser.add_argument(
         "--plane", choices=["xy", "xz"], default="xy",
         help="Projection plane (default: xy).",
-    )
-    parser.add_argument(
-        "--slice-frac", type=float, default=SLICE_FRAC,
-        help=(
-            f"Slab half-thickness as fraction of r_max (default: {SLICE_FRAC})."
-            "  Increase if too few particles fall inside the slab."
-        ),
     )
     parser.add_argument(
         "--coord-lim", type=float, default=None,
@@ -525,7 +511,7 @@ def main() -> None:
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
-            "--plane",      "xy",
+            "--plane",      "xz",
             "--quantity",   "density",
             "--times",      "CO",
             "--chemistry",  "Crich",
@@ -550,13 +536,16 @@ def main() -> None:
 
     set_plot_style(args.dark_mode)
 
-    save_dir = SAVE_DIR_BASE / args.chemistry
+    save_dir = SAVE_DIR_BASE / args.chemistry / 'slice'
     save_dir.mkdir(parents=True, exist_ok=True)
     save_ext = "pdf" if args.dark_mode else "png"
 
     # Build a concise filename stem from the quantity
-    qty_str = (
-        f"{args.quantity}_x_{args.times}" if args.times else args.quantity
+    if args.quantity == "density":
+        qty_str = f"n{args.times}" if args.times else "density"
+    else:
+        qty_str = (
+            f"{args.quantity}{args.times}" if args.times else args.quantity
     )
     # ---- Single-dump mode --------------------------------------------------
     dump_path = resolve_dump(dump_dir, args.dump, args.dump_index)
@@ -566,23 +555,22 @@ def main() -> None:
         plane      = args.plane,
         quantity   = args.quantity,
         times      = args.times,
-        # slice_frac = args.slice_frac,
         n_bins     = args.n_bins,
         coord_lim  = args.coord_lim,
     )
 
-    dump_stem = dump_path.stem   # e.g. "dump_0042"
+    dump_stem = dump_path.stem.split("_")[-1]  # e.g. "0042" from /../dump_0042
     save_path = save_dir / f"slice_{args.plane}_{qty_str}_{dump_stem}.{save_ext}"
     plot_slice_map(
         xedges    = xedges,
         yedges    = yedges,
         mean_map  = mean_map,
         meta      = meta,
+        quantity  = args.quantity,
         log_scale = args.log_scale,
         cmap      = args.cmap,
         vmin      = args.vmin,
         vmax      = args.vmax,
-        molecule   = args.times if args.times else args.quantity,
         save_path = save_path,
         show      = args.show,
         dark_mode = args.dark_mode,
