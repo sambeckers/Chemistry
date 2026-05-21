@@ -667,13 +667,13 @@ def main() -> None:
     mol_list = ["CO", "CH2", "CH3", "CH4", "HCl", "CH3CN", "SiO", "HCN", "CN", "HC3N", "HC5N", "HC7N", "C2H", "C4H", "C6H", "SiC", "SiN", "H2CS", "H2CO"]
     if is_interactive():
             args = parser.parse_args([
-                # "--molecule",       *mol_list,
-                "--molecule",       "NH3",
+                "--molecule",       *mol_list,
+                # "--molecule",       "NH3",
                 "--chemistry",      "Crich",
                 "--n-tasks",        "32",
                 "--overlay-stats",
                 "--overlay-1d",
-                # "--show",
+                "--show",
             ])
     else:
         args = parser.parse_args()

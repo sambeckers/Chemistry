@@ -6,43 +6,9 @@ Computes mean molecular abundances vs radius by accumulating ALL HDF5 dump
 files from aphid, then plots those 3-D averages against the 1-D chemistry model.
 Also averages and plots physical parameters (temperature, AV, density).
 
-SLURM workflow
---------------
-Step 1 — accumulate (SLURM array, one task per chunk of dump files):
-
-    sbatch slurm_accumulate.sh
-
-    Each array task processes dump_files[task_id::n_tasks], accumulates
-    per-bin sums/counts AND a 2-D abundance histogram for every species,
-    and writes a partial .npz to SCRATCH_DIR.
-
-Step 2a — plot-compare (single job, depends on step 1):
-
-    sbatch --dependency=afterok:<jobid_step1> slurm_plot.sh
-
-    Loads and sums all partial .npz files, applies log-space Gaussian
-    smoothing, then produces two PNGs per chemistry:
-        ab_mean_compare1D.png       — 2×2 panel (3-D top, 1-D bottom)
-        ab_mean_compare1D_grid.png  — per-molecule grid (solid=3D, dashed=1D)
-
-Step 2b — plot-single (single job, depends on step 1):
-
-    sbatch --dependency=afterok:<jobid_step1> slurm_plot_single.sh
-
-    Aggregates partials and plots ONE molecule with 16th/84th percentile
-    shading to validate the uncertainty estimate before running the full grid.
-
-        python plot_stats.py --mode plot-single --molecule CO \\
-               --chemistry Crich --n-tasks 32
-
-Step 2c — plot-phys (single job, depends on step 1):
-
-    sbatch --dependency=afterok:<jobid_step1> slurm_plot_phys.sh
-
-    Aggregates partials and plots temperature, AV, and density vs radius,
-    each with 16th/84th percentile shading.
-
-        python plot_stats.py --mode plot-phys --chemistry Crich --n-tasks 32
+NEW: Particle subsampling mode (--mode plot-fraction-compare) allows testing
+the effect of using only 10% or 50% of particles (random, deterministic) on
+the derived abundance profiles.
 """
 from __future__ import annotations
 
@@ -205,23 +171,57 @@ def get_species_and_colors(chemistry: str, present: set[str]):
 
 
 # ---------------------------------------------------------------------------
-# Per-dump worker
+# Deterministic particle filter  (vectorised)
 # ---------------------------------------------------------------------------
 
-def _accumulate_dump(path: Path, species_list: list[str]):
+def _particle_keep_mask(
+    ids: np.ndarray,
+    fraction: float,
+    seed: int = 123456789,
+) -> np.ndarray:
     """
-    Read r, every requested species, and the three physical parameters from
-    one HDF5 dump.
+    Return a boolean mask selecting a deterministic ~*fraction* of particles.
+
+    The same particle ID always produces the same decision for a given
+    (fraction, seed) pair, so a particle present in multiple dumps is
+    consistently included or excluded across all of them.
+
+    Parameters
+    ----------
+    ids : np.ndarray of integer dtype
+        Unique particle IDs for one dump.
+    fraction : float
+        Target inclusion fraction in [0, 1].
+    seed : int
+        Change to draw a different reproducible sample from the same population.
 
     Returns
     -------
-    species_result : dict[str, tuple[sum, count, hist_2d]]
-        Per-species radial bin sums/counts/histograms (abundance axis).
-    phys_result : dict[str, tuple[sum, count, hist_2d]]
-        Per-physical-parameter radial bin sums/counts/histograms.
+    np.ndarray of bool, same length as *ids*.
+    """
+    if fraction >= 1.0 - 1e-9:
+        return np.ones(len(ids), dtype=bool)
+    if fraction <= 1e-9:
+        return np.zeros(len(ids), dtype=bool)
 
-    For species, abundances are additionally required to be ≤ 1.0.
-    Physical parameters only require the value to be finite and > 0.
+    # XOR the seed in so different seeds give different samples, then apply a
+    # Knuth multiplicative hash to spread sequential IDs across [0, 2^64).
+    # A particle is kept if its hash value falls in the lowest `fraction` of
+    # that range — equivalent to drawing a uniform float in [0, 1) and
+    # checking < fraction, but without any floating-point arithmetic.
+    h = (ids.astype(np.uint64) ^ np.uint64(seed)) * np.uint64(0x9E3779B97F4A7C15)
+    return h < np.uint64(int(fraction * 0xFFFF_FFFF_FFFF_FFFF))
+
+
+# ---------------------------------------------------------------------------
+# Per-dump worker
+# ---------------------------------------------------------------------------
+
+def _accumulate_dump(path: Path, species_list: list[str], fraction: float = 1.0):
+    """
+    Read r, particle IDs, every requested species, and physical parameters from
+    one HDF5 dump. Particles are filtered according to `fraction` using their
+    unique ID (deterministic). For fraction=1.0, all particles are kept.
     """
     import h5py
 
@@ -232,6 +232,13 @@ def _accumulate_dump(path: Path, species_list: list[str]):
         with h5py.File(path, "r") as f:
             r = f["particles/r"][:]
 
+            # Only read IDs and compute a keep-mask when actually subsampling.
+            # For fraction=1.0 every particle is included, so skip both.
+            if fraction < 1.0 - 1e-9:
+                keep_mask = _particle_keep_mask(f["particles/id"][:], fraction)
+            else:
+                keep_mask = None
+
             # --- Chemical species ---
             for species in species_list:
                 try:
@@ -239,7 +246,7 @@ def _accumulate_dump(path: Path, species_list: list[str]):
                 except KeyError:
                     continue
 
-                # Mask unphysical values
+                # Mask unphysical values + optional particle filter
                 mask = (
                     np.isfinite(r)  &
                     np.isfinite(ab) &
@@ -247,6 +254,8 @@ def _accumulate_dump(path: Path, species_list: list[str]):
                     (ab > 0)        &
                     (ab <= 1.0)
                 )
+                if keep_mask is not None:
+                    mask &= keep_mask
                 n_unphysical = (ab > 1.0).sum()
                 if n_unphysical > 0:
                     n_total = np.isfinite(ab).sum()
@@ -260,10 +269,10 @@ def _accumulate_dump(path: Path, species_list: list[str]):
                 idx   = np.digitize(r_ok, R_EDGES) - 1
                 valid = (idx >= 0) & (idx < N_BINS)
                 bin_sum   = np.bincount(idx[valid], weights=ab_ok[valid],
-                                        minlength=N_BINS) # Sum of abundances in each radial bin
+                                        minlength=N_BINS)
                 bin_count = np.bincount(idx[valid],
-                                        minlength=N_BINS).astype(np.int64) # Count of particles in each radial bin
-                hist_2d, _, _ = np.histogram2d( 
+                                        minlength=N_BINS).astype(np.int64)
+                hist_2d, _, _ = np.histogram2d(
                     r_ok, ab_ok,
                     bins=[R_EDGES, AB_EDGES],
                 )
@@ -277,14 +286,14 @@ def _accumulate_dump(path: Path, species_list: list[str]):
                 except KeyError:
                     continue
 
-                # Physical parameters just need to be finite and positive
-                # (log-space histogram requires > 0); no upper bound.
                 mask = (
                     np.isfinite(r)    &
                     np.isfinite(vals) &
                     (r    > 0)        &
                     (vals > 0)
                 )
+                if keep_mask is not None:
+                    mask &= keep_mask
                 r_ok, v_ok = r[mask], vals[mask]
                 if r_ok.size == 0:
                     continue
@@ -316,12 +325,14 @@ def accumulate_chunk(
     dump_files: list[Path],
     species_list: list[str],
     max_workers: int = MAX_WORKERS,
+    fraction: float = 1.0,
 ) -> tuple[
     dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
     dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
 ]:
     """
-    Accumulate bin sums/counts/histograms over *dump_files* using a thread pool.
+    Accumulate bin sums/counts/histograms over *dump_files* using a thread pool,
+    filtering particles according to `fraction`.
 
     Returns
     -------
@@ -346,7 +357,7 @@ def accumulate_chunk(
     }
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        futures = {pool.submit(_accumulate_dump, p, species_list): p
+        futures = {pool.submit(_accumulate_dump, p, species_list, fraction): p
                    for p in dump_files}
         for fut in tqdm(as_completed(futures), total=len(futures), desc="Dumps"):
             sp_res, phys_res = fut.result()
@@ -371,11 +382,12 @@ def accumulate_chunk(
 
 
 # ---------------------------------------------------------------------------
-# SLURM mode: accumulate
+# SLURM mode: accumulate (now with fraction)
 # ---------------------------------------------------------------------------
 
-def run_accumulate(task_id: int, n_tasks: int, chemistry: str) -> None:
-    """Process this task's slice of dump files and write a partial .npz."""
+def run_accumulate(task_id: int, n_tasks: int, chemistry: str, fraction: float = 1.0) -> None:
+    """Process this task's slice of dump files, filter particles by fraction,
+    and write a partial .npz with fraction encoded in the filename."""
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
 
     dump_files = sorted(DUMP_DIR.glob("dump_*.h5"))
@@ -384,13 +396,21 @@ def run_accumulate(task_id: int, n_tasks: int, chemistry: str) -> None:
 
     chunk = dump_files[task_id::n_tasks]
     print(f"Task {task_id + 1}/{n_tasks}: "
-          f"processing {len(chunk)}/{len(dump_files)} dumps")
+          f"processing {len(chunk)}/{len(dump_files)} dumps, "
+          f"fraction = {fraction:.1%}")
 
     species_list = get_all_species()
-    species_totals, phys_totals = accumulate_chunk(chunk, species_list)
+    species_totals, phys_totals = accumulate_chunk(chunk, species_list, fraction=fraction)
 
-    out_path = (SCRATCH_DIR /
-                f"partial_{chemistry}_{task_id:04d}_of_{n_tasks:04d}.npz")
+    # Fraction=1.0 uses the original filename format (no fraction suffix)
+    # so existing files remain valid without re-running the accumulate step.
+    if fraction >= 1.0 - 1e-9:
+        out_path = (SCRATCH_DIR /
+                    f"partial_{chemistry}_{task_id:04d}_of_{n_tasks:04d}.npz")
+    else:
+        frac_int = int(round(fraction * 100))
+        out_path = (SCRATCH_DIR /
+                    f"partial_{chemistry}_f{frac_int:03d}_{task_id:04d}_of_{n_tasks:04d}.npz")
     save_dict: dict[str, np.ndarray] = {}
 
     # Species data — keyed as  "<species>__sum" / "__count" / "__hist"
@@ -400,7 +420,6 @@ def run_accumulate(task_id: int, n_tasks: int, chemistry: str) -> None:
         save_dict[f"{sp}__hist"]  = h
 
     # Physical parameter data — keyed as  "phys__<param>__sum" etc.
-    # The "phys__" prefix avoids any collision with molecule names.
     for param, (s, c, h) in phys_totals.items():
         save_dict[f"phys__{param}__sum"]   = s
         save_dict[f"phys__{param}__count"] = c
@@ -411,34 +430,49 @@ def run_accumulate(task_id: int, n_tasks: int, chemistry: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Aggregation: merge all partial .npz files
+# Aggregation: merge all partial .npz files for a given chemistry and fraction
 # ---------------------------------------------------------------------------
 
 def aggregate_partials(
     chemistry: str,
     n_tasks: int,
+    fraction: float = 1.0,
 ) -> tuple[
     dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
     dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
 ]:
     """
-    Aggregate all partial .npz files produced by the accumulate step.
+    Aggregate all partial .npz files that match the given chemistry and fraction.
 
     Returns
     -------
     species_totals : dict[species -> (bin_sum, bin_count, hist_2d)]
         hist_2d shape: (N_BINS, N_AB_BINS)
     phys_totals    : dict[param  -> (bin_sum, bin_count, hist_2d)]
-        hist_2d shape: (N_BINS, cfg["n_bins"])  — param-specific bin count
+        hist_2d shape: (N_BINS, cfg["n_bins"])
     """
-    pattern = f"partial_{chemistry}_*_of_{n_tasks:04d}.npz"
+    # Fraction=1.0 matches the original filename format (no fraction tag).
+    # Fractional runs use the f<pct> prefix added in run_accumulate.
+    if fraction >= 1.0 - 1e-9:
+        # Match e.g. partial_Crich_0000_of_0032.npz (4-digit task ID, no f-prefix)
+        pattern = f"partial_{chemistry}_[0-9][0-9][0-9][0-9]_of_{n_tasks:04d}.npz"
+    else:
+        frac_int = int(round(fraction * 100))
+        pattern = f"partial_{chemistry}_f{frac_int:03d}_????_of_{n_tasks:04d}.npz"
     files   = sorted(SCRATCH_DIR.glob(pattern))
     if not files:
-        raise FileNotFoundError(
-            f"No partial files matching '{pattern}' in {SCRATCH_DIR}\n"
-            "Run the accumulate step first."
-        )
-    print(f"Aggregating {len(files)} partial files …")
+        if fraction >= 1.0 - 1e-9:
+            raise FileNotFoundError(
+                f"No partial files matching '{pattern}' in {SCRATCH_DIR}\n"
+                f"Run the accumulate step first (fraction=1.0 uses the original "
+                f"filename format without a fraction suffix)."
+            )
+        else:
+            raise FileNotFoundError(
+                f"No partial files matching '{pattern}' in {SCRATCH_DIR}\n"
+                f"Run the accumulate step with --fraction {fraction} first."
+            )
+    print(f"Aggregating {len(files)} partial files for fraction {fraction:.1%} …")
 
     species_totals: dict[str, list] = {}
     phys_totals:    dict[str, list] = {}
@@ -484,7 +518,7 @@ def aggregate_partials(
 
 
 # ---------------------------------------------------------------------------
-# Smoothing
+# Smoothing (unchanged)
 # ---------------------------------------------------------------------------
 
 def smooth_mean(
@@ -494,7 +528,7 @@ def smooth_mean(
     sigma: float = SMOOTH_SIGMA,
 ) -> np.ndarray:
     with np.errstate(invalid="ignore", divide="ignore"):
-        mean = np.where(bin_count >= min_count, bin_sum / bin_count, np.nan) # Mean abundance in each radial bin
+        mean = np.where(bin_count >= min_count, bin_sum / bin_count, np.nan)
     if sigma <= 0:
         return mean
     log_mean = np.log10(mean)
@@ -516,11 +550,9 @@ def smooth_mean_phys(
     min_count: int = MIN_COUNT,
     sigma: float = SMOOTH_SIGMA,
 ) -> np.ndarray:
-    """
-    Same log-space Gaussian smoothing as smooth_mean, but without the
-    abundance ≤ 1 upper-bound clipping that is only meaningful for
-    fractional abundances.
-    """
+    """Same log-space Gaussian smoothing as smooth_mean, but without the
+    abundance <= 1 upper-bound clipping that is only meaningful for
+    fractional abundances."""
     with np.errstate(invalid="ignore", divide="ignore"):
         mean = np.where(bin_count >= min_count, bin_sum / bin_count, np.nan)
     if sigma <= 0:
@@ -536,33 +568,13 @@ def smooth_mean_phys(
     return 10.0 ** log_smoothed
 
 
-# ---------------------------------------------------------------------------
-# Percentile bands from aggregated 2-D histogram
-# ---------------------------------------------------------------------------
-
 def compute_percentile_bands(
     hist_2d: np.ndarray,
     bin_centres: np.ndarray,
     percentiles: list[int] | None = None,
     min_count: int = MIN_COUNT,
 ) -> dict[int, np.ndarray]:
-    """
-    Derive per-radial-bin percentiles from an aggregated 2-D histogram.
-
-    Parameters
-    ----------
-    hist_2d : (N_BINS, n_val_bins) array
-        Aggregated particle counts in each (r_bin, value_bin) cell.
-    bin_centres : (n_val_bins,) array
-        Geometric centres of the value axis bins (species use AB_CENTRES;
-        physical parameters use their own cfg["centres"]).
-    percentiles : list of ints, default [PERCENTILE_LO, 50, PERCENTILE_HI]
-    min_count : int
-
-    Returns
-    -------
-    dict mapping each percentile integer to a (N_BINS,) array.
-    """
+    """Derive per-radial-bin percentiles from an aggregated 2-D histogram."""
     if percentiles is None:
         percentiles = [PERCENTILE_LO, 50, PERCENTILE_HI]
 
@@ -583,13 +595,13 @@ def compute_percentile_bands(
                 continue
             idx = np.searchsorted(norm[i], frac, side="left")
             if idx < n_val_bins:
-                bands[i] = bin_centres[idx] # Value at the p-th percentile for this radial bin
+                bands[i] = bin_centres[idx]
         result[p] = bands
     return result
 
 
 def smooth_band(arr: np.ndarray, sigma: float = SMOOTH_SIGMA) -> np.ndarray:
-    """Apply the same log-space Gaussian smoothing used for the mean."""
+    """Apply log-space Gaussian smoothing (for abundance)."""
     if sigma <= 0:
         return arr
     log_arr  = np.log10(arr)
@@ -606,7 +618,7 @@ def smooth_band(arr: np.ndarray, sigma: float = SMOOTH_SIGMA) -> np.ndarray:
 
 
 def smooth_band_phys(arr: np.ndarray, sigma: float = SMOOTH_SIGMA) -> np.ndarray:
-    """Log-space smoothing for physical-parameter percentile bands (no ≤1 clip)."""
+    """Log-space smoothing for physical-parameter percentile bands (no <= 1 clip)."""
     if sigma <= 0:
         return arr
     log_arr  = np.log10(arr)
@@ -621,7 +633,7 @@ def smooth_band_phys(arr: np.ndarray, sigma: float = SMOOTH_SIGMA) -> np.ndarray
 
 
 # ---------------------------------------------------------------------------
-# 1-D model loader
+# 1-D model loader (unchanged)
 # ---------------------------------------------------------------------------
 
 def load_1d_data(chemistry: str):
@@ -645,7 +657,7 @@ def load_1d_data(chemistry: str):
 
 
 # ---------------------------------------------------------------------------
-# Plot: single molecule with percentile shading
+# Plotting functions
 # ---------------------------------------------------------------------------
 
 def plot_single_molecule_uncertainty(
@@ -658,32 +670,27 @@ def plot_single_molecule_uncertainty(
     save_path:    Path,
     show:         bool = False,
 ) -> None:
-    """
-    Single-panel plot for one molecule showing:
-        • solid line  — 3-D mean abundance
-        • shaded band — 16th–84th percentile range
-    """
+    """Single-panel plot for one molecule showing 3-D mean, median, and percentiles."""
     mean = smooth_mean(bin_sum, bin_count)
-
-    bands = compute_percentile_bands(
-        hist_2d,
-        bin_centres=AB_CENTRES,
-        percentiles=[PERCENTILE_LO, 50, PERCENTILE_HI],
-    )
+    bands = compute_percentile_bands(hist_2d, AB_CENTRES)
     lo  = smooth_band(bands[PERCENTILE_LO])
     med = smooth_band(bands[50])
     hi  = smooth_band(bands[PERCENTILE_HI])
 
-    n_particles = int(bin_count.sum())
+    radius_1d, fracs_1d, mloss_label, vinf_label = load_1d_data(chemistry)
+    frac_1d = get_fractional_abundance(fracs_1d, molecule)
 
     fig, ax = plt.subplots(figsize=(8, 5), dpi=300)
     color = "#2166ac"
 
     ax.fill_between(r_grid, lo, hi, color=color, alpha=0.25,
-                    label=rf"${PERCENTILE_LO}$th–${PERCENTILE_HI}$th pct.")
+                    label=rf"${PERCENTILE_LO}$th--${PERCENTILE_HI}$th pct.")
     ax.plot(r_grid, med, lw=2.5, ls="-", color=color, label="Median")
-    ax.plot(r_grid, mean, lw=1.5, ls=":", color=color,
-            label=rf"Mean")
+    ax.plot(r_grid, mean, lw=1.5, ls=":", color=color, label="Mean")
+
+    if frac_1d is not None:
+            ax.plot(radius_1d, frac_1d, lw=2, ls="-.", color=color,
+                    label=f"1D ({mloss_label}, {vinf_label})")
 
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -691,7 +698,7 @@ def plot_single_molecule_uncertainty(
     add_log_ticks(ax)
     ax.set_xlabel("Radius [cm]", fontsize=14)
     ax.set_ylabel(r"Abundance (wrt H$_{\mathrm{nuc}}$)", fontsize=14)
-    ax.set_title(rf"\textbf{{{molecule}}} — 3D mean", fontsize=14)
+    ax.set_title(rf"\textbf{{{molecule}}}", fontsize=14)
     ax.legend(loc="best", fontsize=11)
 
     plt.tight_layout()
@@ -703,20 +710,13 @@ def plot_single_molecule_uncertainty(
         plt.close(fig)
 
 
-# ---------------------------------------------------------------------------
-# Plot: physical parameters — 3-panel figure
-# ---------------------------------------------------------------------------
-
 def plot_phys_params(
     r_grid:      np.ndarray,
     phys_totals: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
     save_path:   Path,
     show:        bool = False,
 ) -> None:
-    """
-    Three-panel figure (one panel per physical parameter) showing the
-    radial mean alongside 16th–84th percentile shading.
-    """
+    """Three-panel figure for temperature, AV, density."""
     n_params = len(PHYS_PARAMS)
     fig, axes = plt.subplots(
         n_params, 1,
@@ -751,12 +751,10 @@ def plot_phys_params(
         ax.fill_between(
             r_grid, lo, hi,
             color=color, alpha=0.25,
-            label=rf"${PERCENTILE_LO}$th–${PERCENTILE_HI}$th percentile",
+            label=rf"${PERCENTILE_LO}$th--${PERCENTILE_HI}$th percentile",
         )
-        ax.plot(r_grid, med, lw=1.5, ls=":", color=color,
-                label="Median")
-        ax.plot(r_grid, mean, lw=2.5, ls="-", color=color,
-                label=rf"Mean")
+        ax.plot(r_grid, med, lw=1.5, ls=":", color=color, label="Median")
+        ax.plot(r_grid, mean, lw=2.5, ls="-", color=color, label="Mean")
 
         ax.set_xscale("log")
         ax.set_yscale("log")
@@ -770,8 +768,6 @@ def plot_phys_params(
               f"MIN_COUNT={MIN_COUNT}, total particles = {n_particles:,}")
 
     axes[-1].set_xlabel("Radius [cm]", fontsize=14)
-    # fig.suptitle("3D mean physical parameters vs radius", fontsize=14, y=1.01)
-
     plt.tight_layout()
     fig.savefig(save_path, bbox_inches="tight", dpi=300)
     print(f"Saved: {save_path}")
@@ -781,13 +777,10 @@ def plot_phys_params(
         plt.close(fig)
 
 
-# ---------------------------------------------------------------------------
-# Plot 1 — 2×2 panel: 3-D top row, 1-D bottom row
-# ---------------------------------------------------------------------------
-
 def plot_avg_abundances_compare_1d(
     r_grid, averages, contributors, chemistry, save_path, show=False
 ):
+    """Original 2x2 panel (parents/daughters, 3D vs 1D)."""
     parent_species, daughter_species, species_colors = get_species_and_colors(
         chemistry, set(averages)
     )
@@ -798,37 +791,29 @@ def plot_avg_abundances_compare_1d(
     ax_par_1d, ax_dau_1d = axes[1, 0], axes[1, 1]
 
     for sp in parent_species:
-        ax_par_3d.plot(r_grid, averages[sp], lw=3, color=species_colors[sp],
-                       label=f"{sp}")
+        ax_par_3d.plot(r_grid, averages[sp], lw=3, color=species_colors[sp], label=f"{sp}")
     for sp in daughter_species:
-        ax_dau_3d.plot(r_grid, averages[sp], lw=3, color=species_colors[sp],
-                       label=f"{sp}")
+        ax_dau_3d.plot(r_grid, averages[sp], lw=3, color=species_colors[sp], label=f"{sp}")
 
-    ax_par_3d.set_title("Parents — 3D median", fontsize=14)
-    ax_dau_3d.set_title("Daughters — 3D median", fontsize=14)
+    ax_par_3d.set_title("Parents --- 3D median", fontsize=14)
+    ax_dau_3d.set_title("Daughters --- 3D median", fontsize=14)
 
     for sp in parent_species:
         frac = get_fractional_abundance(fracs_1d, sp)
         if frac is None:
             print(f"1-D: missing parent {sp}")
             continue
-        ax_par_1d.plot(radius_1d, frac, lw=3, color=species_colors[sp],
-                       label=sp)
+        ax_par_1d.plot(radius_1d, frac, lw=3, color=species_colors[sp], label=sp)
 
     for sp in daughter_species:
         frac = get_fractional_abundance(fracs_1d, sp)
         if frac is None:
             print(f"1-D: missing daughter {sp}")
             continue
-        ax_dau_1d.plot(radius_1d, frac, lw=3, color=species_colors[sp],
-                       label=sp)
+        ax_dau_1d.plot(radius_1d, frac, lw=3, color=species_colors[sp], label=sp)
 
-    ax_par_1d.set_title(
-        f"Parents — 1D ({mloss_label}, {vinf_label})", fontsize=14
-    )
-    ax_dau_1d.set_title(
-        f"Daughters — 1D ({mloss_label}, {vinf_label})", fontsize=14
-    )
+    ax_par_1d.set_title(f"Parents --- 1D ({mloss_label}, {vinf_label})", fontsize=14)
+    ax_dau_1d.set_title(f"Daughters --- 1D ({mloss_label}, {vinf_label})", fontsize=14)
 
     for ax in axes.flat:
         ax.set_xscale("log")
@@ -843,16 +828,11 @@ def plot_avg_abundances_compare_1d(
 
     plt.tight_layout()
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
-
     if show:
         plt.show()
     else:
         plt.close(fig)
 
-
-# ---------------------------------------------------------------------------
-# Plot 2 — per-molecule grid: solid = 3-D, dashed = 1-D
-# ---------------------------------------------------------------------------
 
 def plot_compare_1d_grid(
     r_grid,
@@ -866,6 +846,7 @@ def plot_compare_1d_grid(
     n_per_panel=3,
     max_rows=3,
 ):
+    """Per-molecule grid: solid=3-D median, dashed=1-D, optional percentile shading."""
     FIXED_COLORS = ['k', '#1f77b4', '#ff7f0e']
 
     parent_species, daughter_species, _ = get_species_and_colors(
@@ -883,15 +864,12 @@ def plot_compare_1d_grid(
         for i in range(0, len(all_species), n_per_panel)
     ]
 
-    # Apply max_rows truncation
     if max_rows is not None and max_rows > 0:
-        # Determine how many panels we would normally have
         n_cols = min(3, len(groups))
         max_panels = max_rows * n_cols
         if len(groups) > max_panels:
             groups = groups[:max_panels]
 
-    # Recompute grid dimensions based on the (possibly truncated) groups
     n_panels = len(groups)
     n_cols   = min(3, n_panels)
     n_rows   = math.ceil(n_panels / n_cols)
@@ -905,7 +883,6 @@ def plot_compare_1d_grid(
         sharey=False,
     )
 
-    # Handle case where only one subplot exists
     if n_rows == 1 and n_cols == 1:
         axes = np.array([[axes]])
     axes_arr  = np.array(axes).reshape(n_rows, n_cols)
@@ -959,7 +936,6 @@ def plot_compare_1d_grid(
         apply_abundance_axis_limits(ax)
         add_log_ticks(ax)
 
-    # Hide any unused subplots (if truncation left some axes unused)
     for idx in range(n_panels, len(axes_flat)):
         axes_flat[idx].set_visible(False)
 
@@ -1000,145 +976,161 @@ def plot_compare_1d_grid(
         plt.show()
     else:
         plt.close(fig)
+
+
 # ---------------------------------------------------------------------------
-# SLURM mode: plot-compare
+# Fraction comparison plot (1x3 panels)
+# ---------------------------------------------------------------------------
+
+def plot_fraction_comparison(
+    r_grid: np.ndarray,
+    results: dict[float, tuple[np.ndarray, np.ndarray, np.ndarray]],
+    molecule: str,
+    chemistry: str,
+    save_path: Path,
+    show: bool = False,
+) -> None:
+    """
+    1x3 panel figure comparing abundance profiles for different particle
+    subsampling fractions (10%, 50%, 100%).
+
+    Each panel shows the shaded 16th-84th percentile band, median (solid),
+    mean (dotted), and the 1-D model overlay (dashed red).
+    """
+    radius_1d, fracs_1d, mloss_label, vinf_label = load_1d_data(chemistry)
+    frac_1d = get_fractional_abundance(fracs_1d, molecule)
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5), dpi=300, sharex=True, sharey=True)
+
+    for ax, (fraction, (bin_sum, bin_count, hist_2d)) in zip(axes, sorted(results.items())):
+        mean = smooth_mean(bin_sum, bin_count)
+        bands = compute_percentile_bands(
+            hist_2d,
+            bin_centres=AB_CENTRES,
+            percentiles=[PERCENTILE_LO, 50, PERCENTILE_HI],
+        )
+        lo  = smooth_band(bands[PERCENTILE_LO])
+        med = smooth_band(bands[50])
+        hi  = smooth_band(bands[PERCENTILE_HI])
+
+        color = "#2166ac"
+        ax.fill_between(r_grid, lo, hi, color=color, alpha=0.25,
+                        label=f"{PERCENTILE_LO}--{PERCENTILE_HI} pct.")
+        ax.plot(r_grid, med, lw=2.5, ls="-",  color=color,     label="Median")
+        ax.plot(r_grid, mean, lw=1.5, ls=":", color=color,     label="Mean")
+        if frac_1d is not None:
+            ax.plot(radius_1d, frac_1d, lw=2, ls="-.", color=color,
+                    label=f"1D ({mloss_label}, {vinf_label})")
+
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_title(f"{int(fraction * 100)}\% of particles", fontsize=13, y=1.01)
+        ax.legend(loc="lower left", fontsize=10)
+        apply_abundance_axis_limits(ax)
+        add_log_ticks(ax)
+        ax.set_xlabel("Radius [cm]", fontsize=12)
+        if ax is axes[0]:
+            ax.set_ylabel(r"Abundance (wrt H$_{\mathrm{nuc}}$)", fontsize=12)
+
+    plt.suptitle(rf"{molecule}",fontsize=14)
+    plt.tight_layout()
+    fig.savefig(save_path, bbox_inches="tight", dpi=300)
+    print(f"Saved: {save_path}")
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# SLURM modes
 # ---------------------------------------------------------------------------
 
 def run_plot_compare(chemistry: str, n_tasks: int, show: bool = False) -> None:
-    """Aggregate partials → smooth → produce 1D-comparison plots."""
-
-    species_totals, _phys = aggregate_partials(chemistry, n_tasks)
+    """Aggregate partials (fraction=1.0) and produce 1D-comparison plots."""
+    species_totals, _phys = aggregate_partials(chemistry, n_tasks, fraction=1.0)
 
     averages: dict[str, np.ndarray] = {}
     contributors: dict[str, int]    = {}
 
     for sp, (bin_sum, bin_count, hist_2d) in species_totals.items():
-
-        bands = compute_percentile_bands(
-            hist_2d,
-            bin_centres=AB_CENTRES,
-            percentiles=[50],
-        )
-
+        bands = compute_percentile_bands(hist_2d, AB_CENTRES, percentiles=[50])
         averages[sp] = smooth_band(bands[50])
-
         contributors[sp] = int(bin_count.sum())
-
         n_pop = int((bin_count >= MIN_COUNT).sum())
-
-        print(
-            f"  {sp}: {n_pop}/{N_BINS} bins above "
-            f"MIN_COUNT={MIN_COUNT}, "
-            f"total particles = {contributors[sp]:,}"
-        )
+        print(f"  {sp}: {n_pop}/{N_BINS} bins above MIN_COUNT={MIN_COUNT}, "
+              f"total particles = {contributors[sp]:,}")
 
     save_dir = SAVE_DIR_BASE / chemistry / 'ab'
     save_dir.mkdir(parents=True, exist_ok=True)
 
     plot_avg_abundances_compare_1d(
-        R_CENTRES,
-        averages,
-        contributors,
-        chemistry,
-        save_dir / "ab_median_compare1D.png",
-        show=show,
+        R_CENTRES, averages, contributors, chemistry,
+        save_dir / "ab_median_compare1D.png", show=show,
     )
-
-    print(f"Saved: {save_dir / 'ab_median_compare1D.png'}")
-
     plot_compare_1d_grid(
-        R_CENTRES,
-        averages,
-        contributors,
-        chemistry,
+        R_CENTRES, averages, contributors, chemistry,
         save_dir / "ab_median_compare1D_grid.png",
-        histograms={
-            sp: hist
-            for sp, (_, _, hist) in species_totals.items()
-        },
-        percentile_shading=True,
-        show=show,
+        histograms={sp: hist for sp, (_, _, hist) in species_totals.items()},
+        percentile_shading=True, show=show,
     )
 
-    print(f"Saved: {save_dir / 'ab_median_compare1D_grid.png'}")
-
-
-# ---------------------------------------------------------------------------
-# SLURM mode: plot-single
-# ---------------------------------------------------------------------------
 
 def run_plot_single(
-    molecule:  str,
-    chemistry: str,
-    n_tasks:   int,
-    show:      bool = False,
+    molecule: str, chemistry: str, n_tasks: int, show: bool = False,
 ) -> None:
-    """
-    Aggregate partials for one molecule and produce an uncertainty plot.
-    """
-    species_totals, _phys = aggregate_partials(chemistry, n_tasks)
-
+    """Aggregate partials (fraction=1.0) for one molecule and plot uncertainty."""
+    species_totals, _phys = aggregate_partials(chemistry, n_tasks, fraction=1.0)
     if molecule not in species_totals:
         available = sorted(species_totals.keys())
-        raise KeyError(
-            f"Molecule '{molecule}' not found in partial files.\n"
-            f"Available: {available}"
-        )
+        raise KeyError(f"Molecule '{molecule}' not found.\nAvailable: {available}")
 
     bin_sum, bin_count, hist_2d = species_totals[molecule]
-
-    n_pop = int((bin_count >= MIN_COUNT).sum())
-    print(f"  {molecule}: {n_pop}/{N_BINS} bins with >= {MIN_COUNT} particles, "
-          f"total = {int(bin_count.sum()):,}")
-
     save_dir = SAVE_DIR_BASE / chemistry / 'ab'
     save_dir.mkdir(parents=True, exist_ok=True)
-
     plot_single_molecule_uncertainty(
-        r_grid    = R_CENTRES,
-        bin_sum   = bin_sum,
-        bin_count = bin_count,
-        hist_2d   = hist_2d,
-        molecule  = molecule,
-        chemistry = chemistry,
-        save_path = save_dir / f"ab_uncertainty_{molecule}.png",
-        show      = show,
+        R_CENTRES, bin_sum, bin_count, hist_2d, molecule, chemistry,
+        save_dir / f"ab_uncertainty_{molecule}.png", show=show,
     )
 
 
-# ---------------------------------------------------------------------------
-# SLURM mode: plot-phys
-# ---------------------------------------------------------------------------
+def run_plot_phys(chemistry: str, n_tasks: int, show: bool = False) -> None:
+    """Aggregate partials (fraction=1.0) and plot physical parameters."""
+    _species, phys_totals = aggregate_partials(chemistry, n_tasks, fraction=1.0)
+    save_dir = SAVE_DIR_BASE / chemistry / 'ab'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    plot_phys_params(R_CENTRES, phys_totals, save_dir / "phys_mean.png", show=show)
 
-def run_plot_phys(
-    chemistry: str,
-    n_tasks:   int,
-    show:      bool = False,
+
+def run_plot_fraction_compare(
+    molecule: str, chemistry: str, n_tasks: int, show: bool = False,
 ) -> None:
-    """
-    Aggregate partials and plot temperature, AV, and density vs radius.
-
-    Produces a single three-panel PNG:
-        phys_mean.png
-
-    Each panel shows the radial mean (solid) with 16th/84th percentile
-    shading, using the same 2-D histogram approach as chemical abundances.
-    """
-    _species, phys_totals = aggregate_partials(chemistry, n_tasks)
+    """Aggregate partials for fractions (10%, 50%, 100%) and create comparison plot."""
+    fractions = [0.1, 0.5, 1.0]
+    results = {}
+    for frac in fractions:
+        species_totals, _ = aggregate_partials(chemistry, n_tasks, fraction=frac)
+        if molecule not in species_totals:
+            available = sorted(species_totals.keys())
+            raise KeyError(
+                f"Molecule '{molecule}' not found in fraction {frac} data.\n"
+                f"Available: {available}"
+            )
+        results[frac] = species_totals[molecule]
+        n_pop = int((results[frac][1] >= MIN_COUNT).sum())
+        print(f"Fraction {frac:.0%}: {n_pop}/{N_BINS} bins, "
+              f"total particles = {int(results[frac][1].sum()):,}")
 
     save_dir = SAVE_DIR_BASE / chemistry / 'ab'
     save_dir.mkdir(parents=True, exist_ok=True)
-
-    plot_phys_params(
-        r_grid      = R_CENTRES,
-        phys_totals = phys_totals,
-        save_path   = save_dir / "phys_mean.png",
-        show        = show,
+    plot_fraction_comparison(
+        R_CENTRES, results, molecule, chemistry,
+        save_dir / f"ab_fraction_compare_{molecule}.png", show=show,
     )
 
 
 # ---------------------------------------------------------------------------
-# CLI
+# CLI and main
 # ---------------------------------------------------------------------------
 
 def is_interactive() -> bool:
@@ -1151,22 +1143,14 @@ def is_interactive() -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="3D abundance/physical-parameter averaging, uncertainty "
-                    "estimation, and comparison vs 1-D chemistry model."
+        description="3D abundance averaging, uncertainty estimation, and 1D comparison. "
+                    "Also supports particle subsampling tests."
     )
     parser.add_argument(
         "--mode",
-        choices=["accumulate", "plot", "plot-single", "plot-phys"],
+        choices=["accumulate", "plot", "plot-single", "plot-phys", "plot-fraction-compare"],
         required=True,
-        help=(
-            "'accumulate': process a chunk of dump files and write a "
-            "partial .npz (run as SLURM array job).  "
-            "'plot': aggregate all partials and produce 1D-comparison PNGs.  "
-            "'plot-single': aggregate and plot ONE molecule with "
-            "16th/84th percentile uncertainty shading.  "
-            "'plot-phys': aggregate and plot temperature, AV, and density "
-            "vs radius with 16th/84th percentile shading."
-        ),
+        help="Mode of operation. 'plot-fraction-compare' compares 10%%, 50%%, 100%% particle subsampling.",
     )
     parser.add_argument(
         "--chemistry", choices=["Crich", "Orich"], default="Crich",
@@ -1177,39 +1161,44 @@ def main() -> None:
     )
     parser.add_argument(
         "--n-tasks", type=int, default=1,
-        help="Total number of array tasks; must match between accumulate "
-             "and plot steps.",
+        help="Total number of array tasks; must match between accumulate and plot steps.",
     )
     parser.add_argument(
         "--molecule", type=str, default="CO",
-        help="Which molecule to plot (plot-single mode only).",
+        help="Which molecule to plot (plot-single or plot-fraction-compare mode).",
+    )
+    parser.add_argument(
+        "--fraction", type=float, default=1.0,
+        help="Fraction of particles to use (0.0-1.0). Only for accumulate mode.",
     )
     parser.add_argument(
         "--show", action="store_true",
-        help="Display plots interactively (plot modes only; "
-             "requires a display).",
+        help="Display plots interactively (plot modes only; requires a display).",
     )
 
     if is_interactive():
         args = parser.parse_args([
-            "--mode",      "plot",
+            "--mode", "plot-single",
             "--chemistry", "Crich",
-            "--n-tasks",   "32",
+            "--molecule", "CH2",
+            "--n-tasks", "32",
             "--show",
         ])
     else:
         args = parser.parse_args()
 
     if args.mode == "accumulate":
-        run_accumulate(args.task_id, args.n_tasks, args.chemistry)
+        if args.fraction < 0.0 or args.fraction > 1.0:
+            raise ValueError("--fraction must be between 0 and 1")
+        run_accumulate(args.task_id, args.n_tasks, args.chemistry, args.fraction)
     elif args.mode == "plot":
         run_plot_compare(args.chemistry, args.n_tasks, show=args.show)
     elif args.mode == "plot-single":
-        run_plot_single(
-            args.molecule, args.chemistry, args.n_tasks, show=args.show
-        )
-    else:  # plot-phys
+        run_plot_single(args.molecule, args.chemistry, args.n_tasks, show=args.show)
+    elif args.mode == "plot-phys":
         run_plot_phys(args.chemistry, args.n_tasks, show=args.show)
+    elif args.mode == "plot-fraction-compare":
+        run_plot_fraction_compare(args.molecule, args.chemistry, args.n_tasks, show=args.show)
 
 
 if __name__ == "__main__":
