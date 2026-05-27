@@ -605,7 +605,7 @@ def plot_fraction_compare(
     )
     cbar.set_label(meta_ref["q_label"], fontsize=12)
 
-    fig.suptitle(f"Dump {meta_ref['dump_name']}", fontsize=14, y=1.01)
+    fig.suptitle(f"Dump {meta_ref['dump_name']}", fontsize=14, y=0.90)
 
     if save_path is not None:
         fig.savefig(save_path, bbox_inches="tight", dpi=300)
@@ -692,7 +692,7 @@ def main() -> None:
             "--dump-index", "1581",
             "--plane",      "xz",
             # "--quantity",   *mol_list,
-            "--quantity," 
+            "--quantity",   "CO",
             "--chemistry",  "Crich",
             "--compare-fractions",
             "--interpolate",

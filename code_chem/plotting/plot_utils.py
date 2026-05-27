@@ -30,7 +30,7 @@ from __future__ import annotations
 import numpy as np
 from matplotlib.ticker import LogLocator, NullFormatter
 from matplotlib import pyplot as plt
-
+import re
 
 # ---------------------------------------------------------------------------
 # Internal helper
@@ -193,3 +193,88 @@ def set_plot_style(dark_mode: bool = False) -> None:
             "ytick.color": "black",
             "axes.edgecolor": "black",
         })
+
+# ============================================================================
+# Molecule / species LaTeX formatting
+# ============================================================================
+
+def format_species_label(species: str) -> str:
+    """
+    Convert a chemical species string into publication-quality LaTeX.
+
+    Examples
+    --------
+    CH4      -> $\mathrm{CH}_4$
+    H2O      -> $\mathrm{H}_2\mathrm{O}$
+    HCO+     -> $\mathrm{HCO}^+$
+    N2H+     -> $\mathrm{N}_2\mathrm{H}^+$
+    C18O     -> $\mathrm{C}^{18}\mathrm{O}$
+    13CO     -> $^{13}\mathrm{CO}$
+    H13CO+   -> $\mathrm{H}^{13}\mathrm{CO}^+$
+    """
+
+    s = species.strip()
+
+    # ----------------------------------------------------------------------
+    # Extract charge
+    # ----------------------------------------------------------------------
+    charge = ""
+    m = re.search(r"([+-]+)$", s)
+    if m:
+        charge = m.group(1)
+        s = s[:-len(charge)]
+
+    # ----------------------------------------------------------------------
+    # Tokenize:
+    #   isotope prefixes
+    #   element symbols
+    #   numeric subscripts
+    # ----------------------------------------------------------------------
+    tokens = re.findall(r"\d+|[A-Z][a-z]?", s)
+
+    out = []
+
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+
+        # --------------------------------------------------------------
+        # Leading isotope number
+        # Example: 13CO
+        # --------------------------------------------------------------
+        if tok.isdigit():
+            if i + 1 < len(tokens):
+                nxt = tokens[i + 1]
+                out.append(rf"^{{{tok}}}\mathrm{{{nxt}}}")
+                i += 2
+                continue
+
+        # --------------------------------------------------------------
+        # Element symbol
+        # --------------------------------------------------------------
+        # Element symbol
+        elem = r"\mathrm{{" + tok + r"}}"
+
+        # Following number becomes subscript
+        if i + 1 < len(tokens) and tokens[i + 1].isdigit():
+            num = tokens[i + 1]
+
+            # Heuristic:
+            # small numbers -> molecular subscript
+            # large numbers -> isotope superscript
+            if int(num) <= 9:
+                elem += rf"_{{{num}}}"
+            else:
+                elem += rf"^{{{num}}}"
+
+            i += 1
+
+        out.append(elem)
+        i += 1
+
+    body = "".join(out)
+
+    if charge:
+        body += rf"^{{{charge}}}"
+
+    return rf"${body}$"
