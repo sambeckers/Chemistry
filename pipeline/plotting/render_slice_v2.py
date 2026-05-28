@@ -10,7 +10,7 @@ Native Sarracen SPH rendering with:
 - interactive notebook defaults
 - consistent styling and formatting
 - AU → 10^3 AU tick formatting
-- optional column-density weighting (abundance × n_H2 [cm^-2])
+- optional column-density weighting (abundance × n_H2 [cm^-3])
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ import math
 import re
 import sys
 from pathlib import Path
+from astropy import units as u
 
 import h5py
 import matplotlib.pyplot as plt
@@ -346,8 +347,8 @@ def quantity_label(quantity: str, dens_weight: bool, col_dens: bool = False) -> 
         ρ-weighted qualifier to the label.
     col_dens:
         Whether the abundance has been multiplied by the H2 column
-        density [cm^-2], producing a column number density label
-        of the form n_species [cm^-2].
+        density [cm^-3], producing a column number density label
+        of the form n_species [cm^-3].
 
     Returns
     -------
@@ -357,17 +358,17 @@ def quantity_label(quantity: str, dens_weight: bool, col_dens: bool = False) -> 
     dw = r" ($\rho$-weighted)" if dens_weight else ""
 
     if quantity == "density":
-        return r"$n$ [cm$^{-3}$]"
+        return r"$n$ [cm$^{-2}$]"
     if quantity == "temperature":
         return rf"$T${dw} [K]"
     if quantity == "av":
         return rf"$A_V${dw} [mag]"
 
     if col_dens:
-        # e.g. "CO" → "$n_\mathrm{CO}$ [cm$^{-2}$]"
+        # e.g. "CO" → "$n^{\mathrm{CO}}$ [cm$^{-3}$]"
         spec = format_species_label(quantity)   # LaTeX species string
         spec_inner = spec.strip("$")            # strip outer $ if present
-        return rf"$n_{{\mathrm{{{spec_inner}}}}}$ [cm$^{{-2}}$]"
+        return rf"$n^{{\mathrm{{{spec_inner}}}}}$ [m$^{{-3}}$]"
 
     return rf"Abundance relative to $\mathrm{{H}}_2${dw}"
 
@@ -388,10 +389,10 @@ def prepare_render_dataframe(
     rows with NaN in the target quantity.
 
     If col_dens is True and the quantity is a chemical species, each
-    particle's abundance is multiplied by the H2 column density [cm^-2]
+    particle's abundance is multiplied by the H2 column density [cm^-3]
     read from the same HDF5 dump (key: particles/density).  The rendered
     quantity then represents the column number density of the species in
-    units of cm^-2.
+    units of cm^-3.
 
     Parameters
     ----------
@@ -405,7 +406,7 @@ def prepare_render_dataframe(
         Fraction of particles to retain (1.0 = all particles).
     col_dens:
         If True, multiply the abundance by the H2 column density
-        [cm^-2] stored under particles/density in the HDF5 dump.
+        [cm^-3] stored under particles/density in the HDF5 dump.
         Ignored for physical quantities (density, temperature, av).
 
     Returns
@@ -429,11 +430,11 @@ def prepare_render_dataframe(
         sdf = sdf[keep]
         print(f"Retained {keep.sum():,} / {n_total:,} particles")
 
-    # ---- Optional: multiply abundance by H2 column density [cm^-2] --------
+    # ---- Optional: multiply abundance by H2 column density [cm^-3] --------
     if col_dens and quantity not in PHYS_HDF5_KEY:
         with h5py.File(dump_path, "r") as f:
             hdf5_ids = f["particles/id"][:].astype(np.int64)
-            dens_raw = f["particles/density"][:]        # [cm^-2]
+            dens_raw = f["particles/density"][:]        # [cm^-3]
 
         sdf_ids         = sdf["iorig"].to_numpy(dtype=np.int64)
         sort_idx        = np.argsort(hdf5_ids)
@@ -443,8 +444,9 @@ def prepare_render_dataframe(
         matched         = hdf5_ids_sorted[ins_clamped] == sdf_ids
 
         dens_matched  = np.where(matched, dens_raw[sort_idx][ins_clamped], np.nan)
-        sdf[quantity] = sdf[quantity] * dens_matched
-        print(f"Multiplied {quantity} by H2 column density → units: cm^-2")
+        cm3_to_m3 = (1 * u.cm**-3).to(u.m**-3).value
+        sdf[quantity] = sdf[quantity] * dens_matched * cm3_to_m3
+        print(f"Multiplied {quantity} by H2 column density → units: cm^-3")
 
     # ------------------------------------------------------------------------
 
@@ -613,7 +615,7 @@ def render_quantity(
     xlim=None,
     xsec=None,
     dens_weight=False,
-    cmap="inferno",
+    cmap="gist_heat",
     log_scale=True,
     vmin=None,
     vmax=None,
@@ -752,8 +754,8 @@ def plot_single_render(
     show:
         If True, display the figure interactively; otherwise close it.
     col_dens:
-        If True, multiply abundance by H2 column density [cm^-2] before
-        rendering.  Colorbar label changes to n_species [cm^-2].
+        If True, multiply abundance by H2 column density [cm^-3] before
+        rendering.  Colorbar label changes to n_species [cm^-3].
     """
     sdf, meta = prepare_render_dataframe(
         phantom_path,
@@ -893,8 +895,8 @@ def plot_fraction_compare(
         FRACTIONS_3 ([0.10, 0.50, 1.00]).  Pass FRACTIONS_9
         for the 3 × 3 grid, or any custom list.
     col_dens:
-        If True, multiply abundance by H2 column density [cm^-2] before
-        rendering.  Colorbar label changes to n_species [cm^-2].
+        If True, multiply abundance by H2 column density [cm^-3] before
+        rendering.  Colorbar label changes to n_species [cm^-3].
     """
     if fractions is None:
         fractions = FRACTIONS_3
@@ -1099,10 +1101,10 @@ def load_render_config_lists(path):
                 else float(xlim)
             )
 
-            # dens_weight
-            dens_weight_list.append(
-                row["dens_weight"].strip().lower() == "true"
-            )
+            # # dens_weight
+            # dens_weight_list.append(
+            #     row["dens_weight"].strip().lower() == "true"
+            # )
 
             # xsec
             xsec = row["xsec"]
@@ -1111,17 +1113,17 @@ def load_render_config_lists(path):
                 else float(xsec)
             )
 
-            # log
-            log_list.append(
-                row["log"].strip().lower() == "true"
-            )
+            # # log
+            # log_list.append(
+            #     row["log"].strip().lower() == "true"
+            # )
 
     return (
         plane_list,
         xlim_list,
-        dens_weight_list,
+        # dens_weight_list,
         xsec_list,
-        log_list,
+        # log_list,
     )
 
 def _as_list(val, *, boolean=False):
@@ -1183,53 +1185,52 @@ def main():
     )
     parser.add_argument("--log", nargs="+", dest="log_scale", default=True)
     parser.add_argument("--no-log", dest="log_scale", action="store_false")
-    parser.add_argument("--cmap", type=str, default="inferno")
+    parser.add_argument("--cmap", type=str, default="gist_heat")
     parser.add_argument("--vmin", type=float, default=None)
     parser.add_argument("--vmax", type=float, default=None)
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dark-mode", action="store_true")
     parser.add_argument("--chemistry", choices=["Crich", "Orich"], default="Crich")
-    parser.add_argument(
-        "--col-dens",
-        action="store_true",
-        default=False,
-        help=(
-            "Multiply the rendered abundance by the H2 column density "
-            "[cm^-2] (key: particles/density in the HDF5 dump). "
-            "The colorbar label changes to n_species [cm^-2] and the "
-            "output filename gains a '_cd' suffix."
-        ),
-    )
+    parser.add_argument("--col-dens",action="store_true",default=False)
 
-    plane_list, xlim_list, dens_weight_list, xsec_list, log_list = load_render_config_lists("render_configs.txt")
-    mol_list = ["CO", "CH2", "CH3", "CH4", "HCl", "CH3CN", "SiO", "HCN", "CN", "HC3N", "HC5N", "HC7N", "C2H", "C4H", "C6H", "SiC", "SiN", "H2CS", "H2CO"]
+    # plane_list, xlim_list, xsec_list = load_render_config_lists("render_configs.txt")
 
+
+    mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN', 
+                'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
+                'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
+                'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
+    
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
-            "--plane", "xy",
-            "--quantity", "CO",
-            "--xlim", "100",
+            # "--plane", "xz",
+            "--quantity", *mol_list,
+            # "--xlim", "2000",
             # "--dens-weight", "True",
             # "--vmin", "1e-8",
-            # "--vmax", "1e-4",
-            "--xsec", "0",
-            "--log", "False",
+            # # "--vmax", "1e-4",
+            # "--xsec", "0",
+            # "--log", "False",
             # "--compare-fractions",
             # "--nine-fractions",
             # "--interpolate",
             "--col-dens",
-            "--show",
+            # "--show",
             # "--dark-mode",
         ])
     else:
         args = parser.parse_args()
 
+    # args.plane = plane_list
+    # args.xlim = xlim_list
+    # args.xsec = xsec_list
+
     args.plane       = _as_list(args.plane)
     args.xlim        = _as_list(args.xlim)
-    args.dens_weight = _as_list(args.dens_weight, boolean=True)
+    # args.dens_weight = _as_list(args.dens_weight, boolean=True)
     args.xsec        = _as_list(args.xsec)
-    args.log_scale   = _as_list(args.log_scale, boolean=True)
+    # args.log_scale   = _as_list(args.log_scale, boolean=True)
     set_plot_style(args.dark_mode)
 
     dump_dir = Path(args.dump_dir)
@@ -1257,21 +1258,37 @@ def main():
     fractions = FRACTIONS_9 if args.nine_fractions else FRACTIONS_3
 
     # Tag for column-density mode
-    cd_tag = "_cd" if args.col_dens else ""
+    cd_tag = "n" if args.col_dens else ""
+
+    def _save_dir(xlim: float | None, compare: bool) -> Path:
+        """Return the appropriate save subdirectory.
+
+        compare=True  → render/compare/zoom  or  render/compare/full
+        compare=False → render/zoom           or  render/full
+        """
+        spatial_tag = "zoom" if (xlim is not None and xlim <= 100) else "full"
+        base = SAVE_DIR_BASE / args.chemistry / "render"
+        if compare:
+            d = base / "compare" / spatial_tag
+        else:
+            d = base / spatial_tag
+        d.mkdir(parents=True, exist_ok=True)
+        return d
 
     for quantity in args.quantity:
-        for plane, xlim, dens_weight, xsec, log in zip(
-            args.plane, args.xlim, args.dens_weight, args.xsec, args.log_scale
+        for plane, xlim, xsec in zip(
+            args.plane, args.xlim, args.xsec,
         ):
-            xsec_tag  = f"_xsec{xsec:.0f}"      if xsec is not None else ""
-            dw_tag    = "_dw"                    if dens_weight      else ""
-            xlim_tag  = f"_xlim{xlim:.0f}AU"    if xlim is not None else ""
+            xsec_tag  = f"_xsec{xsec:.0f}"  if xsec is not None else ""
+            dw_tag    = "_dw"                if args.dens_weight      else ""
+            xlim_tag  = f"_{xlim:.0f}AU"    if xlim is not None else ""
 
             if args.compare_fractions:
                 frac_set_tag = "_frac9" if args.nine_fractions else "_frac3"
+                save_dir = _save_dir(xlim, compare=True)
                 save_path = save_dir / (
-                    f"render_{plane}_{quantity}_{dump_stem}"
-                    f"{xsec_tag}{dw_tag}{cd_tag}{xlim_tag}{frac_set_tag}_compare.{save_ext}"
+                    f"render_{plane}_{cd_tag}{quantity}_{dump_stem}"
+                    f"{xsec_tag}{dw_tag}{xlim_tag}{frac_set_tag}_compare.{save_ext}"
                 )
                 plot_fraction_compare(
                     phantom_path=phantom_path,
@@ -1280,9 +1297,9 @@ def main():
                     plane=plane,
                     xlim=xlim,
                     xsec=xsec,
-                    dens_weight=dens_weight,
+                    dens_weight=args.dens_weight,
                     interpolate=args.interpolate,
-                    log_scale=log,
+                    log_scale=args.log_scale,
                     cmap=args.cmap,
                     vmin=args.vmin,
                     vmax=args.vmax,
@@ -1293,9 +1310,10 @@ def main():
                 )
 
             else:
+                save_dir = _save_dir(xlim, compare=False)
                 save_path = save_dir / (
-                    f"render_{plane}_{quantity}_{dump_stem}"
-                    f"{xsec_tag}{dw_tag}{cd_tag}{xlim_tag}.{save_ext}"
+                    f"render_{plane}_{cd_tag}{quantity}_{dump_stem}"
+                    f"{xsec_tag}{dw_tag}{xlim_tag}.{save_ext}"
                 )
 
                 plot_single_render(
@@ -1306,9 +1324,9 @@ def main():
                     xlim=xlim,
                     xsec=xsec,
                     fraction=args.fraction,
-                    dens_weight=dens_weight,
+                    dens_weight=args.dens_weight,
                     interpolate=args.interpolate,
-                    log_scale=log,
+                    log_scale=args.log_scale,
                     cmap=args.cmap,
                     vmin=args.vmin,
                     vmax=args.vmax,
