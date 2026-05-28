@@ -26,18 +26,27 @@ Optional flags
     --overlay-stats / --no-overlay-stats
         Overplot the mean and 16th/84th percentile bands (default: on).
 
+    --overlay-1d
+        Overlay the 1-D chemistry model profile (molecule mode only).
+
+    --overlay-particle PARTICLE_ID
+        Overlay the radius-vs-value track of a single particle across all
+        HDF5 dump files (e.g. --overlay-particle 2073529).
+
     --show
         Display the plot interactively.
 """
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 import os
 import contextlib
 import io
 
+import h5py
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
@@ -61,6 +70,7 @@ from kb import path as kb_path
 # Grid constants — MUST match plot_stats.py exactly
 # ---------------------------------------------------------------------------
 
+DUMP_DIR      = Path("/fred/oz304/beckers/v10a09_out/output/dumps")
 SCRATCH_DIR   = Path("/aphid/scratch-3month/sbeckers/v10a09_out/accum_scratch")
 SAVE_DIR_BASE = BASE_PATH / "figures/v10a09_out"
 
@@ -84,6 +94,7 @@ SMOOTH_SIGMA = 0       # set > 0 to smooth the overlay lines
 
 PHYS_PARAMS: dict[str, dict] = {
     "temperature": {
+        "hdf5_key":  "temp",           # particles/<hdf5_key>
         "log_min":  0.0,    # 1 K
         "log_max":  6.0,    # 1 000 000 K
         "n_bins":   150,
@@ -91,6 +102,7 @@ PHYS_PARAMS: dict[str, dict] = {
         "color":    "#d6604d",
     },
     "av": {
+        "hdf5_key":  "av",
         "log_min": -6.0,    # 10^-6 mag
         "log_max":  1.0,    # 10 mag
         "n_bins":   150,
@@ -98,6 +110,7 @@ PHYS_PARAMS: dict[str, dict] = {
         "color":    "#4dac26",
     },
     "density": {
+        "hdf5_key":  "density",
         "log_min": -1.0,    # 0.1 cm^-3
         "log_max": 10.0,    # 10^10 cm^-3
         "n_bins":  150,
@@ -112,7 +125,7 @@ for _cfg in PHYS_PARAMS.values():
     _cfg["centres"] = np.sqrt(_cfg["edges"][:-1] * _cfg["edges"][1:])
 
 # ---------------------------------------------------------------------------
-# 1-D model loader 
+# 1-D model loader
 # ---------------------------------------------------------------------------
 
 def load_1d_data(chemistry: str):
@@ -145,7 +158,7 @@ def overlay_1d_profile(
     ax,
     molecule:   str,
     chemistry:  str,
-    color:      str  = "k",
+    color:      str   = "k",
     lw:         float = 2.0,
     ls:         str   = "-.",
     label:      str | None = None,
@@ -171,6 +184,158 @@ def overlay_1d_profile(
     _label = label if label is not None else f"1D ({mloss_label}, {vinf_label})"
     ax.plot(radius_1d, frac, lw=lw, ls=ls, color=color,
             label=_label, zorder=6)
+
+# ---------------------------------------------------------------------------
+# Single-particle track
+# ---------------------------------------------------------------------------
+
+def _normalise_species_key(name: str) -> str:
+    """
+    Convert a species name to its HDF5 dataset key under particles/.
+    Mirrors plot_stats.normalise_name exactly so keys always match.
+    """
+    s = name.strip().lower()
+    s = s.replace("+", "_plus").replace("-", "_minus").replace("/", "_")
+    s = s.replace("(", "_").replace(")", "_").replace(".", "_")
+    s = re.sub(r"[^a-z0-9_]+", "_", s)
+    s = re.sub(r"_+",           "_", s).strip("_")
+    return s
+
+
+def load_particle_track(
+    particle_id: int,
+    molecule:    str | None = None,
+    phys_param:  str | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Walk every HDF5 dump file and collect the radius + value history of
+    one particle, identified by its unique integer ID.
+
+    The search uses ``np.where(ids == particle_id)`` on the
+    ``particles/id`` array — no index structures required.
+
+    Parameters
+    ----------
+    particle_id : int
+        ID to search for (field: ``particles/id``).
+    molecule : str or None
+        Chemical species name.  The abundance is read from
+        ``particles/<normalised_key>`` where the key is derived by
+        ``_normalise_species_key(molecule)``, matching plot_stats.py.
+        Mutually exclusive with *phys_param*.
+    phys_param : str or None
+        One of ``"temperature"``, ``"av"``, ``"density"``.  The value is
+        read from ``particles/<hdf5_key>`` as defined in ``PHYS_PARAMS``.
+        Mutually exclusive with *molecule*.
+
+    Returns
+    -------
+    radii  : np.ndarray  — ``particles/r`` at each dump where the particle appears
+    values : np.ndarray  — abundance or physical-parameter value at each dump
+
+    Notes
+    -----
+    Results are sorted by radius (ascending) before being returned, so the
+    track always runs left-to-right on a log-radius plot.
+    """
+    if (molecule is None) == (phys_param is None):
+        raise ValueError("Provide exactly one of 'molecule' or 'phys_param'.")
+
+    if phys_param is not None and phys_param not in PHYS_PARAMS:
+        raise ValueError(
+            f"Unknown phys_param '{phys_param}'. Choose from: {list(PHYS_PARAMS)}"
+        )
+
+    dump_files = sorted(DUMP_DIR.glob("*.h5"))
+    if not dump_files:
+        raise FileNotFoundError(f"No .hdf5 dump files found in {DUMP_DIR}")
+
+    # Resolve the HDF5 field name once, before the loop
+    if molecule is not None:
+        value_field = f"particles/{_normalise_species_key(molecule)}"
+    else:
+        value_field = f"particles/{PHYS_PARAMS[phys_param]['hdf5_key']}"
+
+    radii:  list[float] = []
+    values: list[float] = []
+
+    for fpath in dump_files:
+        try:
+            with h5py.File(fpath, "r") as f:
+                ids = f["particles/id"][:]
+                (match,) = np.where(ids == particle_id)
+
+                if match.size == 0:
+                    continue                          # particle not in this dump
+
+                idx = int(match[0])
+                radii.append( float(f["particles/r"][idx]) )
+                values.append( float(f[value_field][idx])  )
+
+        except Exception as exc:
+            print(f"  load_particle_track: skipping {fpath.name}: {exc}")
+
+    if not radii:
+        raise ValueError(
+            f"Particle {particle_id} was not found in any of the "
+            f"{len(dump_files)} dump files under {DUMP_DIR}."
+        )
+
+    radii_arr  = np.array(radii,  dtype=np.float64)
+    values_arr = np.array(values, dtype=np.float64)
+    order      = np.argsort(radii_arr)
+
+    print(
+        f"  Particle {particle_id}: found in {len(radii_arr)} / "
+        f"{len(dump_files)} dumps."
+    )
+    return radii_arr[order], values_arr[order]
+
+
+def overlay_particle_track(
+    ax,
+    particle_id: int,
+    molecule:    str | None = None,
+    phys_param:  str | None = None,
+    color:       str        = "black",
+    lw:          float      = 1.5,
+    ms:          float      = 4.0,
+    label:       str | None = None,
+) -> None:
+    """
+    Overlay the radius-vs-value track of one particle on *ax*.
+
+    Drawn as a dashed line (``"--"``) with circular markers (``"o"``),
+    keeping it visually distinct from the solid median and dotted mean
+    lines already on the plot.
+
+    Parameters
+    ----------
+    ax          : matplotlib Axes
+    particle_id : int
+    molecule    : species name  (mutually exclusive with phys_param)
+    phys_param  : physical parameter key  (mutually exclusive with molecule)
+    color       : defaults to ``"black"``
+    lw          : line width
+    ms          : marker size
+    label       : legend entry; defaults to ``"Particle <id>"``
+    """
+    radii, values = load_particle_track(
+        particle_id = particle_id,
+        molecule    = molecule,
+        phys_param  = phys_param,
+    )
+
+    ax.plot(
+        radii, values,
+        linestyle  = "--",
+        marker     = "o",
+        markersize = ms,
+        linewidth  = lw,
+        color      = color,
+        label      = label if label is not None else f"Particle {particle_id}",
+        zorder     = 7,           # above density map (pcm) and stats lines
+    )
 
 # ---------------------------------------------------------------------------
 # Load & aggregate — chemical species
@@ -393,9 +558,10 @@ def plot_density(
     clip_at_one:    bool         = False,
     apply_ab_limits: bool        = False,
     overlay_stats:  bool         = True,
-    overlay_1d:     bool         = False,   
-    molecule:       str | None   = None,   
+    overlay_1d:     bool         = False,
+    molecule:       str | None   = None,
     chemistry:      str          = "Crich",
+    particle_id:    int | None   = None,
     vmin:           float | None = None,
     vmax:           float | None = None,
     save_path:      Path | None  = None,
@@ -416,6 +582,10 @@ def plot_density(
     clip_at_one    : clip smoothed lines at 1 (True for abundances only)
     apply_ab_limits: call apply_abundance_axis_limits() (True for species)
     overlay_stats  : draw mean + percentile lines
+    overlay_1d     : draw the 1-D chemistry model profile (molecule mode only)
+    molecule       : species name — used by overlay_1d and overlay_particle
+    chemistry      : "Crich" or "Orich"
+    particle_id    : if set, overlay the track of this single particle
     vmin, vmax     : manual colour-scale limits
     save_path      : where to write the figure (None = don't save)
     show           : call plt.show()
@@ -452,23 +622,30 @@ def plot_density(
             clip_at_one=clip_at_one,
         )
         primary_c_white = "white" if dark_mode else "k"
-        primary_c_k = "k" if dark_mode else "white"
+        primary_c_k     = "k"     if dark_mode else "white"
         ax.plot(R_CENTRES, stats["mean"], lw=1.5, ls=":",
                 color=primary_c_white, alpha=0.8, label="Mean", zorder=5)
         ax.plot(R_CENTRES, stats["p50"], lw=2.0, ls="-",
                 color=primary_c_white, label="Median", zorder=5)
-        # ax.fill_between(
-        #     R_CENTRES, stats["p16"], stats["p84"],
-        #     color="white", alpha=0.20, zorder=4,
-        #     label=r"16th–84th pct.",
-        # )
+
+    if overlay_1d and molecule is not None:
+        overlay_1d_profile(ax, molecule=molecule, chemistry=chemistry)
+
+    if particle_id is not None:
+        overlay_particle_track(
+            ax,
+            particle_id = particle_id,
+            molecule    = molecule,
+            phys_param  = param,
+        )
+
+    # Single legend call after all overlays so entries are always complete
+    if overlay_stats or overlay_1d or particle_id is not None:
+        primary_c_white = "white" if dark_mode else "k"
+        primary_c_k     = "k"     if dark_mode else "white"
         ax.legend(loc="lower left", fontsize=12,
                   framealpha=0.6, labelcolor=primary_c_white,
                   facecolor=primary_c_k)
-        
-    if overlay_1d and molecule is not None:
-        overlay_1d_profile(ax, molecule=molecule, chemistry=chemistry)
-        ax.legend(loc="lower left", fontsize=12, framealpha=0.6)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -483,11 +660,11 @@ def plot_density(
         all_x, all_y = _collect_xy([ax])
         ax.set_xlim(min(all_x), max(all_x))
         if param == "temperature":
-            ax.set_ylim(min(all_y), max(all_y)*4)  # add a bit of headroom to the upper limit
+            ax.set_ylim(min(all_y), max(all_y) * 4)
         elif param == "av":
-            ax.set_ylim(min(all_y), max(all_y)*2)  # add a bit of headroom to the upper limit
+            ax.set_ylim(min(all_y), max(all_y) * 2)
         elif param == "density":
-            ax.set_ylim(min(all_y), max(all_y)*10)  # add a bit of headroom to the upper limit
+            ax.set_ylim(min(all_y), max(all_y) * 10)
     add_log_ticks(ax)
 
     ax.set_xlabel("Radius [cm]", fontsize=13)
@@ -511,6 +688,7 @@ def plot_density(
 def plot_density_all_phys(
     data_per_param: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
     overlay_stats:  bool         = True,
+    particle_id:    int | None   = None,
     vmin:           float | None = None,
     vmax:           float | None = None,
     save_path:      Path | None  = None,
@@ -526,6 +704,8 @@ def plot_density_all_phys(
     data_per_param : dict mapping each param name to the
                      (bin_sum, bin_count, hist_2d) tuple returned by
                      aggregate_phys_param().
+    overlay_stats  : draw mean + median lines on every panel
+    particle_id    : if set, overlay the single-particle track on every panel
     All other arguments have the same meaning as in plot_density().
     """
     params = list(PHYS_PARAMS)   # ["temperature", "av", "density"]
@@ -533,7 +713,7 @@ def plot_density_all_phys(
 
     fig, axes = plt.subplots(
         n, 1,
-        figsize=(9, 6 * n / 2.2),   # roughly the same height-per-panel as the single plots
+        figsize=(9, 6 * n / 2.2),
         sharex=True,
         dpi=300,
     )
@@ -571,10 +751,22 @@ def plot_density_all_phys(
             )
             primary_c_white = "white" if dark_mode else "k"
             primary_c_k     = "k"     if dark_mode else "white"
-            ax.plot(R_CENTRES, stats["mean"], lw=2.0, ls="-",
-                    color=primary_c_white, label="Mean", zorder=5)
-            ax.plot(R_CENTRES, stats["p50"], lw=1.5, ls=":",
-                    color=primary_c_white, alpha=0.8, label="Median", zorder=5)
+            ax.plot(R_CENTRES, stats["mean"], lw=1.5, ls=":",
+                    color=primary_c_white, alpha=0.8, label="Mean", zorder=5)
+            ax.plot(R_CENTRES, stats["p50"], lw=2.0, ls="-",
+                    color=primary_c_white, label="Median", zorder=5)
+
+        if particle_id is not None:
+            overlay_particle_track(
+                ax,
+                particle_id = particle_id,
+                phys_param  = param,
+            )
+
+        # Single legend call after all overlays
+        if overlay_stats or particle_id is not None:
+            primary_c_white = "white" if dark_mode else "k"
+            primary_c_k     = "k"     if dark_mode else "white"
             ax.legend(loc="lower left", fontsize=10,
                       framealpha=0.6, labelcolor=primary_c_white,
                       facecolor=primary_c_k)
@@ -582,7 +774,6 @@ def plot_density_all_phys(
         ax.set_xscale("log")
         ax.set_yscale("log")
 
-        # y-axis limits (reuse the same headroom factors as plot_density)
         all_x, all_y = _collect_xy([ax])
         ax.set_xlim(min(all_x), max(all_x))
         ax.set_ylim(min(all_y), max(all_y) * headroom[param])
@@ -648,7 +839,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--overlay-stats", action="store_true", default=True,
-        help="Overplot mean + 16th/84th percentile lines (default: on).",
+        help="Overplot mean + median lines (default: on).",
     )
     parser.add_argument(
         "--no-overlay-stats", dest="overlay_stats", action="store_false",
@@ -657,66 +848,76 @@ def main() -> None:
         "--overlay-1d", action="store_true", default=False,
         help="Overlay the 1-D chemistry model profile (molecule mode only).",
     )
+    parser.add_argument(
+        "--overlay-particle",
+        type    = int,
+        default = None,
+        metavar = "PARTICLE_ID",
+        help    = (
+            "Overlay the radius-vs-value track of a single particle "
+            "(e.g. --overlay-particle 2073529)."
+        ),
+    )
     parser.add_argument("--vmin", type=float, default=None,
                         help="Manual colour-scale lower limit.")
     parser.add_argument("--vmax", type=float, default=None,
                         help="Manual colour-scale upper limit.")
     parser.add_argument("--show", action="store_true")
-    parser.add_argument("--dark-mode", action="store_true",)
+    parser.add_argument("--dark-mode", action="store_true")
 
-    mol_list = ["CO", "CH2", "CH3", "CH4", "HCl", "CH3CN", "SiO", "HCN", "CN", "HC3N", "HC5N", "HC7N", "C2H", "C4H", "C6H", "SiC", "SiN", "H2CS", "H2CO"]
+    mol_list = ["CO", "CH2", "CH3", "CH4", "HCl", "CH3CN", "SiO", "HCN", "CN",
+                "HC3N", "HC5N", "HC7N", "C2H", "C4H", "C6H", "SiC", "SiN",
+                "H2CS", "H2CO"]
     if is_interactive():
-            args = parser.parse_args([
-                "--molecule",       *mol_list,
-                # "--molecule",       "NH3",
-                "--chemistry",      "Crich",
-                "--n-tasks",        "32",
-                "--overlay-stats",
-                "--overlay-1d",
-                "--show",
-            ])
+        args = parser.parse_args([
+            "--molecule",       *mol_list,
+            "--chemistry",      "Crich",
+            "--n-tasks",        "32",
+            "--overlay-stats",
+            "--overlay-1d",
+            # "--overlay-particle", "2073529",
+            # "--show",
+        ])
     else:
         args = parser.parse_args()
 
-    save_dir = SAVE_DIR_BASE / args.chemistry / 'point_density'
+    save_dir = SAVE_DIR_BASE / args.chemistry / "point_density"
     save_dir.mkdir(parents=True, exist_ok=True)
 
     set_plot_style(args.dark_mode)
 
-    save_ext = "pdf" if args.dark_mode else "png"  # PDF better for dark
+    save_ext = "pdf" if args.dark_mode else "png"
 
     if args.molecule:
         for molecule in args.molecule:
-
             print(f"\nProcessing molecule: {molecule}")
 
             bin_sum, bin_count, hist_2d = aggregate_molecule(
                 molecule, args.chemistry, args.n_tasks
             )
-
             plot_density(
-                title           = rf"{molecule}",
-                hist_2d         = hist_2d,
-                val_edges       = AB_EDGES,
-                val_label       = r"Abundance (wrt H$_{\mathrm{nuc}}$)",
-                bin_sum         = bin_sum,
-                bin_count       = bin_count,
-                val_centres     = AB_CENTRES,
-                clip_at_one     = True,
-                apply_ab_limits = True,
-                overlay_stats   = args.overlay_stats,
-                overlay_1d      = args.overlay_1d,
-                molecule        = molecule,
-                chemistry       = args.chemistry,
-                vmin            = args.vmin,
-                vmax            = args.vmax,
-                save_path       = save_dir / f"point_density_{molecule}.{save_ext}",
-                show            = args.show,
-                dark_mode       = args.dark_mode,
+                title            = rf"{molecule}",
+                hist_2d          = hist_2d,
+                val_edges        = AB_EDGES,
+                val_label        = r"Abundance (wrt H$_{\mathrm{nuc}}$)",
+                bin_sum          = bin_sum,
+                bin_count        = bin_count,
+                val_centres      = AB_CENTRES,
+                clip_at_one      = True,
+                apply_ab_limits  = True,
+                overlay_stats    = args.overlay_stats,
+                overlay_1d       = args.overlay_1d,
+                molecule         = molecule,
+                chemistry        = args.chemistry,
+                particle_id      = args.overlay_particle,
+                vmin             = args.vmin,
+                vmax             = args.vmax,
+                save_path        = save_dir / f"point_density_{molecule}.{save_ext}",
+                show             = args.show,
+                dark_mode        = args.dark_mode,
             )
     else:
         if args.phys_param == "all":
-            # Aggregate all three parameters and plot them in one figure.
             data_per_param = {}
             for param in PHYS_PARAMS:
                 data_per_param[param] = aggregate_phys_param(
@@ -725,6 +926,7 @@ def main() -> None:
             plot_density_all_phys(
                 data_per_param = data_per_param,
                 overlay_stats  = args.overlay_stats,
+                particle_id    = args.overlay_particle,
                 vmin           = args.vmin,
                 vmax           = args.vmax,
                 save_path      = save_dir / f"point_density_phys_all.{save_ext}",
@@ -732,29 +934,29 @@ def main() -> None:
                 dark_mode      = args.dark_mode,
             )
         else:
-            # Single physical parameter
             param = args.phys_param
             bin_sum, bin_count, hist_2d = aggregate_phys_param(
                 param, args.chemistry, args.n_tasks
             )
             cfg = PHYS_PARAMS[param]
             plot_density(
-                hist_2d         = hist_2d,
-                val_edges       = cfg["edges"],
-                val_label       = cfg["label"],
-                bin_sum         = bin_sum,
-                bin_count       = bin_count,
-                val_centres     = cfg["centres"],
-                title           = None,
-                param           = param,
-                clip_at_one     = False,   # physical params have no ≤ 1 constraint
-                apply_ab_limits = False,
-                overlay_stats   = args.overlay_stats,
-                vmin            = args.vmin,
-                vmax            = args.vmax,
-                save_path       = save_dir / f"point_density_{param}.{save_ext}",
-                show            = args.show,
-                dark_mode       = args.dark_mode,
+                hist_2d          = hist_2d,
+                val_edges        = cfg["edges"],
+                val_label        = cfg["label"],
+                bin_sum          = bin_sum,
+                bin_count        = bin_count,
+                val_centres      = cfg["centres"],
+                title            = None,
+                param            = param,
+                clip_at_one      = False,
+                apply_ab_limits  = False,
+                overlay_stats    = args.overlay_stats,
+                particle_id      = args.overlay_particle,
+                vmin             = args.vmin,
+                vmax             = args.vmax,
+                save_path        = save_dir / f"point_density_{param}.{save_ext}",
+                show             = args.show,
+                dark_mode        = args.dark_mode,
             )
 
 

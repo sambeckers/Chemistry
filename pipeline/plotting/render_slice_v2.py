@@ -1142,16 +1142,16 @@ def main():
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
-            "--plane", "xz",
-            "--quantity", *mol_list,
-            "--xlim", "5000",
-            # "--dens-weight", "True",
+            # "--plane", "xz",
+            "--quantity", "CO",
+            "--xlim", "100",
+            "--dens-weight", "True",c
             # "--xsec", "",
             # "--log", "True",
             "--compare-fractions",
-            "--nine-fractions",
+            # "--nine-fractions",
             # "--interpolate",
-            # "--show",
+            "--show",
             # "--dark-mode",
         ])
         # print(f"Interactive mode:")
@@ -1159,11 +1159,11 @@ def main():
         # print(f"xsec: {args.xsec}")
         # print(f"Log scale: {args.log_scale}")
 
-        args.plane       = plane_list
-        args.xlim        = xlim_list
-        args.dens_weight = dens_weight_list
-        args.xsec        = xsec_list
-        args.log_scale   = log_list
+        # args.plane       = plane_list
+        # args.xlim        = xlim_list
+        # args.dens_weight = dens_weight_list
+        # args.xsec        = xsec_list
+        # args.log_scale   = log_list
     else:
         args = parser.parse_args()
 

@@ -686,17 +686,17 @@ def main() -> None:
     parser.add_argument("--show",       action="store_true")
     parser.add_argument("--dark-mode",  action="store_true")
 
-    # mol_list = ["CO", "CH2", "CH3", "CH4", "HCl", "CH3CN", "SiO", "HCN", "CN", "HC3N", "HC5N", "HC7N", "C2H", "C4H", "C6H", "SiC", "SiN", "H2CS", "H2CO"]
+    mol_list = ["CO", "CH2", "CH3", "CH4", "HCl", "CH3CN", "SiO", "HCN", "CN", "HC3N", "HC5N", "HC7N", "C2H", "C4H", "C6H", "SiC", "SiN", "H2CS", "H2CO"]
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
             "--plane",      "xz",
-            # "--quantity",   *mol_list,
-            "--quantity",   "CO",
+            "--quantity",   *mol_list,
+            # "--quantity",   "CO",
             "--chemistry",  "Crich",
             "--compare-fractions",
             "--interpolate",
-            "--show",
+            # "--show",
         ])
     else:
         args = parser.parse_args()
