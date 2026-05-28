@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Inspection Interface</title>
+    <style>
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1e1e1e;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s ease;
+        }
+        :root {
+            --bg: #1e1e1e;
+            --surface: #2d2d2d;
+            --border: #404040;
+            --text: #e0e0e0;
+            --muted: #a0a0a0;
+            --accent: #4a9eff;
+        }
+        body.light-mode {
+            background-color: #f5f5f5;
+        }
+        body.light-mode {
+            --bg: #f6f8fa;
+            --surface: #ffffff;
+            --border: #d0d7de;
+            --text: #24292f;
+            --muted: #57606a;
+            --accent: #0969da;
+        }
+        .header {
+            background-color: var(--surface);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            flex: 0 0 auto;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+        }
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 18px;
+            transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+        .theme-toggle:hover {
+            background-color: var(--border);
+            transform: scale(1.05);
+        }
+        .theme-toggle:active {
+            transform: scale(0.96);
+        }
+        .theme-toggle.ripple-active {
+            animation: themeTogglePop 0.38s cubic-bezier(0.22,0.68,0,1.4);
+        }
+        @keyframes themeTogglePop {
+            0%   { transform: scale(1); }
+            40%  { transform: scale(0.85) rotate(-12deg); }
+            70%  { transform: scale(1.18) rotate(8deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+            flex: 0 0 auto;
+        }
+        .mode-switch {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            overflow: hidden;
+            background: var(--bg);
+            transition: box-shadow 0.25s ease;
+            position: relative;
+        }
+        .mode-btn {
+            border: none;
+            background: transparent;
+            color: var(--text);
+            padding: 6px 12px;
+            margin: 0;
+            border-radius: 0;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: none;
+            transform: none;
+            transition: background-color 0.22s ease, color 0.22s ease, transform 0.18s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .mode-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.35) 50%, transparent 60%);
+            transform: translateX(-100%);
+            transition: none;
+            pointer-events: none;
+        }
+        .mode-btn.shimmer::after {
+            animation: btnShimmer 0.42s ease forwards;
+        }
+        @keyframes btnShimmer {
+            0%   { transform: translateX(-120%); }
+            100% { transform: translateX(160%); }
+        }
+        .mode-btn:hover {
+            background: var(--border);
+            box-shadow: none;
+            transform: none;
+        }
+        .mode-btn:active {
+            transform: scale(0.97);
+        }
+        .mode-btn.active {
+            background: var(--accent);
+            color: #ffffff;
+        }
+        .mode-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .navigation {
+            background-color: var(--surface);
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            flex: 0 0 auto;
+            z-index: 100;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .marker-help-text {
+            font-size: 11px;
+            color: var(--muted);
+            white-space: nowrap;
+            position: absolute;
+            left: 16px;
+        }
+        .nav-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        button {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--border) 100%);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 20px;
+            margin: 0 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background: linear-gradient(135deg, var(--border) 0%, var(--surface) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        button:disabled {
+            color: var(--muted);
+            background: var(--surface);
+            cursor: not-allowed;
+            opacity: 0.5;
+            transform: none;
+            box-shadow: none;
+        }
+        .content {
+            max-width: none;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0 auto;
+            padding: 6px 8px 8px;
+            background-color: var(--bg);
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .image-container {
+            text-align: center;
+            margin: 0;
+            flex: 1 1 auto;
+            min-height: 0;
+            position: relative;
+        }
+        .image-container iframe {
+            width: 100%;
+            height: 100%;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            min-height: 0;
+            transition: opacity 0.34s ease, transform 0.34s ease, filter 0.34s ease;
+        }
+        .image-container iframe.loading {
+            opacity: 0;
+            transform: scale(0.995);
+            filter: blur(1px);
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--surface);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            border-radius: 6px;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .loading-overlay.active {
+            display: flex;
+            opacity: 1;
+            backdrop-filter: blur(2px);
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: #ffb38a;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 500;
+            animation: loadingPulse 1.1s ease-in-out infinite;
+        }
+        @keyframes loadingPulse {
+            0%, 100% { opacity: 0.65; }
+            50% { opacity: 1; }
+        }
+        @keyframes buttonTap {
+            0% { transform: scale(1); }
+            45% { transform: scale(0.94); }
+            100% { transform: scale(1); }
+        }
+        .control-tap {
+            animation: buttonTap 0.22s ease;
+        }
+        @keyframes rippleOut {
+            0%   { opacity: 0.45; transform: scale(0); }
+            100% { opacity: 0;    transform: scale(2.8); }
+        }
+        .btn-ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.55);
+            pointer-events: none;
+            animation: rippleOut 0.5s ease-out forwards;
+        }
+        body.theme-transitioning .header,
+        body.theme-transitioning .content,
+        body.theme-transitioning .navigation,
+        body.theme-transitioning button:not(.particle-chip) {
+            transition: background-color 0.4s ease, color 0.4s ease,
+                        border-color 0.4s ease, box-shadow 0.4s ease !important;
+        }
+        body.theme-transitioning .particle-chip {
+            transition: background-color 0.4s ease, color 0.4s ease,
+                        border-color 0.4s ease, opacity 0.4s ease !important;
+        }
+        .info {
+            text-align: center;
+            color: var(--muted);
+            margin-top: 3px;
+            font-size: 13px;
+            flex: 0 0 auto;
+        }
+        .info p {
+            margin: 0;
+        }
+        .legend-wrap {
+            margin-top: 8px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            flex: 1 1 auto;
+            min-width: 0;
+            transition: opacity 0.2s ease;
+        }
+        .legend-title {
+            color: var(--text);
+            font-size: 13px;
+            margin-right: 8px;
+            font-weight: 500;
+        }
+        .particle-chip {
+            border: 1px solid rgba(255,160,122,0.3);
+            border-radius: 16px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            background-color: #ffb38a;
+            color: #ffffff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            opacity: 0.6;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        body.light-mode .particle-chip {
+            color: #1a1a1a;
+            text-shadow: none;
+        }
+        .particle-chip:hover {
+            transform: translateY(-2px);
+            opacity: 0.85;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .particle-chip.active {
+            opacity: 1;
+            color: #ffffff;
+            box-shadow: 0 0 0 3px rgba(255,160,122,0.6), 0 4px 12px rgba(255,160,122,0.4);
+            transform: scale(1.05);
+        }
+        body.light-mode .particle-chip.active {
+            color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="legend-wrap" id="particleLegend">
+            <span class="legend-title">Particles:</span>
+        </div>
+        <div class="header-controls">
+            <div class="mode-switch" id="modeSwitch">
+                <button id="mode3dBtn" class="mode-btn active" onclick="setMode('3D')">3D</button>
+                <button id="mode1dBtn" class="mode-btn" onclick="setMode('1D')">1D</button>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <span id="themeIcon">🌙</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="content">
+        <div class="image-container">
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="spinner"></div>
+                <div class="loading-text">Loading particle...</div>
+            </div>
+            <iframe id="particleFrame" src="" title="Particle inspection plot"></iframe>
+        </div>
+        <div class="info">
+            <p id="particleCount">Particle 1 of 1</p>
+        </div>
+    </div>
+    
+    <div class="navigation">
+        <div class="marker-help-text">Click a line to add marker &middot; Click marker to focus/unfocus &middot; Shift+click marker to remove &middot; ⌘+click to copy exact value</div>
+        <div class="nav-buttons">
+            <button id="prevBtn" onclick="changeParticle(-1)">← Previous</button>
+            <button id="nextBtn" onclick="changeParticle(1)">Next →</button>
+        </div>
+    </div>
+
+    <script>
+        const particles = [21549, 29823, 46371, 71193, 104290, 120838, 137386, 162209, 178757, 195305, 211853, 236676, 253224, 269772, 294594];
+        const has1DModel = true;
+        // Pastel orange palette
+        const orangePalette = ['#ffb38a', '#ffc5a3', '#ffd7bc', '#ffe0c9', '#ffead6', '#ffcba4', '#ffb891', '#ffa877', '#ff9e6d', '#ffbe9f', '#ffd4b8', '#ffa060', '#ffaa70', '#ffb580', '#ffc090'];
+        const legendColors = orangePalette.slice(0, particles.length);
+        let currentIndex = 0;
+        let currentMode = '3D';
+
+        function updateModeButtons() {
+            const mode3d = document.getElementById('mode3dBtn');
+            const mode1d = document.getElementById('mode1dBtn');
+            if (mode3d) mode3d.classList.toggle('active', currentMode === '3D');
+            if (mode1d) {
+                mode1d.classList.toggle('active', currentMode === '1D');
+                mode1d.disabled = !has1DModel;
+            }
+        }
+
+        function setMode(mode) {
+            if (mode === '1D' && !has1DModel) return;
+            if (mode !== '1D' && mode !== '3D') return;
+            const clicked = mode === '1D' ? document.getElementById('mode1dBtn') : document.getElementById('mode3dBtn');
+            shimmerBtn(clicked);
+            currentMode = mode;
+            updateModeButtons();
+            updateDisplay();
+        }
+
+        function shimmerBtn(el) {
+            if (!el) return;
+            el.classList.remove('shimmer');
+            void el.offsetWidth;
+            el.classList.add('shimmer');
+            el.addEventListener('animationend', () => el.classList.remove('shimmer'), { once: true });
+        }
+
+        function popThemeBtn(el) {
+            if (!el) return;
+            el.classList.remove('ripple-active');
+            void el.offsetWidth;
+            el.classList.add('ripple-active');
+            el.addEventListener('animationend', () => el.classList.remove('ripple-active'), { once: true });
+        }
+
+        function animateControlTap(el) {
+            if (!el) return;
+            el.classList.remove('control-tap');
+            void el.offsetWidth;
+            el.classList.add('control-tap');
+        }
+        
+        function toggleTheme() {
+            const themeBtn = document.querySelector('.theme-toggle');
+            popThemeBtn(themeBtn);
+            document.body.classList.add('theme-transitioning');
+            document.body.classList.toggle('light-mode');
+            setTimeout(() => document.body.classList.remove('theme-transitioning'), 500);
+            const icon = document.getElementById('themeIcon');
+            const isDark = !document.body.classList.contains('light-mode');
+            
+            if (document.body.classList.contains('light-mode')) {
+                icon.textContent = '☀️';
+            } else {
+                icon.textContent = '🌙';
+            }
+            
+            // Notify iframe about theme change
+            const iframe = document.getElementById('particleFrame');
+            if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'theme-change', isDark: isDark }, '*');
+            }
+        }
+        
+        // Listen for theme requests from iframes
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'request-theme') {
+                const isDark = !document.body.classList.contains('light-mode');
+                event.source.postMessage({ type: 'theme-change', isDark: isDark }, '*');
+            }
+        });
+
+        function buildLegend() {
+            const legend = document.getElementById('particleLegend');
+            particles.forEach((pid, idx) => {
+                const chip = document.createElement('button');
+                chip.className = 'particle-chip';
+                chip.id = `chip-${pid}`;
+                chip.textContent = pid;
+                chip.style.backgroundColor = legendColors[idx];
+                chip.onclick = () => {
+                    currentIndex = idx;
+                    updateDisplay();
+                };
+                legend.appendChild(chip);
+            });
+        }
+
+        function updateDisplay() {
+            const pid = particles[currentIndex];
+            const iframe = document.getElementById('particleFrame');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = document.querySelector('.loading-text');
+            const nav = document.querySelector('.navigation');
+            const legend = document.getElementById('particleLegend');
+            const info = document.getElementById('particleCount');
+            
+            // Show loading overlay
+            iframe.classList.add('loading');
+            loadingOverlay.classList.add('active');
+
+            const is3D = currentMode === '3D';
+            if (loadingText) loadingText.textContent = is3D ? 'Loading particle...' : 'Loading 1D model...';
+            if (nav) nav.style.display = is3D ? 'flex' : 'none';
+            if (legend) {
+                legend.style.visibility = is3D ? 'visible' : 'hidden';
+                legend.style.pointerEvents = is3D ? 'auto' : 'none';
+                legend.style.opacity = is3D ? '1' : '0';
+            }
+            
+            // Wait for fade-out transition to complete, then swap src
+            setTimeout(() => {
+                iframe.src = is3D ? `particle_${pid}.html` : 'model_1d_overview.html';
+                
+                // Send theme to new iframe after it loads
+                iframe.onload = function() {
+                    const isDark = !document.body.classList.contains('light-mode');
+                    iframe.contentWindow.postMessage({ type: 'theme-change', isDark: isDark }, '*');
+                    
+                    // Fade iframe back in smoothly
+                    setTimeout(() => {
+                        loadingOverlay.classList.remove('active');
+                        iframe.classList.remove('loading');
+                    }, 100);
+                };
+            }, 220);
+
+            if (is3D) {
+                info.textContent = `Particle ${currentIndex + 1} of ${particles.length}`;
+                document.getElementById('prevBtn').disabled = (currentIndex === 0);
+                document.getElementById('nextBtn').disabled = (currentIndex === particles.length - 1);
+            } else {
+                info.textContent = has1DModel
+                    ? '1D abundances and full-analysis outputs'
+                    : '1D model is not available';
+            }
+
+            // Interactive legend behavior: selected particle highlighted with outline
+            particles.forEach((particleId, idx) => {
+                const chip = document.getElementById(`chip-${particleId}`);
+                if (!chip) return;
+                if (is3D && idx === currentIndex) {
+                    chip.classList.add('active');
+                } else {
+                    chip.classList.remove('active');
+                }
+            });
+
+            resizeFrame();
+        }
+
+        function changeParticle(direction) {
+            currentIndex += direction;
+            if (currentIndex < 0) currentIndex = 0;
+            if (currentIndex >= particles.length) currentIndex = particles.length - 1;
+            updateDisplay();
+        }
+
+        function resizeFrame() {
+            const header = document.querySelector('.header');
+            const nav = document.querySelector('.navigation');
+            const info = document.querySelector('.info');
+            const content = document.querySelector('.content');
+            const frame = document.getElementById('particleFrame');
+            const headerH = header ? header.offsetHeight : 0;
+            const navH = nav ? nav.offsetHeight : 0;
+            const infoH = info ? info.offsetHeight : 0;
+            const contentStyle = window.getComputedStyle(content);
+            const padTop = parseFloat(contentStyle.paddingTop || '0');
+            const padBottom = parseFloat(contentStyle.paddingBottom || '0');
+            const available = window.innerHeight - headerH - navH - infoH - padTop - padBottom - 6;
+            frame.style.height = `${Math.max(460, available)}px`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (currentMode !== '3D') return;
+            if (event.key === 'ArrowLeft') {
+                changeParticle(-1);
+            } else if (event.key === 'ArrowRight') {
+                changeParticle(1);
+            }
+        });
+
+        window.addEventListener('resize', resizeFrame);
+
+        // Initialize
+        buildLegend();
+        updateModeButtons();
+        updateDisplay();
+    </script>
+</body>
+</html>
