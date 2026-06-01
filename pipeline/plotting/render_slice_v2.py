@@ -21,6 +21,7 @@ import re
 import sys
 from pathlib import Path
 from astropy import units as u
+import matplotlib
 
 import h5py
 import matplotlib.pyplot as plt
@@ -58,9 +59,16 @@ FONT_SIZE = 24
 # Physical parameter mapping
 # ===========================================================================
 PHYS_HDF5_KEY = {
-    "density": "density",
+    "density":     "density",
     "temperature": "temp",
-    "av": "av",
+    "av":          "av",
+}
+
+# Colourmap and label defaults per physical parameter used in overview plot
+PHYS_OVERVIEW_DEFAULTS = {
+    "temperature": dict(cmap="gist_heat",   label=r"$\log_{10}(T)$ [K]"),
+    "density":     dict(cmap="gist_heat",   label=r"$\log_{10}(n)$ [cm$^{-3}$]"),
+    "av":          dict(cmap="gist_heat",   label=r"$\log_{10}(A_V)$ [mag]"),
 }
 
 # Fraction sets -----------------------------------------------------------
@@ -101,24 +109,6 @@ def fill_nans_nearest(
     """
     Fill NaN cells near the particle boundary using NearestNDInterpolator,
     then apply a Gaussian blur in log-space to soften the choppy edges.
-
-    Parameters
-    ----------
-    arr          : (M, N) float array, may contain NaN
-    max_distance : cells further than this many grid pixels from the nearest
-                   populated cell are left as NaN (default: 5).
-                   Prevents the empty outer background from being filled.
-    smooth_sigma : standard deviation (grid pixels) of the log-space Gaussian
-                   applied after filling (default: 3.0).  Set to 0 to skip.
-                   Smoothing is done in log-space so the many-orders-of-
-                   magnitude dynamic range is handled uniformly; it uses a
-                   weighted average so remaining NaN cells don't bleed into
-                   valid data.
-
-    Returns
-    -------
-    Filled and smoothed copy of *arr*.  Cells beyond *max_distance* of any
-    populated cell remain NaN.
     """
     nan_mask = ~np.isfinite(arr)
     if not nan_mask.any():
@@ -126,12 +116,10 @@ def fill_nans_nearest(
     if nan_mask.all():
         return arr
 
-    # ---- 1. Identify cells to fill (within max_distance of a valid cell) ----
     distances = distance_transform_edt(nan_mask)
     close_mask = nan_mask & (distances <= max_distance)
 
     if close_mask.any():
-        # Build interpolator from all valid cells
         valid_rows, valid_cols = np.where(~nan_mask)
         interp = NearestNDInterpolator(
             np.column_stack([valid_rows, valid_cols]),
@@ -143,12 +131,10 @@ def fill_nans_nearest(
     else:
         filled = arr.copy()
 
-    # ---- 2. Log-space Gaussian smoothing ----
     if smooth_sigma > 0:
         has_data = np.isfinite(filled) & (filled > 0)
         log_arr  = np.where(has_data, np.log10(filled), 0.0)
 
-        # Weighted blur so NaN regions don't drag down valid edge cells
         blurred_log    = gaussian_filter(log_arr,                sigma=smooth_sigma)
         blurred_weight = gaussian_filter(has_data.astype(float), sigma=smooth_sigma)
 
@@ -219,19 +205,15 @@ def read_field_from_hdf5(f: h5py.File, name: str) -> np.ndarray:
     )
 
 # ===========================================================================
-# Chemistry matching
+# Chemistry (and physical param) field attachment
 # ===========================================================================
 def assign_chemistry_fields(
     sdf,
     dump_path: Path,
     fields: list[str],
 ):
-    """Attach chemistry abundance columns to a Sarracen DataFrame.
-
-    Reads particle IDs and abundance arrays from the HDF5 dump, then
-    matches them to the particles already loaded in sdf via their
-    iorig IDs. Unmatched particles receive NaN. Columns that fail the
-    validity check (_field_mask) are also set to NaN.
+    """Attach chemistry abundance columns (and physical HDF5 fields) to a
+    Sarracen DataFrame.
 
     Parameters
     ----------
@@ -240,17 +222,15 @@ def assign_chemistry_fields(
     dump_path:
         Path to the HDF5 chemistry dump file.
     fields:
-        List of field names to attach. Physical fields listed in
-        PHYS_HDF5_KEY are skipped silently.
+        List of field names to attach.  Both physical and chemistry fields
+        are handled.
 
     Returns
     -------
     sdf
-        The same DataFrame with new columns added for each chemistry field.
+        The same DataFrame with new columns added for each requested field.
     """
-    chem_fields_needed = [f for f in fields if f not in PHYS_HDF5_KEY]
-
-    if not chem_fields_needed:
+    if not fields:
         return sdf
 
     sdf_ids = sdf["iorig"].to_numpy(dtype=np.int64)
@@ -258,16 +238,16 @@ def assign_chemistry_fields(
     raw_data = {}
 
     with h5py.File(dump_path, "r") as f:
-        chem_ids = f["particles/id"][:].astype(np.int64)
-        for name in chem_fields_needed:
+        hdf5_ids = f["particles/id"][:].astype(np.int64)
+        for name in fields:
             raw_data[name] = read_field_from_hdf5(f, name)
 
-    sort_idx = np.argsort(chem_ids)
-    chem_ids_sorted = chem_ids[sort_idx]
+    sort_idx = np.argsort(hdf5_ids)
+    hdf5_ids_sorted = hdf5_ids[sort_idx]
 
-    ins = np.searchsorted(chem_ids_sorted, sdf_ids)
-    ins_clamped = np.clip(ins, 0, len(chem_ids_sorted) - 1)
-    matched = chem_ids_sorted[ins_clamped] == sdf_ids
+    ins = np.searchsorted(hdf5_ids_sorted, sdf_ids)
+    ins_clamped = np.clip(ins, 0, len(hdf5_ids_sorted) - 1)
+    matched = hdf5_ids_sorted[ins_clamped] == sdf_ids
 
     for name, raw in raw_data.items():
         sorted_vals = raw[sort_idx]
@@ -289,32 +269,7 @@ def resolve_dump_pair(
     dump_path: str | None,
     dump_index: int | None,
 ):
-    """Resolve a Phantom binary path and an HDF5 dump path from CLI arguments.
-
-    Either dump_path (an explicit file path) or dump_index (a
-    zero-based index into the sorted dump list) must be supplied.
-
-    Parameters
-    ----------
-    dump_dir:
-        Directory containing dump_*.h5 files.
-    phantom_dir:
-        Directory containing Phantom wind_* binary files.
-    dump_path:
-        Explicit path to an HDF5 dump, or None.
-    dump_index:
-        Index into the sorted dump list, or None.
-
-    Returns
-    -------
-    tuple[Path, Path]
-        (phantom_path, hdf5_path)
-
-    Raises
-    ------
-    ValueError
-        If neither dump_path nor dump_index is provided.
-    """
+    """Resolve a Phantom binary path and an HDF5 dump path from CLI arguments."""
     if dump_path is not None:
         h5 = Path(dump_path)
         stem = h5.stem.split("_", 1)[1]
@@ -336,25 +291,7 @@ def resolve_dump_pair(
 # Labels
 # ===========================================================================
 def quantity_label(quantity: str, dens_weight: bool, col_dens: bool = False) -> str:
-    """Return a LaTeX colourbar label for the given quantity.
-
-    Parameters
-    ----------
-    quantity:
-        Field name (e.g. "density", "temperature", "CO").
-    dens_weight:
-        Whether the render is density-weighted, which appends a
-        ρ-weighted qualifier to the label.
-    col_dens:
-        Whether the abundance has been multiplied by the H2 column
-        density [cm^-3], producing a column number density label
-        of the form n_species [cm^-3].
-
-    Returns
-    -------
-    str
-        LaTeX string suitable for colorbar.set_label.
-    """
+    """Return a LaTeX colourbar label for the given quantity."""
     dw = r" ($\rho$-weighted)" if dens_weight else ""
 
     if quantity == "density":
@@ -365,9 +302,8 @@ def quantity_label(quantity: str, dens_weight: bool, col_dens: bool = False) -> 
         return rf"$A_V${dw} [mag]"
 
     if col_dens:
-        # e.g. "CO" → "$n^{\mathrm{CO}}$ [cm$^{-3}$]"
-        spec = format_species_label(quantity)   # LaTeX species string
-        spec_inner = spec.strip("$")            # strip outer $ if present
+        spec = format_species_label(quantity)
+        spec_inner = spec.strip("$")
         return rf"$n^{{\mathrm{{{spec_inner}}}}}$ [m$^{{-3}}$]"
 
     return rf"Abundance relative to $\mathrm{{H}}_2${dw}"
@@ -384,43 +320,18 @@ def prepare_render_dataframe(
 ):
     """Load, subsample, and clean a Sarracen DataFrame ready for rendering.
 
-    Reads the Phantom snapshot, optionally attaches chemistry fields from
-    the HDF5 dump, applies deterministic particle subsampling, and drops
-    rows with NaN in the target quantity.
-
-    If col_dens is True and the quantity is a chemical species, each
-    particle's abundance is multiplied by the H2 column density [cm^-3]
-    read from the same HDF5 dump (key: particles/density).  The rendered
-    quantity then represents the column number density of the species in
-    units of cm^-3.
-
-    Parameters
-    ----------
-    phantom_path:
-        Path to the Phantom binary snapshot (wind_*).
-    dump_path:
-        Path to the corresponding HDF5 chemistry dump.
-    quantity:
-        Field to render; chemistry fields are fetched from dump_path.
-    fraction:
-        Fraction of particles to retain (1.0 = all particles).
-    col_dens:
-        If True, multiply the abundance by the H2 column density
-        [cm^-3] stored under particles/density in the HDF5 dump.
-        Ignored for physical quantities (density, temperature, av).
-
-    Returns
-    -------
-    tuple[SarracenDataFrame, dict]
-        The cleaned DataFrame and a metadata dict containing fraction,
-        n_particles, and dump_name.
+    Physical parameters ('density', 'temperature', 'av') are now read from
+    the HDF5 dump and attached to the SDF under the same key name, so
+    Sarracen's render() can find them regardless of how read_phantom names
+    its internal columns.
     """
     print(f"\nLoading {phantom_path.name}")
 
     sdf, _ = sarracen.read_phantom(phantom_path)
 
-    if quantity not in PHYS_HDF5_KEY:
-        sdf = assign_chemistry_fields(sdf, dump_path, [quantity])
+    # Always read the requested field from HDF5 — this covers both physical
+    # params and chemistry species, and avoids column-name mismatches.
+    sdf = assign_chemistry_fields(sdf, dump_path, [quantity])
 
     n_total = len(sdf)
 
@@ -448,8 +359,6 @@ def prepare_render_dataframe(
         sdf[quantity] = sdf[quantity] * dens_matched * cm3_to_m3
         print(f"Multiplied {quantity} by H2 column density → units: cm^-3")
 
-    # ------------------------------------------------------------------------
-
     sdf = sdf.dropna(subset=[quantity])
     print(f"Rendering with {len(sdf):,} particles")
 
@@ -465,22 +374,7 @@ def prepare_render_dataframe(
 # Tick formatting
 # ===========================================================================
 def kau_tick_formatter(val, pos):
-    """Format AU axis tick values as 10^3 AU.
-
-    Intended for use with matplotlib.ticker.FuncFormatter.
-
-    Parameters
-    ----------
-    val:
-        Tick value in AU.
-    pos:
-        Tick position (unused; required by the FuncFormatter interface).
-
-    Returns
-    -------
-    str
-        Value divided by 1000, formatted to one decimal place.
-    """
+    """Format AU axis tick values as 10^3 AU."""
     return f"{val * 1e-3:.1f}"
 
 # ===========================================================================
@@ -500,42 +394,15 @@ def format_render_axes(
     show_title=True,
     plot_single=False,
 ):
-    """Apply standard axis labels, tick formatting, and title to a render axes.
-
-    Parameters
-    ----------
-    ax:
-        Matplotlib Axes object to format.
-    quantity:
-        Field name (used in the title when q_in_title=True).
-    plane:
-        Projection plane, either "xy" or "xz".
-    meta:
-        Metadata dict returned by prepare_render_dataframe.
-    xlim:
-        Half-width of the plotted region in AU, or None.
-    xsec:
-        Slice position in AU (included in title when given), or None.
-    interpolate:
-        Append an "(interpolated)" note to the title when True.
-    q_in_title:
-        Include the quantity name in the title.
-    show_xlabel:
-        Draw the x-axis label.  Pass False for inner panels in a grid.
-    show_ylabel:
-        Draw the y-axis label.  Pass False for inner panels in a grid.
-    show_title:
-        Draw the axes title.  Pass False when a corner annotation is
-        used instead (e.g. compare-fractions mode).
-    """
-    if xlim > 1000:
-        xlabel = r"$x$ [$10^3$ AU]"
-        ylabel = r"$y$ [$10^3$ AU]" if plane == "xy" else r"$z$ [$10^3$ AU]"
+    """Apply standard axis labels, tick formatting, and title to a render axes."""
+    if xlim is not None and xlim > 1000:
+        xlabel = r"$x$ [$10^3$ au]"
+        ylabel = r"$y$ [$10^3$ au]" if plane == "xy" else r"$z$ [$10^3$ au]"
         ax.xaxis.set_major_formatter(FuncFormatter(kau_tick_formatter))
         ax.yaxis.set_major_formatter(FuncFormatter(kau_tick_formatter))
     else:
-        xlabel = r"$x$ [AU]"
-        ylabel = r"$y$ [AU]" if plane == "xy" else r"$z$ [AU]"
+        xlabel = r"$x$ [au]"
+        ylabel = r"$y$ [au]" if plane == "xy" else r"$z$ [au]"
 
     fs = FONT_SIZE if not plot_single else FONT_SIZE / 2
     if show_xlabel:
@@ -581,17 +448,7 @@ def format_render_axes(
 # Post-render interpolation
 # ===========================================================================
 def interpolate_rendered_image(ax):
-    """Fill NaN pixels in the first image on ax using fill_nans_nearest.
-
-    Operates directly on the image array stored inside the Matplotlib
-    AxesImage — no new image is created. Does nothing if ax has no
-    images.
-
-    Parameters
-    ----------
-    ax:
-        Matplotlib Axes whose first AxesImage will be modified.
-    """
+    """Fill NaN pixels in the first image on ax using fill_nans_nearest."""
     if not ax.images:
         return
 
@@ -622,47 +479,7 @@ def render_quantity(
     interpolate=False,
     fraction=1.0,
 ):
-    """Render an SPH quantity onto a Matplotlib axes using Sarracen.
-
-    Wraps sdf.render with consistent defaults and optionally runs
-    post-render NaN interpolation when a particle fraction < 1 is used.
-
-    Parameters
-    ----------
-    sdf:
-        Sarracen particle DataFrame.
-    quantity:
-        Name of the column to render.
-    plane:
-        Projection plane: "xy" or "xz".
-    ax:
-        Target Axes; a new figure/axes pair is created if None.
-    xlim:
-        Half-width of the view window in AU, or None for auto.
-    xsec:
-        Z (or Y) coordinate of the slice plane in AU, or None for a
-        column-integrated render.
-    dens_weight:
-        If True, weight the render by SPH density.
-    cmap:
-        Matplotlib colourmap name.
-    log_scale:
-        Use logarithmic colour normalisation when True.
-    vmin:
-        Lower bound of the colour scale, or None for auto.
-    vmax:
-        Upper bound of the colour scale, or None for auto.
-    interpolate:
-        Fill NaN pixels after rendering (only applied when fraction < 1).
-    fraction:
-        Particle fraction used for this render (passed through for the
-        interpolation guard).
-
-    Returns
-    -------
-    matplotlib.axes.Axes
-        The axes on which the render was drawn.
-    """
+    """Render an SPH quantity onto a Matplotlib axes using Sarracen."""
     if ax is None:
         fig, ax = plt.subplots(dpi=300)
 
@@ -674,8 +491,6 @@ def render_quantity(
         y=y_col,
         cmap=cmap,
         cbar=False,
-        # vmin=vmin,
-        # vmax=vmax,
         log_scale=log_scale,
         dens_weight=dens_weight,
         ax=ax,
@@ -716,47 +531,7 @@ def plot_single_render(
     show,
     col_dens=False,
 ):
-    """Produce and optionally save a single SPH render for one quantity.
-
-    Combines prepare_render_dataframe, render_quantity,
-    format_render_axes, and a colourbar into one complete figure.
-
-    Parameters
-    ----------
-    phantom_path:
-        Path to the Phantom binary snapshot.
-    dump_path:
-        Path to the HDF5 chemistry dump.
-    quantity:
-        Field to render.
-    plane:
-        Projection plane ("xy" or "xz").
-    xlim:
-        Half-width of the view in AU, or None.
-    xsec:
-        Slice position in AU, or None for column integration.
-    fraction:
-        Fraction of particles to use.
-    dens_weight:
-        Whether to density-weight the render.
-    interpolate:
-        Whether to fill NaN pixels after rendering.
-    log_scale:
-        Use logarithmic colour scale.
-    cmap:
-        Matplotlib colourmap name.
-    vmin:
-        Minimum colour scale value.
-    vmax:
-        Maximum colour scale value.
-    save_path:
-        Output file path, or None to skip saving.
-    show:
-        If True, display the figure interactively; otherwise close it.
-    col_dens:
-        If True, multiply abundance by H2 column density [cm^-3] before
-        rendering.  Colorbar label changes to n_species [cm^-3].
-    """
+    """Produce and optionally save a single SPH render for one quantity."""
     sdf, meta = prepare_render_dataframe(
         phantom_path,
         dump_path,
@@ -805,15 +580,7 @@ def plot_single_render(
 # Grid shape helper
 # ===========================================================================
 def _grid_shape(n: int) -> tuple[int, int]:
-    """Return (nrows, ncols) for a panel grid containing *n* axes.
-
-    Rules
-    -----
-    * n <= 4  → single row
-    * n <= 8  → 2 rows × 4 cols
-    * n <= 9  → 3 × 3
-    * otherwise → ncols = 4, nrows rounded up
-    """
+    """Return (nrows, ncols) for a panel grid containing *n* axes."""
     if n <= 4:
         return 1, n
     if n <= 8:
@@ -844,92 +611,33 @@ def plot_fraction_compare(
     fractions=None,
     col_dens=False,
 ):
-    """Produce a multi-panel figure comparing renders at several particle fractions.
-
-    By default three panels are produced (10 %, 50 %, 100 %).  Pass a custom
-    list via *fractions* to change both the number of panels and the sampled
-    fractions (e.g. FRACTIONS_9 for a 3 × 3 grid).
-
-    Layout details
-    --------------
-    * A shared colour scale is derived from the full (100 %) particle set so
-      that all panels are directly comparable.
-    * One colourbar is placed to the right of each row.
-    * Axis labels are shown only on outer panels (bottom row for x, left
-      column for y).
-    * The particle fraction is annotated in the top-right corner of each panel
-      instead of appearing in the title.
-
-    Parameters
-    ----------
-    phantom_path:
-        Path to the Phantom binary snapshot.
-    dump_path:
-        Path to the HDF5 chemistry dump.
-    quantity:
-        Field to render.
-    plane:
-        Projection plane ("xy" or "xz").
-    xlim:
-        Half-width of the view in AU, or None.
-    xsec:
-        Slice position in AU, or None for column integration.
-    dens_weight:
-        Whether to density-weight the render.
-    interpolate:
-        Whether to fill NaN pixels after rendering.
-    log_scale:
-        Use logarithmic colour scale.
-    cmap:
-        Matplotlib colourmap name.
-    vmin:
-        Minimum colour scale value (derived from full data if None).
-    vmax:
-        Maximum colour scale value (derived from full data if None).
-    save_path:
-        Output file path, or None to skip saving.
-    show:
-        If True, display the figure interactively; otherwise close it.
-    fractions:
-        Ordered list of particle fractions to render.  Defaults to
-        FRACTIONS_3 ([0.10, 0.50, 1.00]).  Pass FRACTIONS_9
-        for the 3 × 3 grid, or any custom list.
-    col_dens:
-        If True, multiply abundance by H2 column density [cm^-3] before
-        rendering.  Colorbar label changes to n_species [cm^-3].
-    """
+    """Produce a multi-panel figure comparing renders at several particle fractions."""
     if fractions is None:
         fractions = FRACTIONS_3
 
     n = len(fractions)
     nrows, ncols = _grid_shape(n)
 
-    panel_size = 7          # inches per panel
+    panel_size = 7
     fig, axes = plt.subplots(
         nrows, ncols,
         figsize=(panel_size * ncols, panel_size * nrows),
         dpi=300,
         sharex=True,
         sharey=True,
-        squeeze=False,      # always 2-D array, regardless of nrows/ncols
+        squeeze=False,
     )
 
-    # Hide spare axes that arise when ncols * nrows > n
     all_ax = list(axes.flat)
     for spare in all_ax[n:]:
         spare.set_visible(False)
 
-    # Reserve space on the right for one colorbar per row.
-    # tight_layout must NOT be called afterwards (it would override these).
-    cbar_width   = 0.015         # colourbar width in figure fraction
-    cbar_gap     = 0.01          # gap between rightmost panel and colourbar
-    right_margin = 0.01          # gap to the right of colourbar
+    cbar_width   = 0.015
+    cbar_gap     = 0.01
+    right_margin = 0.01
     right = 1.0 - cbar_width - cbar_gap - right_margin
     fig.subplots_adjust(right=right, wspace=0.05, hspace=0.08)
 
-    # ------------------------------------------------------------------
-    # Load all fractions
-    # ------------------------------------------------------------------
     all_sdf = {}
     for frac in fractions:
         sdf, meta = prepare_render_dataframe(
@@ -941,7 +649,6 @@ def plot_fraction_compare(
         )
         all_sdf[frac] = (sdf, meta)
 
-    # Derive shared colour scale from the highest fraction in the list.
     ref_frac = max(fractions)
     sdf_full, _ = all_sdf[ref_frac]
     vals = sdf_full[quantity].to_numpy()
@@ -952,14 +659,10 @@ def plot_fraction_compare(
     if vmax is None:
         vmax = vals.max()
 
-    # ------------------------------------------------------------------
-    # Render each panel
-    # ------------------------------------------------------------------
     for idx, (ax, frac) in enumerate(zip(all_ax[:n], fractions)):
         row_idx = idx // ncols
         col_idx = idx % ncols
 
-        # Only label the bottom row (x) and left column (y)
         show_xlabel = (row_idx == nrows - 1)
         show_ylabel = (col_idx == 0)
 
@@ -989,10 +692,9 @@ def plot_fraction_compare(
             q_in_title=False,
             show_xlabel=show_xlabel,
             show_ylabel=show_ylabel,
-            show_title=False,          # fraction shown as corner annotation
+            show_title=False,
         )
 
-        # Fraction annotation in the top-right corner
         frac_pct = int(frac * 100)
         frac_label = rf"{frac_pct}\%" if frac_pct >= 1 else rf"{frac * 100:.1f}\%"
         ax.text(
@@ -1005,15 +707,9 @@ def plot_fraction_compare(
             fontweight="bold",
         )
 
-    # ------------------------------------------------------------------
-    # One colourbar per row, placed to the right of the grid.
-    # We read the axes positions *after* subplots_adjust so the bounding
-    # boxes reflect the final layout.
-    # ------------------------------------------------------------------
-    cbar_left = right + cbar_gap   # left edge of all colourbars
+    cbar_left = right + cbar_gap
 
     for row_idx in range(nrows):
-        # Collect visible axes in this row
         row_axes = [
             axes[row_idx, col_idx]
             for col_idx in range(ncols)
@@ -1027,13 +723,11 @@ def plot_fraction_compare(
 
         cbar_ax = fig.add_axes([cbar_left, y0, cbar_width, y1 - y0])
 
-        # Use the first rendered panel of this row as the mappable source
         mappable = row_axes[0].images[0]
         cbar = fig.colorbar(mappable, cax=cbar_ax)
         cbar.set_label(quantity_label(quantity, dens_weight, col_dens=col_dens), fontsize=FONT_SIZE)
         cbar.ax.tick_params(labelsize=FONT_SIZE)
 
-    # Overall title showing the quantity name
     visible_axes = [ax for ax in all_ax[:n] if ax.get_visible()]
 
     left_edge  = min(ax.get_position().x0 for ax in visible_axes)
@@ -1042,7 +736,6 @@ def plot_fraction_compare(
     x_center = 0.5 * (left_edge + right_edge)
 
     y_suptitle = max(ax.get_position().y1 for ax in visible_axes) + 0.02
-
     y_suptitle = min(y_suptitle, 0.98) if fractions == FRACTIONS_9 else 0.95
     fig.suptitle(
         format_species_label(quantity),
@@ -1051,9 +744,6 @@ def plot_fraction_compare(
         x=x_center,
         y=y_suptitle,
     )
-
-    # Do NOT call tight_layout — it would override subplots_adjust and
-    # move the colourbar axes back inside the rightmost panel.
 
     if save_path is not None:
         fig.savefig(save_path, dpi=300, bbox_inches="tight")
@@ -1064,6 +754,186 @@ def plot_fraction_compare(
     else:
         plt.close(fig)
 
+
+# ===========================================================================
+# Physical parameters overview  (2 rows × 3 cols)
+# ===========================================================================
+def plot_phys_overview(
+    phantom_path: Path,
+    dump_path: Path,
+    xlim: float | None,
+    save_path: Path | None,
+    show: bool,
+    log_scale: bool = True,
+):
+    quantities = ["temperature", "density", "av"]
+    planes     = ["xy", "xz"]
+
+    print(f"\nLoading {phantom_path.name} (phys overview)")
+    sdf_raw, _ = sarracen.read_phantom(phantom_path)
+    sdf_raw = assign_chemistry_fields(sdf_raw, dump_path, quantities)
+    sdf_raw = sdf_raw.dropna(subset=quantities)
+    print(f"Rendering with {len(sdf_raw):,} particles")
+
+    meta = {
+        "fraction": 1.0,
+        "n_particles": len(sdf_raw),
+        "dump_name": phantom_path.name.split("_", 1)[1],
+    }
+
+    panel_size = 6
+    nrows, ncols = 2, 3
+
+    fig, axes = plt.subplots(
+        nrows, ncols,
+        figsize=(panel_size * ncols, panel_size * nrows),
+        dpi=300,
+        squeeze=False,
+        sharex=True,
+        sharey=True,
+    )
+
+    # ------------------------------------------------------------------
+    # Render all panels
+    # ------------------------------------------------------------------
+    for col_idx, quantity in enumerate(quantities):
+        defaults = PHYS_OVERVIEW_DEFAULTS[quantity]
+        cmap = defaults["cmap"]
+
+        vals = sdf_raw[quantity].to_numpy()
+        vals = vals[np.isfinite(vals) & (vals > 0)]
+        vmin_q = float(vals.min())
+        vmax_q = float(vals.max())
+
+        for row_idx, plane in enumerate(planes):
+            ax = axes[row_idx, col_idx]
+
+            render_quantity(
+                sdf=sdf_raw,
+                quantity=quantity,
+                plane=plane,
+                ax=ax,
+                xlim=xlim,
+                xsec=None,
+                dens_weight=False,
+                cmap=cmap,
+                log_scale=log_scale,
+                vmin=vmin_q,
+                vmax=vmax_q,
+                interpolate=False,
+                fraction=1.0,
+            )
+
+            # Strip everything sarracen/format_render_axes may set
+            ax.set_xlabel('')
+            ax.set_ylabel('')
+            ax.set_title('')
+
+            format_render_axes(
+                ax, quantity, plane, meta,
+                xlim=xlim,
+                xsec=None,
+                q_in_title=False,
+                show_xlabel=False,
+                show_ylabel=False,
+                show_title=False,
+            )
+
+            ax.set_xlabel('')
+            ax.set_ylabel('')
+            ax.set_title('')
+
+            # Hard-enforce identical limits on every single panel —
+            # this is what actually kills the inter-column whitespace
+            if xlim is not None:
+                ax.set_xlim(-xlim, xlim)
+                ax.set_ylim(-xlim, xlim)
+            else:
+                # Fall back to global particle extent
+                ax.set_xlim(sdf_raw['x'].min(), sdf_raw['x'].max())
+                ax.set_ylim(sdf_raw['y'].min(), sdf_raw['y'].max())
+
+    # ------------------------------------------------------------------
+    # Axis labels: x bottom row only, y left column only
+    # ------------------------------------------------------------------
+    if xlim is not None and xlim > 1000:
+        for col_idx in range(ncols):
+            axes[nrows - 1, col_idx].set_xlabel('$x$ [$10^3$ au]', fontsize=FONT_SIZE)
+        axes[0, 0].set_ylabel('$y$ [$10^3$ au]', fontsize=FONT_SIZE)
+        axes[1, 0].set_ylabel('$z$ [$10^3$ au]', fontsize=FONT_SIZE)
+    else:
+        for col_idx in range(ncols):
+            axes[nrows - 1, col_idx].set_xlabel('$x$ [au]', fontsize=FONT_SIZE)
+        axes[0, 0].set_ylabel('$y$ [au]', fontsize=FONT_SIZE)
+        axes[1, 0].set_ylabel('$z$ [au]', fontsize=FONT_SIZE)
+
+    # ------------------------------------------------------------------
+    # Layout — after rendering and limit-forcing
+    # ------------------------------------------------------------------
+    fig.subplots_adjust(
+        left=0.07, right=0.99,
+        bottom=0.06, top=0.78,
+        wspace=-0.3, hspace=0.08,
+    )
+
+    fig.canvas.draw()
+
+    # ------------------------------------------------------------------
+    # Colorbars above each xy panel
+    # Tick order from bottom up: bar → ticks+values → label
+    # ------------------------------------------------------------------
+    cbar_height = 0.022
+    cbar_gap    = 0.025
+
+    for col_idx, quantity in enumerate(quantities):
+        defaults  = PHYS_OVERVIEW_DEFAULTS[quantity]
+        ax_top    = axes[0, col_idx]
+        pos       = ax_top.get_position()
+
+        cbar_ax = fig.add_axes([
+            pos.x0,
+            pos.y1 + cbar_gap,
+            pos.width,
+            cbar_height,
+        ])
+
+        vals = sdf_raw[quantity].to_numpy()
+        vals = vals[np.isfinite(vals) & (vals > 0)]
+        vmin_log = float(np.log10(vals.min()))
+        vmax_log = float(np.log10(vals.max()))
+
+        norm = matplotlib.colors.Normalize(vmin=vmin_log, vmax=vmax_log)
+        cbar = fig.colorbar(
+            matplotlib.cm.ScalarMappable(norm=norm, cmap=defaults["cmap"]),
+            cax=cbar_ax,
+            orientation='horizontal',
+        )
+
+        # Ticks + values on top, label above those
+        cbar.ax.xaxis.set_ticks_position('top')
+        cbar.ax.xaxis.set_label_position('top')
+
+        cbar.ax.tick_params(direction='out', length=5,   width=1, colors='k', which='major')
+        cbar.ax.tick_params(direction='out', length=2.5, width=1, colors='k', which='minor')
+        cbar.ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+        cbar.ax.xaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(0.5))
+        cbar.ax.tick_params(axis='x', which='minor', labeltop=False)
+        cbar.ax.tick_params(labelsize=FONT_SIZE * 0.75)
+
+        cbar.ax.set_title(
+            defaults["label"],
+            fontsize=FONT_SIZE * 0.85,
+            pad=8,   # points of padding above the tick labels
+        )
+
+    if save_path is not None:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"Saved: {save_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
 # ===========================================================================
 # Render config reader
@@ -1178,9 +1048,8 @@ def main():
         "--nine-fractions",
         action="store_true",
         help=(
-            "When combined with --compare-fractions, use the extended 8-panel "
-            "grid [1%%, 5%%, 10%%, 33%%, 50%%, 66%%, 80%%, 100%%] instead of "
-            "the default 3-panel set [10%%, 50%%, 100%%]."
+            "When combined with --compare-fractions, use the extended 9-panel "
+            "grid instead of the default 3-panel set."
         ),
     )
     parser.add_argument("--log", nargs="+", dest="log_scale", default=True)
@@ -1191,49 +1060,35 @@ def main():
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dark-mode", action="store_true")
     parser.add_argument("--chemistry", choices=["Crich", "Orich"], default="Crich")
-    parser.add_argument("--col-dens",action="store_true",default=False)
+    parser.add_argument("--col-dens", action="store_true", default=False)
+    parser.add_argument(
+        "--phys-overview",
+        action="store_true",
+        help=(
+            "Render a 2×3 overview panel of all three physical parameters "
+            "(temperature, density, Av) in xy and xz projections.  "
+            "Only --xlim is needed alongside --dump / --dump-index."
+        ),
+    )
 
-    # plane_list, xlim_list, xsec_list = load_render_config_lists("render_configs.txt")
-
-
-    mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN', 
-                'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
-                'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
-                'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
-    
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
-            # "--plane", "xz",
-            "--quantity", *mol_list,
-            # "--xlim", "2000",
-            # "--dens-weight", "True",
-            # "--vmin", "1e-8",
-            # # "--vmax", "1e-4",
-            # "--xsec", "0",
-            # "--log", "False",
-            # "--compare-fractions",
-            # "--nine-fractions",
-            # "--interpolate",
-            "--col-dens",
-            # "--show",
-            # "--dark-mode",
+            "--phys-overview",
+            # "--plane", "xy",
+            # "--quantity", "temperature",
+            "--xlim", "2000",
+            "--show",
         ])
     else:
         args = parser.parse_args()
 
-    # args.plane = plane_list
-    # args.xlim = xlim_list
-    # args.xsec = xsec_list
-
     args.plane       = _as_list(args.plane)
     args.xlim        = _as_list(args.xlim)
-    # args.dens_weight = _as_list(args.dens_weight, boolean=True)
     args.xsec        = _as_list(args.xsec)
-    # args.log_scale   = _as_list(args.log_scale, boolean=True)
     set_plot_style(args.dark_mode)
 
-    dump_dir = Path(args.dump_dir)
+    dump_dir    = Path(args.dump_dir)
     phantom_dir = Path(args.phantom_dir)
 
     if args.list_dumps:
@@ -1249,43 +1104,54 @@ def main():
         args.dump_index,
     )
 
-    save_dir = SAVE_DIR_BASE / args.chemistry / "render"
-    save_dir.mkdir(parents=True, exist_ok=True)
-    save_ext = "pdf" if args.dark_mode else "png"
+    save_ext  = "pdf" if args.dark_mode else "png"
     dump_stem = dump_path.stem.split("_", 1)[1]
 
-    # Resolve which fraction set to use for compare-fractions mode.
-    fractions = FRACTIONS_9 if args.nine_fractions else FRACTIONS_3
-
-    # Tag for column-density mode
-    cd_tag = "n" if args.col_dens else ""
-
-    def _save_dir(xlim: float | None, compare: bool) -> Path:
-        """Return the appropriate save subdirectory.
-
-        compare=True  → render/compare/zoom  or  render/compare/full
-        compare=False → render/zoom           or  render/full
-        """
+    def _save_dir(xlim: float | None, compare: bool, overview: bool = False) -> Path:
         spatial_tag = "zoom" if (xlim is not None and xlim <= 100) else "full"
         base = SAVE_DIR_BASE / args.chemistry / "render"
-        if compare:
+        if overview:
+            d = base / "phys_overview"
+        elif compare:
             d = base / "compare" / spatial_tag
         else:
             d = base / spatial_tag
         d.mkdir(parents=True, exist_ok=True)
         return d
 
+    # ------------------------------------------------------------------
+    # Physical overview mode — ignores --quantity / --plane / --compare
+    # ------------------------------------------------------------------
+    if args.phys_overview:
+        xlim = args.xlim[0]   # take the first (and typically only) value
+        save_dir  = _save_dir(xlim, compare=False, overview=True)
+        xlim_tag  = f"_{xlim:.0f}AU" if xlim is not None else ""
+        save_path = save_dir / f"phys_{dump_stem}{xlim_tag}.{save_ext}"
+        plot_phys_overview(
+            phantom_path=phantom_path,
+            dump_path=dump_path,
+            xlim=xlim,
+            save_path=save_path,
+            show=args.show,
+            log_scale=args.log_scale,
+        )
+        return
+
+    # ------------------------------------------------------------------
+    # Normal (single / compare-fractions) mode
+    # ------------------------------------------------------------------
+    fractions = FRACTIONS_9 if args.nine_fractions else FRACTIONS_3
+    cd_tag    = "n" if args.col_dens else ""
+
     for quantity in args.quantity:
-        for plane, xlim, xsec in zip(
-            args.plane, args.xlim, args.xsec,
-        ):
+        for plane, xlim, xsec in zip(args.plane, args.xlim, args.xsec):
             xsec_tag  = f"_xsec{xsec:.0f}"  if xsec is not None else ""
             dw_tag    = "_dw"                if args.dens_weight      else ""
             xlim_tag  = f"_{xlim:.0f}AU"    if xlim is not None else ""
 
             if args.compare_fractions:
                 frac_set_tag = "_frac9" if args.nine_fractions else "_frac3"
-                save_dir = _save_dir(xlim, compare=True)
+                save_dir  = _save_dir(xlim, compare=True)
                 save_path = save_dir / (
                     f"render_{plane}_{cd_tag}{quantity}_{dump_stem}"
                     f"{xsec_tag}{dw_tag}{xlim_tag}{frac_set_tag}_compare.{save_ext}"
@@ -1310,12 +1176,11 @@ def main():
                 )
 
             else:
-                save_dir = _save_dir(xlim, compare=False)
+                save_dir  = _save_dir(xlim, compare=False)
                 save_path = save_dir / (
                     f"render_{plane}_{cd_tag}{quantity}_{dump_stem}"
                     f"{xsec_tag}{dw_tag}{xlim_tag}.{save_ext}"
                 )
-
                 plot_single_render(
                     phantom_path=phantom_path,
                     dump_path=dump_path,
