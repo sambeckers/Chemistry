@@ -18,7 +18,7 @@ from config import BASE_PATH, parents, daughters_Crich as daughters, daughters_O
 
 # Output folder where the figure will be saved
 savedirmain = BASE_PATH
-CRICH = True
+CRICH = False
 if CRICH:
     model_folder = 'output_1D/complete_1D_model_Crich'
     inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
@@ -42,8 +42,8 @@ TARGET_VELOCITY = VELOCITY[0]
 
 # Parent and daughter molecules (loaded from config.py)
 parents = parents
-daughters = daughters
-# daughters = daughters_Orich        (O-rich, uncomment import alias to switch)
+# daughters = daughters
+daughters = daughters_Orich        #(O-rich, uncomment import alias to switch)
 
 
 def run_model(kb_inputfile):

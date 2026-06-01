@@ -1,8 +1,8 @@
 #!/bin/bash
 # Run one global tracing pass and pack per-batch tracing HDF5 files.
 #SBATCH --job-name=tracing
-#SBATCH --time=50:00:00
-#SBATCH --cpus-per-task=16
+#SBATCH --time=150:00:00
+#SBATCH --cpus-per-task=32
 #SBATCH --mem=32G
 #SBATCH --output=logs/logs_%A/tracing_%A.out
 #SBATCH --error=logs/logs_%A/tracing_%A.err

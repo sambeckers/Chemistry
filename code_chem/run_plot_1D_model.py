@@ -17,19 +17,21 @@ from config import BASE_PATH, parents_He_extended as parents, daughters_Crich_no
 
 # Output folder where the figure will be saved
 savedirmain = BASE_PATH
-CRICH = True
+CRICH = False
 if CRICH:
+    print("Running for C-rich model")
     model_folder = 'output_1D/complete_1D_model_Crich'
     inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Crich.dat')
     out = 'Crich'
 else:
+    print("Running for O-rich model")
     model_folder = 'output_1D/complete_1D_model_Orich'
     inputfile = str(savedirmain / 'KoekenBak/input/' / '20251015_Sam_Mdot_Vinf_Orich.dat')
     out = 'Orich'
 
 
 # db  = Database.Database(str(savedirmain / model_folder / 'Chemistry_models.db'))
-# db.pop('model_2025-10-17h16-58-20')
+# db.pop('model_2026-05-31h18-01-59')
 # db.sync() 
 
 ##- Run model
@@ -58,7 +60,7 @@ def phys_params():
   nums = CodeIO.getChemistryAbundances(folder+'csnum_smooth.out')
   return radius,hnr,tempgas,tempdust,av,radfield,fracs,nums
 
-# Parent and daughter molecules (loaded from config.py)
+# # Parent and daughter molecules (loaded from config.py)
 # daughters = daughters_Crich_no_CN  # C-rich (uncomment to use)
 daughters = daughters_Orich  # O-rich
 
