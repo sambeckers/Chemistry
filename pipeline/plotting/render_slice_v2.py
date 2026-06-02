@@ -71,11 +71,6 @@ PHYS_OVERVIEW_DEFAULTS = {
     "av":          dict(cmap="gist_heat",   label=r"$\log_{10}(A_V)$ [mag]"),
 }
 
-PARENT_DAUGHTER_PAIRS = [
-    ("C2H2", "C2H"),
-    ("HCN",  "CN"),
-]
-
 # Fraction sets -----------------------------------------------------------
 FRACTIONS_3 = [0.10, 0.50, 1.00]
 FRACTIONS_9 = [0.01, 0.05, 0.10, 0.25, 0.33, 0.50, 0.66, 0.80, 1.00]
@@ -445,7 +440,7 @@ def format_render_axes(
             title = rf"{frac_pct}\%{interp_tag}"
 
         if xsec is not None:
-            title += rf", slice at z={xsec:.0f} AU"
+            title += rf", slice at $z$={xsec:.0f} AU"
 
         ax.set_title(title, fontsize=fs)
 
@@ -733,7 +728,7 @@ def plot_fraction_compare(
 
         cbar_ax = fig.add_axes([cbar_left, y0, cbar_width, y1 - y0])
 
-        mappable = row_axes[0].images[0]
+        mappable = row_axes[0].images[0] # Row axes share the same color scale, so take the first one
         cbar = fig.colorbar(mappable, cax=cbar_ax)
         cbar.set_label(quantity_label(quantity, dens_weight, col_dens=col_dens), fontsize=FONT_SIZE)
         cbar.ax.tick_params(labelsize=FONT_SIZE)
@@ -975,226 +970,178 @@ def plot_phys_overview(
     else:
         plt.close(fig)
 
-def plot_parent_daughter_overview(
-    phantom_path: Path,
-    dump_path: Path,
-    plane: str = "xy",
-    xlim: float | None = None,
-    save_path: Path | None = None,
-    show: bool = False,
-    log_scale: bool = True,
-    cmap: str = "gist_heat",
-    pairs: list[tuple[str, str]] | None = None,
+def plot_parent_daughter_pair(
+    phantom_path,
+    dump_path,
+    parent,
+    daughter,
+    plane,
+    xlim,
+    xsec,
+    dens_weight,
+    interpolate,
+    cmap,
+    save_path,
+    show,
+    col_dens=False,
 ):
-    """Render a 2 × 2 parent-daughter species overview panel.
- 
-    Layout
-    ------
-    Each *column* corresponds to one parent-daughter pair.  Row 0 holds the
-    parent, row 1 the daughter.  A shared colourbar (spanning the combined
-    value range of both species in that column) is drawn above every column,
-    matching the style of ``plot_phys_overview``.
- 
-    Default pairs: C2H2 / C2H  (col 0)  and  HCN / CN  (col 1).
- 
-    Parameters
-    ----------
-    pairs:
-        List of ``(parent, daughter)`` name tuples.  Defaults to
-        ``PARENT_DAUGHTER_PAIRS``.  Extend freely for other chemistries.
-    """
-    if pairs is None:
-        pairs = PARENT_DAUGHTER_PAIRS
- 
-    n_cols = len(pairs)            # one column per pair
-    n_rows = 2                     # row 0 = parent, row 1 = daughter
- 
-    # Flatten into a single list for batch HDF5 loading
-    all_species = [sp for pair in pairs for sp in pair]
- 
-    print(f"\nLoading {phantom_path.name} (parent-daughter overview)")
-    sdf_raw, _ = sarracen.read_phantom(phantom_path)
-    sdf_raw = assign_chemistry_fields(sdf_raw, dump_path, all_species)
-    # Keep particles that are valid for *at least one* of the requested species
-    sdf_raw = sdf_raw.dropna(subset=all_species, how="all")
-    print(f"Rendering with {len(sdf_raw):,} particles")
- 
-    meta = {
-        "fraction": 1.0,
-        "n_particles": len(sdf_raw),
-        "dump_name": phantom_path.name.split("_", 1)[1],
-    }
- 
-    panel_size = 6
+
     fig, axes = plt.subplots(
-        n_rows, n_cols,
-        figsize=(panel_size * n_cols, panel_size * n_rows),
+        1, 2,
+        figsize=(12, 6),
         dpi=300,
-        squeeze=False,
         sharex=True,
         sharey=True,
     )
- 
-    # ------------------------------------------------------------------
-    # Per-column shared vmin / vmax (log-space boundaries derived from the
-    # union of parent + daughter finite positive values)
-    # ------------------------------------------------------------------
-    col_vmin: dict[int, float] = {}
-    col_vmax: dict[int, float] = {}
-    for col_idx, (parent, daughter) in enumerate(pairs):
-        combined: list[np.ndarray] = []
-        for sp in (parent, daughter):
-            v = sdf_raw[sp].to_numpy()
-            v = v[np.isfinite(v) & (v > 0)]
-            combined.append(v)
-        all_vals = np.concatenate(combined)
-        col_vmin[col_idx] = float(all_vals.min())
-        col_vmax[col_idx] = float(all_vals.max())
- 
-    # ------------------------------------------------------------------
-    # Render every panel
-    # ------------------------------------------------------------------
-    for col_idx, (parent, daughter) in enumerate(pairs):
-        for row_idx, species in enumerate((parent, daughter)):
-            ax = axes[row_idx, col_idx]
- 
-            render_quantity(
-                sdf=sdf_raw,
-                quantity=species,
-                plane=plane,
-                ax=ax,
-                xlim=xlim,
-                xsec=None,
-                dens_weight=False,
-                cmap=cmap,
-                log_scale=log_scale,
-                vmin=col_vmin[col_idx],
-                vmax=col_vmax[col_idx],
-                interpolate=False,
-                fraction=1.0,
-            )
- 
-            # Clear anything sarracen or format_render_axes might add
-            ax.set_xlabel('')
-            ax.set_ylabel('')
-            ax.set_title('')
- 
-            format_render_axes(
-                ax, species, plane, meta,
-                xlim=xlim,
-                xsec=None,
-                q_in_title=False,
-                show_xlabel=False,
-                show_ylabel=False,
-                show_title=False,
-            )
- 
-            ax.set_xlabel('')
-            ax.set_ylabel('')
-            ax.set_title('')
- 
-            if xlim is not None:
-                ax.set_xlim(-xlim, xlim)
-                ax.set_ylim(-xlim, xlim)
- 
-            # Species label — top-right corner, white bold text
-            ax.text(
-                0.97, 0.97,
-                format_species_label(species),
-                transform=ax.transAxes,
-                ha="right", va="top",
-                fontsize=FONT_SIZE,
-                color="white",
-                fontweight="bold",
-            )
- 
-    # ------------------------------------------------------------------
-    # Axis labels: x on the bottom row only, y on the left column only
-    # ------------------------------------------------------------------
-    y_coord = "y" if plane == "xy" else "z"
-    if xlim is not None and xlim > 1000:
-        xlab = r"$x$ [$10^3$ au]"
-        ylab = rf"${y_coord}$ [$10^3$ au]"
-    else:
-        xlab = r"$x$ [au]"
-        ylab = rf"${y_coord}$ [au]"
- 
-    for col_idx in range(n_cols):
-        axes[n_rows - 1, col_idx].set_xlabel(xlab, fontsize=FONT_SIZE)
-    for row_idx in range(n_rows):
-        axes[row_idx, 0].set_ylabel(ylab, fontsize=FONT_SIZE)
- 
-    # ------------------------------------------------------------------
-    # Layout — identical margins to plot_phys_overview
-    # ------------------------------------------------------------------
-    fig.subplots_adjust(
-        left=0.07, right=0.99,
-        bottom=0.06, top=0.78,
-        wspace=-0.3, hspace=0.08,
+
+    # Parent
+    parent_sdf, meta = prepare_render_dataframe(
+        phantom_path,
+        dump_path,
+        parent,
+        fraction=1.0,
+        col_dens=col_dens,
     )
- 
+
+    render_quantity(
+        sdf=parent_sdf,
+        quantity=parent,
+        plane=plane,
+        ax=axes[0],
+        xlim=xlim,
+        xsec=xsec,
+        dens_weight=dens_weight,
+        cmap=cmap,
+        log_scale=True,
+        interpolate=interpolate,
+        fraction=1.0,
+    )
+
+    # Daughter
+    daughter_sdf, _ = prepare_render_dataframe(
+        phantom_path,
+        dump_path,
+        daughter,
+        fraction=1.0,
+        col_dens=col_dens,
+    )
+
+    render_quantity(
+        sdf=daughter_sdf,
+        quantity=daughter,
+        plane=plane,
+        ax=axes[1],
+        xlim=xlim,
+        xsec=xsec,
+        dens_weight=dens_weight,
+        cmap=cmap,
+        log_scale=True,
+        interpolate=interpolate,
+        fraction=1.0,
+    )
+
+    # Match daughter's colour scale to parent
+    parent_img = axes[0].images[0]
+    daughter_img = axes[1].images[0]
+
+    parent_vmin, parent_vmax = parent_img.get_clim()
+
+    daughter_img.set_clim(
+        parent_vmin,
+        parent_vmax,
+    )
+
+    format_render_axes(
+        axes[0],
+        parent,
+        plane,
+        meta,
+        xlim=xlim,
+        xsec=xsec,
+        q_in_title=False,
+        show_title=False,
+        plot_single=True,
+    )
+
+    format_render_axes(
+        axes[1],
+        daughter,
+        plane,
+        meta,
+        xlim=xlim,
+        xsec=xsec,
+        q_in_title=False,
+        show_title=False,
+        plot_single=True,
+    )
+
+    axes[0].set_title(
+        format_species_label(parent),
+        fontsize=FONT_SIZE / 2,
+    )
+
+    axes[1].set_title(
+        format_species_label(daughter),
+        fontsize=FONT_SIZE / 2,
+    )
+    axes[1].set_ylabel('')
+
+    # --------------------------------------------------------------
+    # Layout (same style as compare-fractions)
+    # --------------------------------------------------------------
+    fig.subplots_adjust(
+        left=0.08,
+        right=0.88,
+        bottom=0.10,
+        top=0.92,
+        wspace=0.1,
+    )
+
     fig.canvas.draw()
- 
-    # ------------------------------------------------------------------
-    # Shared colorbars above each column
-    # Colourbar spans the combined range of parent + daughter in that column.
-    # Tick positioning: values + ticks on top, label above (same as phys_overview).
-    # ------------------------------------------------------------------
-    cbar_height = 0.022
-    cbar_gap    = 0.025
- 
-    for col_idx, (parent, daughter) in enumerate(pairs):
-        ax_top = axes[0, col_idx]
-        pos    = ax_top.get_position()
- 
-        cbar_ax = fig.add_axes([
-            pos.x0,
-            pos.y1 + cbar_gap,
-            pos.width,
-            cbar_height,
-        ])
- 
-        vmin_log = np.log10(col_vmin[col_idx])
-        vmax_log = np.log10(col_vmax[col_idx])
- 
-        norm = matplotlib.colors.Normalize(vmin=vmin_log, vmax=vmax_log)
-        cbar = fig.colorbar(
-            matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap),
-            cax=cbar_ax,
-            orientation="horizontal",
-        )
- 
-        # Ticks & values on top, label further above
-        cbar.ax.xaxis.set_ticks_position("top")
-        cbar.ax.xaxis.set_label_position("top")
- 
-        cbar.ax.tick_params(direction="out", length=5,   width=1, colors="k", which="major")
-        cbar.ax.tick_params(direction="out", length=2.5, width=1, colors="k", which="minor")
-        cbar.ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-        cbar.ax.xaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(0.5))
-        cbar.ax.tick_params(axis="x", which="minor", labeltop=False)
-        cbar.ax.tick_params(labelsize=FONT_SIZE * 0.75)
- 
-        # Title: "Parent / Daughter  log₁₀(abundance rel. H₂)"
-        parent_label   = format_species_label(parent)
-        daughter_label = format_species_label(daughter)
-        cbar.ax.set_title(
-            rf"{parent_label} / {daughter_label}"
-            "\n"
-            r"$\log_{10}$(abundance rel. H$_2$)",
-            fontsize=FONT_SIZE * 0.85,
-            pad=8,
-        )
- 
+
+    left_pos = axes[0].get_position()
+    right_pos = axes[1].get_position()
+
+    cbar_ax = fig.add_axes([
+        right_pos.x1 + 0.01,
+        left_pos.y0,
+        0.02,
+        left_pos.y1 - left_pos.y0,
+    ])
+
+    cbar = fig.colorbar(
+        parent_img,
+        cax=cbar_ax,
+    )
+
+    cbar.set_label(
+        quantity_label(
+            parent,
+            dens_weight,
+            col_dens=col_dens,
+        ),
+        fontsize=FONT_SIZE / 2,
+    )
+
+    cbar.ax.tick_params(
+        labelsize=FONT_SIZE / 2,
+    )
+
+    # --------------------------------------------------------------
+    # Save / show
+    # --------------------------------------------------------------
     if save_path is not None:
-        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+        fig.savefig(
+            save_path,
+            dpi=300,
+            bbox_inches="tight",
+        )
         print(f"Saved: {save_path}")
- 
+
     if show:
         plt.show()
     else:
         plt.close(fig)
-
 
 # ===========================================================================
 # Render config reader
@@ -1332,29 +1279,29 @@ def main():
         ),
     )
     parser.add_argument(
-        "--parent-daughter",
-        action="store_true",
-        help=(
-            "Render the 2×2 parent-daughter species overview panel "
-            "(C2H2/C2H and HCN/CN by default).  "
-            "Accepts --plane and --xlim; ignores --quantity and --compare-fractions."
-        ),
+    "--parent-daughter",
+    action="store_true",
+    help="Plot predefined parent/daughter chemistry pairs."
     )
-
     # plane_list, xlim_list, xsec_list = load_render_config_lists("render_configs.txt")
 
     mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN', 
                 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
                 'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
                 'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
+
+    PARENT_DAUGHTER_PAIRS = [
+    ("C2H2", "C2H"),
+    ("HCN",  "CN"),
+    ]
     
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
-            "--plane", "xy",
-            # "--quantity", "CO",
-            "--xlim", "100",
-            "--parent-daughter",
+            "--plane", "xz",
+            "--quantity", "CO",
+            "--xlim", "1000",
+            # "--parent-daughter",
             # "--dens-weight", "True",
             # "--vmin", "1e-8",
             # # "--vmax", "1e-4",
@@ -1364,7 +1311,7 @@ def main():
             # "--nine-fractions",
             # "--interpolate",
             "--col-dens",
-            # "--show",
+            "--show",
             # "--dark-mode",
         ])
     else:
@@ -1398,11 +1345,13 @@ def main():
     save_ext  = "pdf" if args.dark_mode else "png"
     dump_stem = dump_path.stem.split("_", 1)[1]
 
-    def _save_dir(xlim: float | None, compare: bool, overview: bool = False) -> Path:
+    def _save_dir(xlim: float | None, compare: bool, overview: bool = False, parent_daughter: bool = False) -> Path:
         spatial_tag = "zoom" if (xlim is not None and xlim <= 100) else "full"
         base = SAVE_DIR_BASE / args.chemistry / "render"
         if overview:
             d = base / "phys_overview"
+        elif parent_daughter:
+            d = base / "parent_daughter" / spatial_tag
         elif compare:
             d = base / "compare" / spatial_tag
         else:
@@ -1428,22 +1377,47 @@ def main():
         )
         return
 
+    # ------------------------------------------------------------------
+    # Parent / daughter comparison mode
+    # ------------------------------------------------------------------
     if args.parent_daughter:
-        plane = args.plane[0]
-        xlim  = args.xlim[0]
-        save_dir  = _save_dir(xlim, compare=False, overview=True)
-        xlim_tag  = f"_{xlim:.0f}AU" if xlim is not None else ""
-        save_path = save_dir / f"parent_daughter_{dump_stem}{xlim_tag}.{save_ext}"
-        plot_parent_daughter_overview(
-            phantom_path=phantom_path,
-            dump_path=dump_path,
-            plane=plane,
-            xlim=xlim,
-            save_path=save_path,
-            show=args.show,
-            log_scale=args.log_scale,
-            cmap=args.cmap,
-        )
+
+        for plane, xlim, xsec in zip(
+            args.plane,
+            args.xlim,
+            args.xsec,
+        ):
+
+            for parent, daughter in PARENT_DAUGHTER_PAIRS:
+
+                xsec_tag = f"_xsec{xsec:.0f}" if xsec is not None else ""
+                xlim_tag = f"_{xlim:.0f}AU" if xlim is not None else ""
+
+                save_dir = _save_dir(xlim, compare=False, overview=False, parent_daughter=True)
+
+                save_path = save_dir / (
+                    f"render_{plane}_{parent}_{daughter}_"
+                    f"{dump_stem}"
+                    f"{xsec_tag}"
+                    f"{xlim_tag}.{save_ext}"
+                )
+
+                plot_parent_daughter_pair(
+                    phantom_path=phantom_path,
+                    dump_path=dump_path,
+                    parent=parent,
+                    daughter=daughter,
+                    plane=plane,
+                    xlim=xlim,
+                    xsec=xsec,
+                    dens_weight=args.dens_weight,
+                    interpolate=args.interpolate,
+                    cmap=args.cmap,
+                    save_path=save_path,
+                    show=args.show,
+                    col_dens=args.col_dens,
+                )
+
         return
 
     # ------------------------------------------------------------------
