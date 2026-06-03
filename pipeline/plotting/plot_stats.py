@@ -697,7 +697,7 @@ def plot_single_molecule_uncertainty(
     apply_abundance_axis_limits(ax)
     add_log_ticks(ax)
     ax.set_xlabel("Radius [cm]", fontsize=14)
-    ax.set_ylabel(r"Abundance (wrt H$_{\mathrm{nuc}}$)", fontsize=14)
+    ax.set_ylabel(r"Abundance relative to $\mathrm{{H}}_2$", fontsize=14)
     ax.set_title(rf"\textbf{{{molecule}}}", fontsize=14)
     ax.legend(loc="best", fontsize=11)
 
@@ -824,7 +824,7 @@ def plot_avg_abundances_compare_1d(
         ax.set_xlabel("Radius [cm]", fontsize=14)
 
     for ax in axes[:, 0]:
-        ax.set_ylabel("Abundance (wrt H$_{nuc}$)", fontsize=14)
+        ax.set_ylabel("Abundance relative to $\mathrm{{H}}_2$", fontsize=14)
 
     plt.tight_layout()
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
@@ -951,7 +951,7 @@ def plot_compare_1d_grid(
     for row_idx in range(n_rows):
         if row_idx * n_cols < n_panels:
             axes_arr[row_idx, 0].set_ylabel(
-                r"Abundance (wrt H$_{\mathrm{nuc}}$)",
+                r"Abundance relative to $\mathrm{{H}}_2$",
                 fontsize=13,
             )
 
@@ -1030,7 +1030,7 @@ def plot_fraction_comparison(
         add_log_ticks(ax)
         ax.set_xlabel("Radius [cm]", fontsize=12)
         if ax is axes[0]:
-            ax.set_ylabel(r"Abundance (wrt H$_{\mathrm{nuc}}$)", fontsize=12)
+            ax.set_ylabel(r"Abundance relative to $\mathrm{{H}}_2$", fontsize=12)
 
     plt.suptitle(rf"{molecule}",fontsize=14)
     plt.tight_layout()
@@ -1178,9 +1178,9 @@ def main() -> None:
 
     if is_interactive():
         args = parser.parse_args([
-            "--mode", "plot-single",
+            "--mode", "plot",
             "--chemistry", "Crich",
-            "--molecule", "CH2",
+            # "--molecule", "CH2",
             "--n-tasks", "32",
             "--show",
         ])

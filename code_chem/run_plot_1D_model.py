@@ -17,7 +17,7 @@ from config import BASE_PATH, parents_He_extended as parents, daughters_Crich_no
 
 # Output folder where the figure will be saved
 savedirmain = BASE_PATH
-CRICH = False
+CRICH = True
 if CRICH:
     print("Running for C-rich model")
     model_folder = 'output_1D/complete_1D_model_Crich'
@@ -61,8 +61,8 @@ def phys_params():
   return radius,hnr,tempgas,tempdust,av,radfield,fracs,nums
 
 # # Parent and daughter molecules (loaded from config.py)
-# daughters = daughters_Crich_no_CN  # C-rich (uncomment to use)
-daughters = daughters_Orich  # O-rich
+daughters = daughters_Crich_no_CN  # C-rich (uncomment to use)
+# daughters = daughters_Orich  # O-rich
 
 MLOSS = ["$\dot{M}=10^{-7} M_{\odot} \\rm{yr}^{-1}$", 
          "$\dot{M}=10^{-7} M_{\odot} \\rm{yr}^{-1}$", 

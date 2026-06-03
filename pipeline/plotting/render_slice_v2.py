@@ -292,21 +292,21 @@ def resolve_dump_pair(
 # ===========================================================================
 def quantity_label(quantity: str, dens_weight: bool, col_dens: bool = False) -> str:
     """Return a LaTeX colourbar label for the given quantity."""
-    dw = r" ($\rho$-weighted)" if dens_weight else ""
+    # dw = r" ($\rho$-weighted)" if dens_weight else ""
 
     if quantity == "density":
         return r"$n$ [cm$^{-2}$]"
     if quantity == "temperature":
-        return rf"$T${dw} [K]"
+        return rf"$T$ [K]"
     if quantity == "av":
-        return rf"$A_V${dw} [mag]"
+        return rf"$A_V$ [mag]"
 
     if col_dens:
         spec = format_species_label(quantity)
         spec_inner = spec.strip("$")
         return rf"$n^{{\mathrm{{{spec_inner}}}}}$ [m$^{{-3}}$]"
 
-    return rf"Abundance relative to $\mathrm{{H}}_2${dw}"
+    return rf"Abundance relative to $\mathrm{{H}}_2$"
 
 # ===========================================================================
 # Data preparation
@@ -435,12 +435,12 @@ def format_render_axes(
         interp_tag = " (interpolated)" if interpolate else ""
         frac_pct = int(meta["fraction"] * 100)
         if q_in_title:
-            title = rf"{format_species_label(quantity)} - {frac_pct}\% particles{interp_tag}"
+            title = rf"{format_species_label(quantity)}"
         else:
             title = rf"{frac_pct}\%{interp_tag}"
 
         if xsec is not None:
-            title += rf", slice at $z$={xsec:.0f} AU"
+            title += rf", cross section at $z$={xsec:.0f} AU"
 
         ax.set_title(title, fontsize=fs)
 
@@ -464,6 +464,120 @@ def interpolate_rendered_image(ax):
 # ===========================================================================
 # Sarracen rendering
 # ===========================================================================
+def extract_contour_radii(contour_set):
+    results = {}
+    for i, level in enumerate(contour_set.levels):
+        segs = contour_set.allsegs[i]
+        if not segs:
+            results[level] = np.nan
+            continue
+        # Use the longest path — most likely the real disc edge
+        # longest = max(segs, key=lambda s: len(s))
+        # r = np.sqrt(longest[:, 0]**2 + longest[:, 1]**2)
+        all_points = np.concatenate(segs, axis=0)
+        r = np.sqrt(all_points[:, 0]**2 + all_points[:, 1]**2)
+        results[level] = np.mean(r)
+    return results
+
+def draw_radii_arrows(ax, radii, plane="xy"):
+    """Draw arrows from the origin to each contour radius for visual verification."""
+    colors = ["white"] * len(radii)  # one per level
+    x0, x1, y0, y1 = ax.images[0].get_extent()
+    
+    angles = [45, 135, 225, 315]
+    for (level, r), color, angle in zip(radii.items(), colors, angles):
+        if np.isnan(r):
+            continue
+        # Draw at 45 degrees so arrows don't overlap
+        angle = np.radians(angle)
+        dx = r * np.cos(angle)
+        dy = r * np.sin(angle)
+        ax.annotate(
+            "",
+            xy=(dx, dy),
+            xytext=(0, 0),
+            arrowprops=dict(arrowstyle="->", color=color, lw=1.5),
+            color=color,
+            fontsize=8,
+            ha="center",
+        )
+
+    return ax
+
+# ===========================================================================
+# Contour radius I/O
+# ===========================================================================
+
+CONTOUR_COLS = ["molecule", "R_xy_001", "R_xy_050", "R_xz_001", "R_xz_050"]
+
+def save_contour_radii(
+    save_path: Path,
+    quantity: str,
+    plane: str,
+    radii: dict,
+    contour_values: list,
+):
+    """
+    Append or update contour radii in a tab-separated .txt file.
+
+    Columns: molecule  R_xy_001  R_xy_050  R_xz_001  R_xz_050
+
+    - If the file doesn't exist, it is created with a header.
+    - If the molecule row doesn't exist yet, a new row is appended.
+    - If the molecule row exists (e.g. xy already written, now writing xz),
+      only the relevant columns are updated.
+    """
+    import csv
+
+    # Map contour levels to column names by rank (lowest = 0.01, highest = 0.5)
+    levels = sorted(radii.keys())
+    if plane == "xy":
+        col_map = {levels[0]: "R_xy_001", levels[-1]: "R_xy_050"}
+        fill_cols = {"R_xz_001": "—", "R_xz_050": "—"}
+    else:
+        col_map = {levels[0]: "R_xz_001", levels[-1]: "R_xz_050"}
+        fill_cols = {"R_xy_001": "—", "R_xy_050": "—"}
+
+    # Build the values for this plane
+    new_vals = {}
+    for level, col in col_map.items():
+        r = radii.get(level, np.nan)
+        new_vals[col] = f"{r:.1f}" if np.isfinite(r) else "—"
+
+    save_path = Path(save_path)
+
+    # ----------------------------------------------------------------
+    # Read existing rows if the file already exists
+    # ----------------------------------------------------------------
+    rows = []
+    if save_path.exists():
+        with open(save_path, newline="") as f:
+            reader = csv.DictReader(f, delimiter="\t")
+            rows = list(reader)
+
+    # ----------------------------------------------------------------
+    # Find or create the row for this molecule
+    # ----------------------------------------------------------------
+    mol_row = next((r for r in rows if r["molecule"] == quantity), None)
+
+    if mol_row is None:
+        # New molecule — create a full row with placeholders for the other plane
+        mol_row = {"molecule": quantity, **fill_cols, **new_vals}
+        rows.append(mol_row)
+    else:
+        # Existing row — just update the columns for this plane
+        mol_row.update(new_vals)
+
+    # ----------------------------------------------------------------
+    # Write back
+    # ----------------------------------------------------------------
+    with open(save_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=CONTOUR_COLS, delimiter="\t")
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"Contour radii saved → {save_path}")
+
 def render_quantity(
     sdf,
     quantity,
@@ -478,6 +592,8 @@ def render_quantity(
     vmax=None,
     interpolate=False,
     fraction=1.0,
+    contours=False,
+    radii_save_path=None,
 ):
     """Render an SPH quantity onto a Matplotlib axes using Sarracen."""
     if ax is None:
@@ -494,6 +610,7 @@ def render_quantity(
         log_scale=log_scale,
         dens_weight=dens_weight,
         ax=ax,
+        normalize=True,
     )
 
     if xlim is not None:
@@ -508,6 +625,47 @@ def render_quantity(
     if interpolate and fraction < 1.0:
         interpolate_rendered_image(ax)
 
+    if contours and ax.images:
+        img = ax.images[0]
+        data = np.asarray(img.get_array())
+
+        _, vmax_img = img.get_clim()
+        contour_values = [0.01 * np.nanmax(data), 0.5 * np.nanmax(data)]
+
+        valid = [
+            cv for cv in contour_values
+            if np.nanmin(data) < cv < np.nanmax(data)
+        ]
+        print("array min/max:", np.nanmin(data), np.nanmax(data))
+        print("clim:", img.get_clim())
+
+        for cv in contour_values:
+            print("contour:", cv)
+
+        if valid:
+            cs = ax.contour(
+                data,
+                levels=valid,
+                colors="white",
+                linestyles="--",
+                linewidths=1.0,
+                origin="image",
+                extent=img.get_extent(),
+            )
+            radii = extract_contour_radii(cs)
+            for level, r in radii.items():
+                print(f"Level {level:.3e}  →  R (median per path) = {r}")
+            # draw_radii_arrows(ax, radii)
+
+            if radii_save_path is not None:                          
+                save_contour_radii(                                  
+                    radii_save_path, quantity, plane,                
+                    radii, contour_values,                           
+                )         
+        else:
+            print(f"Skipping contours for {quantity} (fraction={fraction:.2f}): "
+                  f"contour levels {contour_values} outside data range "
+                  f"[{np.nanmin(data):.2e}, {np.nanmax(data):.2e}]")
     return ax
 
 # ===========================================================================
@@ -527,9 +685,11 @@ def plot_single_render(
     cmap,
     vmin,
     vmax,
+    contours,
     save_path,
     show,
     col_dens=False,
+    radii_save_path=None,
 ):
     """Produce and optionally save a single SPH render for one quantity."""
     sdf, meta = prepare_render_dataframe(
@@ -556,6 +716,8 @@ def plot_single_render(
         vmax=vmax,
         interpolate=interpolate,
         fraction=fraction,
+        contours=contours,
+        radii_save_path=radii_save_path,
     )
 
     format_render_axes(ax, quantity, plane, meta, xlim=xlim, xsec=xsec, plot_single=True)
@@ -1265,6 +1427,11 @@ def main():
     parser.add_argument("--cmap", type=str, default="gist_heat")
     parser.add_argument("--vmin", type=float, default=None)
     parser.add_argument("--vmax", type=float, default=None)
+    parser.add_argument(
+    "--contours",
+    action="store_true",
+    help="Draw white dashed contours at 0.5× and 0.01× of the colourbar maximum.",
+    )
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dark-mode", action="store_true")
     parser.add_argument("--chemistry", choices=["Crich", "Orich"], default="Crich")
@@ -1277,6 +1444,12 @@ def main():
             "(temperature, density, Av) in xy and xz projections.  "
             "Only --xlim is needed alongside --dump / --dump-index."
         ),
+    )
+    parser.add_argument(
+    "--radii-save-path",
+    type=str,
+    default=None,
+    help="Path to a .txt file where contour radii are saved/appended.",
     )
     parser.add_argument(
     "--parent-daughter",
@@ -1298,20 +1471,22 @@ def main():
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
-            "--plane", "xz",
-            "--quantity", "CO",
-            "--xlim", "1000",
+            "--plane", "xy",
+            "--quantity", *mol_list,
+            "--xlim", "5000",
             # "--parent-daughter",
-            # "--dens-weight", "True",
+            "--dens-weight", "True",
             # "--vmin", "1e-8",
-            # # "--vmax", "1e-4",
+            # # "--vmax", "1e-4",1
+            "--contours",
             # "--xsec", "0",
             # "--log", "False",
             # "--compare-fractions",
             # "--nine-fractions",
             # "--interpolate",
-            "--col-dens",
-            "--show",
+            # "--col-dens",
+            "--radii-save-path", "/fred/oz304/beckers/v10a09_out/output/radii_contours.txt",
+            # "--show",
             # "--dark-mode",
         ])
     else:
@@ -1478,9 +1653,11 @@ def main():
                     cmap=args.cmap,
                     vmin=args.vmin,
                     vmax=args.vmax,
+                    contours=args.contours,
                     save_path=save_path,
                     show=args.show,
                     col_dens=args.col_dens,
+                    radii_save_path=Path(args.radii_save_path) if args.radii_save_path else None,
                 )
 
 

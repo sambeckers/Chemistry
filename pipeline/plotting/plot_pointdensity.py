@@ -54,7 +54,7 @@ from scipy.ndimage import gaussian_filter1d
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config import BASE_PATH
-from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, set_plot_style, _collect_xy
+from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, set_plot_style, _collect_xy, format_species_label
 
 from code_chem.run_plot_single_config_1D_model import (
     run_model,
@@ -865,9 +865,11 @@ def main() -> None:
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dark-mode", action="store_true")
 
-    mol_list = ["CO", "CH2", "CH3", "CH4", "HCl", "CH3CN", "SiO", "HCN", "CN",
-                "HC3N", "HC5N", "HC7N", "C2H", "C4H", "C6H", "SiC", "SiN",
-                "H2CS", "H2CO"]
+    mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN', 
+                'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
+                'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
+                'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
+    
     if is_interactive():
         args = parser.parse_args([
             "--molecule",       *mol_list,
@@ -896,10 +898,10 @@ def main() -> None:
                 molecule, args.chemistry, args.n_tasks
             )
             plot_density(
-                title            = rf"{molecule}",
+                title            = rf"{format_species_label(molecule)}",
                 hist_2d          = hist_2d,
                 val_edges        = AB_EDGES,
-                val_label        = r"Abundance (wrt H$_{\mathrm{nuc}}$)",
+                val_label        = r"Abundance relative to $\mathrm{H}_2$",
                 bin_sum          = bin_sum,
                 bin_count        = bin_count,
                 val_centres      = AB_CENTRES,

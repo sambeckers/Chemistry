@@ -28,8 +28,8 @@
 #SBATCH --array=0-31           # 32 tasks — increase if you have many dumps
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1      # one render per task; raise if sarracen is threaded
-#SBATCH --mem=16G              # SPH rendering can be memory-hungry
-#SBATCH --time=02:00:00        # adjust based on dump size and number of frames
+#SBATCH --mem-per-cpu=4G              # SPH rendering can be memory-hungry
+#SBATCH --time=00:15:00        # adjust based on dump size and number of frames
 
 # ---------------------------------------------------------------------------
 # Environment variables with defaults (override via --export on sbatch)
