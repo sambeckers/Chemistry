@@ -21,6 +21,7 @@ import re
 import sys
 from pathlib import Path
 from astropy import units as u
+from scipy.spatial import cKDTree
 import matplotlib
 
 import h5py
@@ -311,6 +312,31 @@ def quantity_label(quantity: str, dens_weight: bool, col_dens: bool = False) -> 
 # ===========================================================================
 # Data preparation
 # ===========================================================================
+def remove_abundance_outliers(
+    sdf,
+    quantity: str,
+    k: int = 16,
+    log_thresh: float = 2.0,   # decades above local median → outlier
+) -> sdf:
+    """Remove particles with abundances that are anomalously 
+    high compared to their local neighbourhood."""
+    coords = sdf[["x", "y", "z"]].to_numpy()
+    vals   = sdf[quantity].to_numpy(dtype=float)
+
+    tree = cKDTree(coords)
+    _, idxs = tree.query(coords, k=k + 1)   # col 0 is self
+
+    local_median = np.median(vals[idxs[:, 1:]], axis=1)
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        log_ratio = np.log10(vals / local_median)
+
+    outlier = np.isfinite(log_ratio) & (log_ratio > log_thresh)
+    n_removed = outlier.sum()
+    print(f"Abundance outlier filter: removed {n_removed:,} particles "
+          f"(>{log_thresh} dex above local median of {k} neighbours)")
+    return sdf[~outlier]
+
 def prepare_render_dataframe(
     phantom_path: Path,
     dump_path: Path,
@@ -360,6 +386,7 @@ def prepare_render_dataframe(
         print(f"Multiplied {quantity} by H2 column density → units: cm^-3")
 
     sdf = sdf.dropna(subset=[quantity])
+    sdf = remove_abundance_outliers(sdf, quantity, k=16, log_thresh=2.0)
     print(f"Rendering with {len(sdf):,} particles")
 
     meta = {
@@ -1462,6 +1489,11 @@ def main():
                 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
                 'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
                 'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
+    parents = ["CO", "N2", "CH4", "H2O", "SiC2", "CS", "C2H2", 
+               "HCN", "SiS", "SiO", "HCl", "C2H4", "NH3", "HCP", "HF", "H2S"]
+    daughters = ['CH2', 'CH3', 'CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N',
+                'C2H', 'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO']
+    # print(len(parents), len(daughters))
 
     PARENT_DAUGHTER_PAIRS = [
     ("C2H2", "C2H"),
@@ -1471,14 +1503,14 @@ def main():
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
-            "--plane", "xy",
-            "--quantity", *mol_list,
-            "--xlim", "5000",
+            "--plane", "xz",
+            "--quantity", *parents,
+            "--xlim", "100",
             # "--parent-daughter",
             "--dens-weight", "True",
             # "--vmin", "1e-8",
             # # "--vmax", "1e-4",1
-            "--contours",
+            # "--contours",
             # "--xsec", "0",
             # "--log", "False",
             # "--compare-fractions",
@@ -1486,7 +1518,7 @@ def main():
             # "--interpolate",
             # "--col-dens",
             "--radii-save-path", "/fred/oz304/beckers/v10a09_out/output/radii_contours.txt",
-            # "--show",
+            "--show",
             # "--dark-mode",
         ])
     else:
@@ -1520,7 +1552,8 @@ def main():
     save_ext  = "pdf" if args.dark_mode else "png"
     dump_stem = dump_path.stem.split("_", 1)[1]
 
-    def _save_dir(xlim: float | None, compare: bool, overview: bool = False, parent_daughter: bool = False) -> Path:
+    def _save_dir(quantity: str, xlim: float | None, compare: bool, overview: bool = False, parent_daughter: bool = False) -> Path:
+        mol_type = "parent" if quantity in parents else "daughter" if quantity in daughters else "other"
         spatial_tag = "zoom" if (xlim is not None and xlim <= 100) else "full"
         base = SAVE_DIR_BASE / args.chemistry / "render"
         if overview:
@@ -1528,9 +1561,9 @@ def main():
         elif parent_daughter:
             d = base / "parent_daughter" / spatial_tag
         elif compare:
-            d = base / "compare" / spatial_tag
+            d = base / "compare" / mol_type / spatial_tag
         else:
-            d = base / spatial_tag
+            d = base / "single" / mol_type / spatial_tag
         d.mkdir(parents=True, exist_ok=True)
         return d
 
@@ -1568,7 +1601,7 @@ def main():
                 xsec_tag = f"_xsec{xsec:.0f}" if xsec is not None else ""
                 xlim_tag = f"_{xlim:.0f}AU" if xlim is not None else ""
 
-                save_dir = _save_dir(xlim, compare=False, overview=False, parent_daughter=True)
+                save_dir = _save_dir(None, xlim, compare=False, overview=False, parent_daughter=True)
 
                 save_path = save_dir / (
                     f"render_{plane}_{parent}_{daughter}_"
@@ -1609,7 +1642,7 @@ def main():
 
             if args.compare_fractions:
                 frac_set_tag = "_frac9" if args.nine_fractions else "_frac3"
-                save_dir  = _save_dir(xlim, compare=True)
+                save_dir  = _save_dir(quantity, xlim, compare=True)
                 save_path = save_dir / (
                     f"render_{plane}_{cd_tag}{quantity}_{dump_stem}"
                     f"{xsec_tag}{dw_tag}{xlim_tag}{frac_set_tag}_compare.{save_ext}"
@@ -1634,7 +1667,7 @@ def main():
                 )
 
             else:
-                save_dir  = _save_dir(xlim, compare=False)
+                save_dir  = _save_dir(quantity, xlim, compare=False)
                 save_path = save_dir / (
                     f"render_{plane}_{cd_tag}{quantity}_{dump_stem}"
                     f"{xsec_tag}{dw_tag}{xlim_tag}.{save_ext}"
