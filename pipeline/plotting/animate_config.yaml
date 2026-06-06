@@ -1,0 +1,28 @@
+# Mode: single, parent_daughter, phys_overview, mol_grid
+mode: single
+quantity: CO          # special keyword (or list of species)
+
+# For parent_daughter mode, use:
+# parent_daughter_pair: [C2H2, C2H]
+
+plane: xy
+chemistry: Crich
+dark_mode: true
+col_dens: true
+dens_weight: false
+cmap: gist_heat
+
+# xlim_mode: fixed
+xlim: 200.0
+# For ramp:
+# xlim_mode: ramp
+# xlim_start: 100.0
+# xlim_end: 500.0
+frame_fraction: 0.1
+
+xsec: null                 # null = column integration
+fps: 60
+
+# Optional overrides (defaults from render_slice_v2)
+dump_dir: /fred/oz304/beckers/v10a09_out/output/dumps
+phantom_dir: /fred/oz304/beckers/v10a09

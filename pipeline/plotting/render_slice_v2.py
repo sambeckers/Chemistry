@@ -461,8 +461,9 @@ def format_render_axes(
         direction="in", length=tick_size/2, width=1,
         colors="white", top=True, right=True,
     )
-    ax.xaxis.set_tick_params(labelcolor="black")
-    ax.yaxis.set_tick_params(labelcolor="black")
+    label_color = plt.rcParams.get("text.color", "black")
+    ax.xaxis.set_tick_params(labelcolor=label_color)
+    ax.yaxis.set_tick_params(labelcolor=label_color)
     ax.minorticks_on()
     ax.set_aspect("equal")
     ax.set_facecolor("k")

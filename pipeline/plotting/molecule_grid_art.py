@@ -67,7 +67,7 @@ NON_SPECIES_KEYS = {
 CM3_TO_M3 = (1 * u.cm**-3).to(u.m**-3).value   # now uses astropy.units
 
 # ---- Panel dimension --------------------------------------------------------
-PANEL_SIZE_INCH = 0.44          # width = height of a single panel (square)
+PANEL_SIZE_INCH = 0.45          # width = height of a single panel (square)
 A4_LANDSCAPE = (11.69, 8.27)   # inches (297 x 210 mm)
 A4_PORTRAIT  = (8.27, 11.69)
 
