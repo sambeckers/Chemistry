@@ -23,6 +23,7 @@ from pathlib import Path
 from astropy import units as u
 from scipy.spatial import cKDTree
 import matplotlib
+from itertools import product
 
 import h5py
 import matplotlib.pyplot as plt
@@ -1340,6 +1341,7 @@ def plot_molecule_grid(
     if n == 0:
         print("plot_molecule_grid: no quantities supplied, skipping.")
         return
+    FONT_SIZE = 12
 
     ncols     = 4
     nrows     = math.ceil(n / ncols)
@@ -1446,47 +1448,107 @@ def plot_molecule_grid(
 import csv
 
 
-def load_render_config_lists(path):
+def _parse_bool(val: str) -> bool:
+    """Return True for 'TRUE'/'True'/'1'/'yes'; False otherwise."""
+    return str(val).strip().lower() in ("true", "1", "yes")
+
+
+def _parse_float_or_none(val: str):
+    """Return float(val) or None for empty / 'None' strings."""
+    v = val.strip()
+    return None if v in ("", "None") else float(v)
+
+
+def load_render_config_row(path: str, row_index: int) -> dict:
     """
-    Read render configuration CSV/TXT file and return Python lists
-    matching the argparse variables.
+    Read one row (0-based) from *configs_render.csv* and return a dict
+    with the same keys used by the argparse namespace in main().
 
-    Expected columns:
-        plane,xlim,dens_weight,xsec,log
+    CSV columns
+    -----------
+    quantity        : molecule name, 'parents', 'daughters', 'molecules', or
+                      empty (phys-overview / parent-daughter infer their own)
+    plane           : 'xy', 'xz', or 'xy,xz'  (comma-separated)
+    xlim            : one or more AU values, comma-separated (or empty)
+    dens_weight     : TRUE / FALSE
+    col-dens        : TRUE / FALSE
+    mol-grid        : TRUE / FALSE
+    compare_fractions : TRUE / FALSE
+    nine-fractions  : TRUE / FALSE
+    xsec            : float or empty
+    contours        : TRUE / FALSE
+    parent-daughter : TRUE / FALSE
+    phys-overview   : TRUE / FALSE
     """
+    molecules = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN',
+                'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC',
+                'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O',
+                'C2H2', 'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
+    parents_list = ["CO", "N2", "CH4", "H2O", "SiC2", "CS", "C2H2",
+                    "HCN", "SiS", "SiO", "HCl", "C2H4", "NH3", "HCP",
+                    "HF", "H2S"]
+    daughters_list = ['CH2', 'CH3', 'CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N',
+                      'C2H', 'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO',
+                      'SO', 'SO2']
 
-    plane_list = []
-    xlim_list = []
-    dens_weight_list = []
-    xsec_list = []
-    log_list = []
-
-    with open(path, newline="") as f:
+    with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
+        rows = list(reader)
 
-        for row in reader:
+    if row_index < 0 or row_index >= len(rows):
+        raise IndexError(
+            f"--config-row {row_index} is out of range; "
+            f"{path} has {len(rows)} data rows (0-{len(rows)-1})."
+        )
 
-            # plane
-            plane_list.append(row["plane"])
+    row = rows[row_index]
 
-            # xlim
-            xlim = row["xlim"]
-            xlim_list.append(
-                None if xlim in ("", "None")
-                else float(xlim)
-            )
+    # ---- quantity -----------------------------------------------------------
+    q_raw = row.get("quantity", "").strip()
+    if q_raw == "parents":
+        quantity = parents_list
+    elif q_raw == "daughters":
+        quantity = daughters_list
+    elif q_raw == "molecules":
+        quantity = molecules
+    elif q_raw == "":
+        quantity = []          # phys-overview / parent-daughter handle their own
+    else:
+        quantity = [q_raw]     # single named species, e.g. 'CO'
 
-            # xsec
-            xsec = row["xsec"]
-            xsec_list.append(
-                None if xsec in ("", "None")
-                else float(xsec)
-            )
+    # ---- plane --------------------------------------------------------------
+    plane = [p.strip() for p in row.get("plane", "xy").split(",") if p.strip()]
 
-    return (
-        plane_list,
-        xlim_list,
-        xsec_list,
+    # ---- xlim  (one or more values) -----------------------------------------
+    xlim_raw = row.get("xlim", "").strip()
+    if xlim_raw in ("", "None"):
+        xlim = [None]
+    else:
+        xlim = [_parse_float_or_none(v) for v in xlim_raw.split(",")]
+
+    # ---- xsec ---------------------------------------------------------------
+    xsec_raw = row.get("xsec", "").strip()
+    if xsec_raw in ("", "None"):
+        xsec = [None]
+    else:
+        xsec = [_parse_float_or_none(v) for v in xsec_raw.split(",")]
+
+    # If planes and xlims differ in length, zip will stop at the shorter one;
+    # that mirrors how the normal CLI --plane / --xlim / --xsec work.
+
+    return dict(
+        quantity          = quantity,
+        plane             = plane,
+        xlim              = xlim,
+        xsec              = xsec,
+        dens_weight       = _parse_bool(row.get("dens_weight", "FALSE")),
+        col_dens          = _parse_bool(row.get("col-dens", "FALSE")),
+        mol_grid          = _parse_bool(row.get("mol-grid", "FALSE")),
+        compare_fractions = _parse_bool(row.get("compare_fractions", "FALSE")),
+        nine_fractions    = _parse_bool(row.get("nine-fractions", "FALSE")),
+        contours          = _parse_bool(row.get("contours", "FALSE")),
+        parent_daughter   = _parse_bool(row.get("parent-daughter", "FALSE")),
+        phys_overview     = _parse_bool(row.get("phys-overview", "FALSE")),
     )
 
 def _as_list(val, *, boolean=False):
@@ -1589,8 +1651,50 @@ def main():
             "with --compare-fractions and --parent-daughter."
         ),
     )
+    # --- SLURM / CSV-batch arguments -----------------------------------------
+    parser.add_argument(
+        "--config-csv",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help=(
+            "Path to configs_render.csv.  When supplied together with "
+            "--config-row the script reads one row and uses it to override "
+            "all render-mode flags (quantity, plane, xlim, xsec, "
+            "dens-weight, col-dens, mol-grid, compare-fractions, "
+            "nine-fractions, contours, parent-daughter, phys-overview)."
+        ),
+    )
+    parser.add_argument(
+        "--config-row",
+        type=int,
+        default=None,
+        metavar="N",
+        help="0-based row index into --config-csv (set to SLURM_ARRAY_TASK_ID).",
+    )
+    parser.add_argument(
+        "--config-plane",
+        type=str,
+        default=None,
+        metavar="PLANE",
+        help="Override: restrict this task to a single plane (xy or xz).",
+    )
+    parser.add_argument(
+        "--config-xlim",
+        type=str,
+        default=None,
+        metavar="XLIM",
+        help="Override: restrict this task to a single xlim value (float or 'None').",
+    )
+    parser.add_argument(
+        "--config-xsec",
+        type=str,
+        default=None,
+        metavar="XSEC",
+        help="Override: restrict this task to a single xsec value (float or 'None').",
+    )
 
-    mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN',
+    molecules = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN',
                 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC',
                 'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2',
                 'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
@@ -1607,12 +1711,13 @@ def main():
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
-            "--plane", "xz",
+            # "--plane", "xy",
             # "--quantity", "CO",
             "--xlim", "2000",
+            "--phys-overview",
             # "--mol-grid",
-            "--parent-daughter",
-            "--dens-weight", "True",
+            # "--parent-daughter",
+            # "--dens-weight", "True",
             # "--vmin", "1e-8",
             # "--vmax", "1e-4",
             # "--contours",
@@ -1628,13 +1733,39 @@ def main():
         ])
     else:
         args = parser.parse_args()
-    
-    # args.dump_index = '1581'
-    # args.dens-weight = True
-    # args.quantity = parents
-    # args.plane = ["xy", "xz"]
-    # args.xlim = [200,500]
-    # args.xsec = [None]
+
+    # ---- CSV row override (used by SLURM array jobs) ------------------------
+    if args.config_csv is not None and args.config_row is not None:
+        cfg = load_render_config_row(args.config_csv, args.config_row)
+        print(f"[config-row {args.config_row}] loaded from {args.config_csv}:")
+        for k, v in cfg.items():
+            print(f"  {k:22s} = {v}")
+        # Override args with values from the CSV row
+        args.quantity          = cfg["quantity"]
+        args.plane             = cfg["plane"]
+        args.xlim              = cfg["xlim"]
+        args.xsec              = cfg["xsec"]
+        args.dens_weight       = cfg["dens_weight"]
+        args.col_dens          = cfg["col_dens"]
+        args.mol_grid          = cfg["mol_grid"]
+        args.compare_fractions = cfg["compare_fractions"]
+        args.nine_fractions    = cfg["nine_fractions"]
+        args.contours          = cfg["contours"]
+        args.parent_daughter   = cfg["parent_daughter"]
+        args.phys_overview     = cfg["phys_overview"]
+
+    # ---- Per-task plane/xlim/xsec overrides (set by SLURM from task_list) ---
+    # These narrow a multi-value CSV row to exactly one combination so that
+    # each array task renders only its assigned (plane, xlim, xsec).
+    if args.config_plane is not None:
+        args.plane = [args.config_plane]
+    if args.config_xlim is not None:
+        args.xlim = [None if args.config_xlim.strip() == "None"
+                     else float(args.config_xlim)]
+    if args.config_xsec is not None:
+        args.xsec = [None if args.config_xsec.strip() == "None"
+                     else float(args.config_xsec)]
+    # -------------------------------------------------------------------------
 
     args.plane       = _as_list(args.plane)
     args.xlim        = _as_list(args.xlim)
@@ -1681,7 +1812,7 @@ def main():
     # ------------------------------------------------------------------
     if args.phys_overview:
         xlim = args.xlim[0]
-        save_dir  = _save_dir(xlim, compare=False, overview=True)
+        save_dir  = _save_dir(None, xlim, compare=False, overview=True)
         xlim_tag  = f"_{xlim:.0f}AU" if xlim is not None else ""
         save_path = save_dir / f"phys_{dump_stem}{xlim_tag}.{save_ext}"
         plot_phys_overview(
@@ -1699,7 +1830,7 @@ def main():
     # ------------------------------------------------------------------
     if args.parent_daughter:
 
-        for plane, xlim, xsec in zip(args.plane, args.xlim, args.xsec):
+        for plane, xlim, xsec in product(args.plane, args.xlim, args.xsec):
 
             for parent, daughter in PARENT_DAUGHTER_PAIRS:
 
@@ -1737,10 +1868,7 @@ def main():
     # Molecule grid mode — all quantities in one 4-column figure
     # ------------------------------------------------------------------
     if args.mol_grid:
-
-        for plane in args.plane:
-            for xlim in args.xlim:
-                for xsec in args.xsec:
+        for plane, xlim, xsec in product(args.plane, args.xlim, args.xsec):
                     xsec_tag = f"_xsec{xsec:.0f}" if xsec is not None else ""
                     xlim_tag = f"_{xlim:.0f}AU"   if xlim is not None else ""
                     dw_tag   = "_dw"              if args.dens_weight  else ""
@@ -1790,7 +1918,7 @@ def main():
     cd_tag    = "n" if args.col_dens else ""
 
     for quantity in args.quantity:
-        for plane, xlim, xsec in zip(args.plane, args.xlim, args.xsec):
+        for plane, xlim, xsec in product(args.plane, args.xlim, args.xsec):
             xsec_tag  = f"_xsec{xsec:.0f}"  if xsec is not None else ""
             dw_tag    = "_dw"                if args.dens_weight      else ""
             xlim_tag  = f"_{xlim:.0f}AU"    if xlim is not None else ""
