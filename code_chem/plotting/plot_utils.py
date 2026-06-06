@@ -258,14 +258,7 @@ def format_species_label(species: str) -> str:
         # Following number becomes subscript
         if i + 1 < len(tokens) and tokens[i + 1].isdigit():
             num = tokens[i + 1]
-
-            # Heuristic:
-            # small numbers -> molecular subscript
-            # large numbers -> isotope superscript
-            if int(num) <= 9:
-                elem += rf"_{{{num}}}"
-            else:
-                elem += rf"^{{{num}}}"
+            elem += rf"_{{{num}}}"
 
             i += 1
 

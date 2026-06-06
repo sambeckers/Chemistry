@@ -67,13 +67,22 @@ NON_SPECIES_KEYS = {
 CM3_TO_M3 = (1 * u.cm**-3).to(u.m**-3).value   # now uses astropy.units
 
 # ---- Panel dimension --------------------------------------------------------
-PANEL_SIZE_INCH = 0.6          # width = height of a single panel (square)
+PANEL_SIZE_INCH = 0.44          # width = height of a single panel (square)
 A4_LANDSCAPE = (11.69, 8.27)   # inches (297 x 210 mm)
 A4_PORTRAIT  = (8.27, 11.69)
 
 # ---- Global font size for annotations ---------------------------------------
 ANNOT_FONT_SIZE = 4
 
+from matplotlib import cm
+from matplotlib.colors import LinearSegmentedColormap
+def truncate_colormap(cmap_name="gist_heat", minval=0.0, maxval=0.95, n=256):
+    cmap = cm.get_cmap(cmap_name)
+    return LinearSegmentedColormap.from_list(
+        f"trunc_{cmap_name}",
+        cmap(np.linspace(minval, maxval, n))
+    )
+GIST_HEAT_NO_WHITE = truncate_colormap("gist_heat", maxval=0.95)
 # ============================================================================
 # Molecule discovery
 # ============================================================================
@@ -133,7 +142,7 @@ def build_species_lookup() -> dict[str, str]:
     """
     lookup = {}
     try:
-        with open("rate12_complex_atomic_Crich.specs", "r", encoding="ascii") as handle:
+        with open(CHEMISTRY_ROOT / "rate12_complex_atomic_Crich.specs", "r", encoding="ascii") as handle:
             for line in handle:
                 parts = line.split()
                 if len(parts) < 2:
@@ -259,7 +268,7 @@ def render_single_panel(
     # Annotation: species name top right, white, small font
     label = format_species_label(recover_species_name(species))
     ax.text(
-        0.97, 0.97, label,
+        0.95, 0.95, label,
         transform=ax.transAxes,
         ha="right", va="top",
         fontsize=ANNOT_FONT_SIZE,
@@ -377,6 +386,8 @@ def main() -> None:
                             help="Base name (without extension) for the final file")
     p_assemble.add_argument("--orientation", choices=["landscape","portrait","both"],
                             default="both")
+    p_assemble.add_argument("--dump-dir", type=str, default=str(DUMP_DIR))
+    p_assemble.add_argument("--phantom-dir", type=str, default=str(PHANTOM_DIR))
 
     args = parser.parse_args()
 
@@ -399,6 +410,7 @@ def main() -> None:
 
         species = get_all_species(dump_path)
         n_species = len(species)
+        print(f"Found {n_species} species in {dump_path.name}")
         task_species = np.array_split(species, args.n_tasks)[args.task_id]
 
         out_dir = Path(args.output_dir)
