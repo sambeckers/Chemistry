@@ -64,7 +64,7 @@ MIN_PER_CELL  = 1       # cells with fewer particles are shown as NaN
 # ---------------------------------------------------------------------------
 # Global font size — applied consistently to all labels, ticks, and titles
 # ---------------------------------------------------------------------------
-FONT_SIZE = 12
+FONT_SIZE = 24
 
 # ===========================================================================
 # Physical parameter mapping
@@ -1398,6 +1398,7 @@ def plot_molecule_grid(
             show_xlabel=is_bottom_in_col,
             show_ylabel=is_leftmost,
             small_ticks=True,
+            plot_single=True,
         )
 
         if not is_bottom_in_col:
@@ -1607,18 +1608,18 @@ def main():
         args = parser.parse_args([
             "--dump-index", "1581",
             "--plane", "xz",
-            "--quantity", "CO",
+            # "--quantity", "CO",
             "--xlim", "2000",
             # "--mol-grid",
-            # "--parent-daughter",
+            "--parent-daughter",
             "--dens-weight", "True",
             # "--vmin", "1e-8",
             # "--vmax", "1e-4",
             # "--contours",
             # "--xsec", "0",
             # "--log", "False",
-            "--compare-fractions",
-            "--nine-fractions",
+            # "--compare-fractions",
+            # "--nine-fractions",
             # "--interpolate",
             # "--col-dens",
             # "--radii-save-path", "/fred/oz304/beckers/v10a09_out/output/radii_contours.txt",
@@ -1659,7 +1660,8 @@ def main():
     save_ext  = "pdf" if args.dark_mode else "png"
     dump_stem = dump_path.stem.split("_", 1)[1]
 
-    def _save_dir(quantity: str, xlim: float | None, compare: bool, overview: bool = False, parent_daughter: bool = False) -> Path:
+    def _save_dir(quantity: str, xlim: float | None, compare: bool, 
+                  overview: bool = False, parent_daughter: bool = False):
         mol_type = "parent" if quantity in parents else "daughter" if quantity in daughters else "other"
         spatial_tag = "zoom" if (xlim is not None and xlim <= 100) else "full"
         base = SAVE_DIR_BASE / args.chemistry / "render"
@@ -1753,7 +1755,7 @@ def main():
                     else:
                         mol_tag = "molecules"
 
-                    save_dir = SAVE_DIR_BASE / args.chemistry / "render" / 'grid'
+                    save_dir = SAVE_DIR_BASE / args.chemistry / "render" / 'grid' / mol_tag
                     save_dir.mkdir(parents=True, exist_ok=True)
 
                     save_path = save_dir / (
