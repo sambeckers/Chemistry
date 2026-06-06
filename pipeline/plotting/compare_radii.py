@@ -61,8 +61,8 @@ THRESHOLDS = {
 
 # Colours / markers for the two planes
 PLANE_STYLE = {
-    "xy": dict(color="#4C9BE8", marker="o", label="3D  xy"),
-    "xz": dict(color="#E8844C", marker="s", label="3D  xz"),
+    "xy": dict(color='navy', marker="o", label="3D  $xy$"),
+    "xz": dict(color='cornflowerblue', marker="s", label="3D  $xz$"),
 }
 
 # ===========================================================================
@@ -118,11 +118,6 @@ def compute_1d_radii(
     results: dict[str, dict[str, float]] = {}
 
     for mol in molecules:
-        # fracs_1d keys may differ in capitalisation / normalisation
-        # key = _match_key(mol, fracs_1d)
-        # if key is None:
-        #     print(f"  [1D] '{mol}' not found in 1D model — skipping")
-        #     continue
         cm_to_AU = (1 * u.cm).to(u.AU).value
         frac = fracs_1d[mol]
         if len(frac) == 0 or not np.any(np.isfinite(frac) & (frac > 0)):
@@ -217,7 +212,8 @@ def plot_comparison(
     """
     One figure per threshold (0.01×, 0.5×), showing R_1D vs R_3D for every
     molecule that appears in both datasets, with xy and xz as separate series.
-    Also draws a 1:1 reference line.
+    Draws a 1:1 reference line AND a linear fit (in log‑log space) through
+    the combined (1D,3D) points.
     """
     # Molecules present in both datasets
     common = sorted(
@@ -270,7 +266,21 @@ def plot_comparison(
         lim_hi = all_finite.max() * 1.4
         ref = np.array([lim_lo, lim_hi])
         ax.plot(ref, ref, color="0.6", lw=1.2, ls="--", zorder=0,
-                label="1 : 1")
+                label="1:1")
+
+        # --- Linear fit (log‑log) using all finite points from both planes ---
+        all_r1d = np.concatenate([r1d_xy[np.isfinite(r3d_xy)], r1d_xz[np.isfinite(r3d_xz)]])
+        all_r3d = np.concatenate([r3d_xy[np.isfinite(r3d_xy)], r3d_xz[np.isfinite(r3d_xz)]])
+        if len(all_r1d) >= 2:
+            log_r1d = np.log10(all_r1d)
+            log_r3d = np.log10(all_r3d)
+            slope, intercept = np.polyfit(log_r1d, log_r3d, 1)
+            # generate line over the full x‑range
+            x_fit = np.logspace(np.log10(lim_lo), np.log10(lim_hi), 100)
+            y_fit = 10**(intercept + slope * np.log10(x_fit))
+            ax.plot(x_fit, y_fit, color="k", lw=1.5, ls="-",
+                    label=rf"$y$={slope:.2f}$x$ + {intercept:.2f}")
+            print(f"  {tag}: slope = {slope:.3f}, intercept = {intercept:.3f}")
 
         # --- xy series ---
         mask_xy = np.isfinite(r3d_xy)
@@ -281,18 +291,19 @@ def plot_comparison(
                 color=sty["color"], marker=sty["marker"],
                 s=60, zorder=3, label=sty["label"],
             )
-            for r1, r3, mol in zip(
-                r1d_xy[mask_xy], r3d_xy[mask_xy],
-                np.array(labels)[mask_xy],
-            ):
-                ax.annotate(
-                    format_species_label(mol),
-                    xy=(r1, r3),
-                    xytext=(4, 4),
-                    textcoords="offset points",
-                    fontsize=8,
-                    color=sty["color"],
-                )
+            # Annotate with labels; offset to avoid overlap
+            # for r1, r3, mol in zip(
+            #     r1d_xy[mask_xy], r3d_xy[mask_xy],
+            #     np.array(labels)[mask_xy],
+            # ):
+            #     ax.annotate(
+            #         format_species_label(mol),
+            #         xy=(r1, r3),
+            #         xytext=(4, 4),
+            #         textcoords="offset points",
+            #         fontsize=8,
+            #         color=sty["color"],
+            #     )
 
         # --- xz series ---
         mask_xz = np.isfinite(r3d_xz)
@@ -303,18 +314,18 @@ def plot_comparison(
                 color=sty["color"], marker=sty["marker"],
                 s=60, zorder=3, label=sty["label"],
             )
-            for r1, r3, mol in zip(
-                r1d_xz[mask_xz], r3d_xz[mask_xz],
-                np.array(labels)[mask_xz],
-            ):
-                ax.annotate(
-                    format_species_label(mol),
-                    xy=(r1, r3),
-                    xytext=(4, -10),
-                    textcoords="offset points",
-                    fontsize=8,
-                    color=sty["color"],
-                )
+            # for r1, r3, mol in zip(
+            #     r1d_xz[mask_xz], r3d_xz[mask_xz],
+            #     np.array(labels)[mask_xz],
+            # ):
+            #     ax.annotate(
+            #         format_species_label(mol),
+            #         xy=(r1, r3),
+            #         xytext=(4, -10),
+            #         textcoords="offset points",
+            #         fontsize=8,
+            #         color=sty["color"],
+            #     )
 
         ax.set_xscale("log")
         ax.set_yscale("log")
@@ -322,14 +333,8 @@ def plot_comparison(
         ax.set_ylim(lim_lo, lim_hi)
         ax.set_aspect("equal")
 
-        ax.set_xlabel(r"$R_{\rm 1D}$ [AU]", fontsize=FONT_SIZE)
-        ax.set_ylabel(r"$R_{\rm 3D}$ [AU]", fontsize=FONT_SIZE)
-        # ax.set_title(
-        #     rf"Photodissociation radius at {frac_label} initial abundance"
-        #     f"\n({chemistry})",
-        #     fontsize=FONT_SIZE,
-        # )
-
+        ax.set_xlabel(r"$R_{\rm 1D}$ [au]", fontsize=FONT_SIZE)
+        ax.set_ylabel(r"$R_{\rm 3D}$ [au]", fontsize=FONT_SIZE)
         ax.tick_params(axis="both", which="both", direction="in",
                        top=True, right=True, labelsize=FONT_SIZE * 0.8)
         ax.legend(fontsize=FONT_SIZE * 0.8, framealpha=0.7)
@@ -350,7 +355,7 @@ def plot_comparison(
             plt.close(fig)
 
 
-def plot_radii_per_molecule(
+def plot_radii_grouped_bars(
     radii_1d:  dict[str, dict[str, float]],
     radii_3d:  dict[str, dict[str, float]],
     save_dir:  Path | None,
@@ -358,74 +363,77 @@ def plot_radii_per_molecule(
     chemistry: str,
 ):
     """
-    Alternative view: one panel per molecule, showing both thresholds and
-    both planes as grouped bar / scatter so you can read off actual AU values.
+    Produces two separate bar charts (one for threshold 0.01×, one for 0.50×).
+    Each chart has molecules on the x‑axis sorted by R_1D (ascending).
+    For each molecule, three thin bars are shown: 1D, 3D xy, 3D xz.
     """
-    common = sorted(
-        set(radii_1d.keys()) & set(radii_3d.keys()),
-        key=lambda s: s.lower(),
-    )
+    common = set(radii_1d.keys()) & set(radii_3d.keys())
     if not common:
         return
 
-    n = len(common)
-    ncols = min(4, n)
-    nrows = int(np.ceil(n / ncols))
-
-    fig, axes = plt.subplots(
-        nrows, ncols,
-        figsize=(4 * ncols, 3.5 * nrows),
-        dpi=150,
-        squeeze=False,
-    )
-
-    for spare in axes.flat[n:]:
-        spare.set_visible(False)
-
-    x = np.arange(2)                          # 0 = 0.01×, 1 = 0.5×
+    categories = ["$R_{\\rm 1D}$", "$R_{\\rm 3D,xy}$", "$R_{\\rm 3D,xz}$"]
+    bar_colors = ["k", "navy", "cornflowerblue"]
     width = 0.25
-    tags = ["001", "050"]
-    xlabels = ["0.01×", "0.50×"]
 
-    for idx, mol in enumerate(common):
-        ax = axes[idx // ncols][idx % ncols]
+    for tag, frac_label in [("001", "0.01×"), ("050", "0.50×")]:
+        # Build list of molecules with their 1D radius for this threshold
+        mols_with_r1d = []
+        for mol in common:
+            r1d = radii_1d[mol].get(tag, np.nan)
+            if np.isfinite(r1d):
+                mols_with_r1d.append((mol, r1d))
+        # Sort by 1D radius ascending
+        mols_with_r1d.sort(key=lambda x: x[1], reverse=True)
+        sorted_molecules = [m for m, _ in mols_with_r1d]
 
-        r1d  = [radii_1d[mol].get(t, np.nan) for t in tags]
-        r_xy = [radii_3d[mol].get(f"R_xy_{t}", np.nan) for t in tags]
-        r_xz = [radii_3d[mol].get(f"R_xz_{t}", np.nan) for t in tags]
+        if not sorted_molecules:
+            continue
 
-        ax.bar(x - width, r1d,  width, label="1D",    color="#888888", alpha=0.85)
-        ax.bar(x,         r_xy, width, label="3D xy", color="#4C9BE8", alpha=0.85)
-        ax.bar(x + width, r_xz, width, label="3D xz", color="#E8844C", alpha=0.85)
+        # Prepare data in the sorted order
+        r1d_vals = []
+        r_xy_vals = []
+        r_xz_vals = []
+        for mol in sorted_molecules:
+            r1d_vals.append(radii_1d[mol].get(tag, np.nan))
+            r_xy_vals.append(radii_3d[mol].get(f"R_xy_{tag}", np.nan))
+            r_xz_vals.append(radii_3d[mol].get(f"R_xz_{tag}", np.nan))
+
+        # Replace missing values with 0 for plotting (bars will be invisible)
+        r1d_vals = [v if np.isfinite(v) else 0.0 for v in r1d_vals]
+        r_xy_vals = [v if np.isfinite(v) else 0.0 for v in r_xy_vals]
+        r_xz_vals = [v if np.isfinite(v) else 0.0 for v in r_xz_vals]
+
+        fig, ax = plt.subplots(figsize=(max(8, len(sorted_molecules)*0.5), 6), dpi=300)
+
+        x = np.arange(len(sorted_molecules))
+        offset = -width
+        data = [r1d_vals, r_xy_vals, r_xz_vals]
+        for i, (cat, color, vals) in enumerate(zip(categories, bar_colors, data)):
+            ax.bar(x + offset, vals, width, label=cat, color=color, alpha=0.85)
+            offset += width
 
         ax.set_xticks(x)
-        ax.set_xticklabels(xlabels, fontsize=FONT_SIZE * 0.75)
-        ax.set_ylabel("R [AU]", fontsize=FONT_SIZE * 0.75)
-        ax.tick_params(labelsize=FONT_SIZE * 0.7)
-        ax.set_title(format_species_label(mol), fontsize=FONT_SIZE * 0.9)
-        ax.grid(axis="y", ls=":", lw=0.5, alpha=0.4)
+        ax.set_xticklabels([format_species_label(mol) for mol in sorted_molecules],
+                           rotation=45, ha="right", fontsize=FONT_SIZE*0.7)
+        ax.set_ylabel("Radius [au]", fontsize=FONT_SIZE)
+        ax.legend(fontsize=FONT_SIZE*0.8)
+        # ax.grid(axis="y", ls=":", lw=0.5, alpha=0.4)
+        ax.set_yscale("log")
 
-        if idx == 0:
-            ax.legend(fontsize=FONT_SIZE * 0.65, framealpha=0.7)
+        plt.tight_layout()
 
-    # fig.suptitle(
-    #     f"Photodissociation radii — 1D vs 3D  ({chemistry})",
-    #     fontsize=FONT_SIZE,
-    #     y=1.01,
-    # )
-    plt.tight_layout()
+        if save_dir is not None:
+            save_dir = Path(save_dir)
+            save_dir.mkdir(parents=True, exist_ok=True)
+            fname = save_dir / f"radii_barchart_{chemistry}_{tag}.png"
+            fig.savefig(fname, dpi=150, bbox_inches="tight")
+            print(f"Saved: {fname}")
 
-    if save_dir is not None:
-        save_dir = Path(save_dir)
-        save_dir.mkdir(parents=True, exist_ok=True)
-        fname = save_dir / f"radii_per_molecule_{chemistry}.png"
-        fig.savefig(fname, dpi=150, bbox_inches="tight")
-        print(f"Saved: {fname}")
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
 
-    if show:
-        plt.show()
-    else:
-        plt.close(fig)
 
 def is_interactive():
     try:
@@ -524,13 +532,13 @@ def main():
         )
 
     # ------------------------------------------------------------------
-    # Plots
+    # Plots – using the new bar chart design
     # ------------------------------------------------------------------
-    print("\nGenerating scatter comparison …")
+    print("\nGenerating scatter comparison (with linear fit) …")
     plot_comparison(radii_1d, radii_3d, save_dir, args.show, args.chemistry)
 
-    print("Generating per-molecule bar chart …")
-    plot_radii_per_molecule(radii_1d, radii_3d, save_dir, args.show, args.chemistry)
+    print("Generating grouped bar charts (one per threshold) …")
+    plot_radii_grouped_bars(radii_1d, radii_3d, save_dir, args.show, args.chemistry)
 
 
 if __name__ == "__main__":

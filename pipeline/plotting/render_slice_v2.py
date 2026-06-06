@@ -33,9 +33,19 @@ from matplotlib.ticker import FuncFormatter
 from scipy.interpolate import NearestNDInterpolator
 from scipy.ndimage import distance_transform_edt, gaussian_filter
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from config import BASE_PATH
-from code_chem.plotting.plot_utils import set_plot_style, format_species_label
+import importlib.util
+
+BASE_PATH = Path("/fred/oz304/beckers/Chemistry")
+
+# Load plot_utils
+_spec2 = importlib.util.spec_from_file_location(
+    "plot_utils", BASE_PATH / "code_chem" / "plotting" / "plot_utils.py"
+)
+
+_mod2 = importlib.util.module_from_spec(_spec2)
+_spec2.loader.exec_module(_mod2)
+set_plot_style = _mod2.set_plot_style
+format_species_label = _mod2.format_species_label
 
 # ===========================================================================
 # Paths
@@ -54,7 +64,7 @@ MIN_PER_CELL  = 1       # cells with fewer particles are shown as NaN
 # ---------------------------------------------------------------------------
 # Global font size — applied consistently to all labels, ticks, and titles
 # ---------------------------------------------------------------------------
-FONT_SIZE = 24
+FONT_SIZE = 12
 
 # ===========================================================================
 # Physical parameter mapping
@@ -184,7 +194,7 @@ def read_field_from_hdf5(f: h5py.File, name: str) -> np.ndarray:
     Read a scalar field from the 'particles' group of an open HDF5 file.
 
     Accepts physical parameter shortcuts ('density', 'temperature', 'av')
-    and chemical species names ('CO', 'HCl', 'SiO', …).
+    and chemical species names ('CO', 'HCl', 'SiO', ...).
     """
     p = f["particles"]
 
@@ -193,7 +203,7 @@ def read_field_from_hdf5(f: h5py.File, name: str) -> np.ndarray:
         if key in p:
             return p[key][:]
         raise KeyError(
-            f"Physical parameter '{name}' → HDF5 key '{key}' not found in dump.\n"
+            f"Physical parameter '{name}' -> HDF5 key '{key}' not found in dump.\n"
             f"Available keys: {sorted(p.keys())}"
         )
 
@@ -201,7 +211,7 @@ def read_field_from_hdf5(f: h5py.File, name: str) -> np.ndarray:
     if key in p:
         return p[key][:]
     raise KeyError(
-        f"Species '{name}' → normalised key '{key}' not found in dump.\n"
+        f"Species '{name}' -> normalised key '{key}' not found in dump.\n"
         f"Available keys: {sorted(p.keys())}"
     )
 
@@ -316,9 +326,9 @@ def remove_abundance_outliers(
     sdf,
     quantity: str,
     k: int = 16,
-    log_thresh: float = 2.0,   # decades above local median → outlier
+    log_thresh: float = 2.0,   # decades above local median -> outlier
 ) -> sdf:
-    """Remove particles with abundances that are anomalously 
+    """Remove particles with abundances that are anomalously
     high compared to their local neighbourhood."""
     coords = sdf[["x", "y", "z"]].to_numpy()
     vals   = sdf[quantity].to_numpy(dtype=float)
@@ -355,7 +365,7 @@ def prepare_render_dataframe(
 
     sdf, _ = sarracen.read_phantom(phantom_path)
 
-    # Always read the requested field from HDF5 — this covers both physical
+    # Always read the requested field from HDF5 -- this covers both physical
     # params and chemistry species, and avoids column-name mismatches.
     sdf = assign_chemistry_fields(sdf, dump_path, [quantity])
 
@@ -383,7 +393,7 @@ def prepare_render_dataframe(
         dens_matched  = np.where(matched, dens_raw[sort_idx][ins_clamped], np.nan)
         cm3_to_m3 = (1 * u.cm**-3).to(u.m**-3).value
         sdf[quantity] = sdf[quantity] * dens_matched * cm3_to_m3
-        print(f"Multiplied {quantity} by H2 column density → units: cm^-3")
+        print(f"Multiplied {quantity} by H2 column density -> units: cm^-3")
 
     sdf = sdf.dropna(subset=[quantity])
     sdf = remove_abundance_outliers(sdf, quantity, k=16, log_thresh=2.0)
@@ -420,6 +430,7 @@ def format_render_axes(
     show_ylabel=True,
     show_title=True,
     plot_single=False,
+    small_ticks=None,
 ):
     """Apply standard axis labels, tick formatting, and title to a render axes."""
     if xlim is not None and xlim > 1000:
@@ -437,15 +448,16 @@ def format_render_axes(
     if show_ylabel:
         ax.set_ylabel(ylabel, fontsize=fs)
 
+    tick_size = 4 if small_ticks else 8
     ax.tick_params(
         axis="both", which="major",
-        direction="in", length=8, width=1,
+        direction="in", length=tick_size, width=1,
         colors="white", top=True, right=True,
         labelsize=fs,
     )
     ax.tick_params(
         axis="both", which="minor",
-        direction="in", length=4, width=1,
+        direction="in", length=tick_size/2, width=1,
         colors="white", top=True, right=True,
     )
     ax.xaxis.set_tick_params(labelcolor="black")
@@ -498,9 +510,6 @@ def extract_contour_radii(contour_set):
         if not segs:
             results[level] = np.nan
             continue
-        # Use the longest path — most likely the real disc edge
-        # longest = max(segs, key=lambda s: len(s))
-        # r = np.sqrt(longest[:, 0]**2 + longest[:, 1]**2)
         all_points = np.concatenate(segs, axis=0)
         r = np.sqrt(all_points[:, 0]**2 + all_points[:, 1]**2)
         results[level] = np.mean(r)
@@ -510,12 +519,11 @@ def draw_radii_arrows(ax, radii, plane="xy"):
     """Draw arrows from the origin to each contour radius for visual verification."""
     colors = ["white"] * len(radii)  # one per level
     x0, x1, y0, y1 = ax.images[0].get_extent()
-    
+
     angles = [45, 135, 225, 315]
     for (level, r), color, angle in zip(radii.items(), colors, angles):
         if np.isnan(r):
             continue
-        # Draw at 45 degrees so arrows don't overlap
         angle = np.radians(angle)
         dx = r * np.cos(angle)
         dy = r * np.sin(angle)
@@ -556,54 +564,41 @@ def save_contour_radii(
     """
     import csv
 
-    # Map contour levels to column names by rank (lowest = 0.01, highest = 0.5)
     levels = sorted(radii.keys())
     if plane == "xy":
         col_map = {levels[0]: "R_xy_001", levels[-1]: "R_xy_050"}
-        fill_cols = {"R_xz_001": "—", "R_xz_050": "—"}
+        fill_cols = {"R_xz_001": "--", "R_xz_050": "--"}
     else:
         col_map = {levels[0]: "R_xz_001", levels[-1]: "R_xz_050"}
-        fill_cols = {"R_xy_001": "—", "R_xy_050": "—"}
+        fill_cols = {"R_xy_001": "--", "R_xy_050": "--"}
 
-    # Build the values for this plane
     new_vals = {}
     for level, col in col_map.items():
         r = radii.get(level, np.nan)
-        new_vals[col] = f"{r:.1f}" if np.isfinite(r) else "—"
+        new_vals[col] = f"{r:.1f}" if np.isfinite(r) else "--"
 
     save_path = Path(save_path)
 
-    # ----------------------------------------------------------------
-    # Read existing rows if the file already exists
-    # ----------------------------------------------------------------
     rows = []
     if save_path.exists():
         with open(save_path, newline="") as f:
             reader = csv.DictReader(f, delimiter="\t")
             rows = list(reader)
 
-    # ----------------------------------------------------------------
-    # Find or create the row for this molecule
-    # ----------------------------------------------------------------
     mol_row = next((r for r in rows if r["molecule"] == quantity), None)
 
     if mol_row is None:
-        # New molecule — create a full row with placeholders for the other plane
         mol_row = {"molecule": quantity, **fill_cols, **new_vals}
         rows.append(mol_row)
     else:
-        # Existing row — just update the columns for this plane
         mol_row.update(new_vals)
 
-    # ----------------------------------------------------------------
-    # Write back
-    # ----------------------------------------------------------------
     with open(save_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=CONTOUR_COLS, delimiter="\t")
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"Contour radii saved → {save_path}")
+    print(f"Contour radii saved -> {save_path}")
 
 def render_quantity(
     sdf,
@@ -681,14 +676,13 @@ def render_quantity(
             )
             radii = extract_contour_radii(cs)
             for level, r in radii.items():
-                print(f"Level {level:.3e}  →  R (median per path) = {r}")
-            # draw_radii_arrows(ax, radii)
+                print(f"Level {level:.3e}  ->  R (median per path) = {r}")
 
-            if radii_save_path is not None:                          
-                save_contour_radii(                                  
-                    radii_save_path, quantity, plane,                
-                    radii, contour_values,                           
-                )         
+            if radii_save_path is not None:
+                save_contour_radii(
+                    radii_save_path, quantity, plane,
+                    radii, contour_values,
+                )
         else:
             print(f"Skipping contours for {quantity} (fraction={fraction:.2f}): "
                   f"contour levels {contour_values} outside data range "
@@ -917,7 +911,7 @@ def plot_fraction_compare(
 
         cbar_ax = fig.add_axes([cbar_left, y0, cbar_width, y1 - y0])
 
-        mappable = row_axes[0].images[0] # Row axes share the same color scale, so take the first one
+        mappable = row_axes[0].images[0]
         cbar = fig.colorbar(mappable, cax=cbar_ax)
         cbar.set_label(quantity_label(quantity, dens_weight, col_dens=col_dens), fontsize=FONT_SIZE)
         cbar.ax.tick_params(labelsize=FONT_SIZE)
@@ -982,7 +976,7 @@ def plot_fraction_compare(
 
 
 # ===========================================================================
-# Physical parameters overview  (2 rows × 3 cols)
+# Physical parameters overview  (2 rows x 3 cols)
 # ===========================================================================
 def plot_phys_overview(
     phantom_path: Path,
@@ -1050,7 +1044,6 @@ def plot_phys_overview(
                 fraction=1.0,
             )
 
-            # Strip everything sarracen/format_render_axes may set
             ax.set_xlabel('')
             ax.set_ylabel('')
             ax.set_title('')
@@ -1073,7 +1066,6 @@ def plot_phys_overview(
                 ax.set_xlim(-xlim, xlim)
                 ax.set_ylim(-xlim, xlim)
             else:
-                # Fall back to global particle extent
                 ax.set_xlim(sdf_raw['x'].min(), sdf_raw['x'].max())
                 ax.set_ylim(sdf_raw['y'].min(), sdf_raw['y'].max())
 
@@ -1092,7 +1084,7 @@ def plot_phys_overview(
         axes[1, 0].set_ylabel('$z$ [au]', fontsize=FONT_SIZE)
 
     # ------------------------------------------------------------------
-    # Layout — after rendering and limit-forcing
+    # Layout
     # ------------------------------------------------------------------
     fig.subplots_adjust(
         left=0.07, right=0.99,
@@ -1104,7 +1096,6 @@ def plot_phys_overview(
 
     # ------------------------------------------------------------------
     # Colorbars above each xy panel
-    # Tick order from bottom up: bar → ticks+values → label
     # ------------------------------------------------------------------
     cbar_height = 0.022
     cbar_gap    = 0.025
@@ -1133,7 +1124,6 @@ def plot_phys_overview(
             orientation='horizontal',
         )
 
-        # Ticks + values on top, label above those
         cbar.ax.xaxis.set_ticks_position('top')
         cbar.ax.xaxis.set_label_position('top')
 
@@ -1147,7 +1137,7 @@ def plot_phys_overview(
         cbar.ax.set_title(
             defaults["label"],
             fontsize=FONT_SIZE * 0.85,
-            pad=8,   # points of padding above the tick labels
+            pad=8,
         )
 
     if save_path is not None:
@@ -1230,65 +1220,37 @@ def plot_parent_daughter_pair(
     )
 
     # Match daughter's colour scale to parent
-    parent_img = axes[0].images[0]
+    parent_img   = axes[0].images[0]
     daughter_img = axes[1].images[0]
 
     parent_vmin, parent_vmax = parent_img.get_clim()
+    daughter_img.set_clim(parent_vmin, parent_vmax)
 
-    daughter_img.set_clim(
-        parent_vmin,
-        parent_vmax,
+    format_render_axes(
+        axes[0], parent, plane, meta,
+        xlim=xlim, xsec=xsec,
+        q_in_title=False, show_title=False, plot_single=True,
     )
 
     format_render_axes(
-        axes[0],
-        parent,
-        plane,
-        meta,
-        xlim=xlim,
-        xsec=xsec,
-        q_in_title=False,
-        show_title=False,
-        plot_single=True,
+        axes[1], daughter, plane, meta,
+        xlim=xlim, xsec=xsec,
+        q_in_title=False, show_title=False, plot_single=True,
     )
 
-    format_render_axes(
-        axes[1],
-        daughter,
-        plane,
-        meta,
-        xlim=xlim,
-        xsec=xsec,
-        q_in_title=False,
-        show_title=False,
-        plot_single=True,
-    )
-
-    axes[0].set_title(
-        format_species_label(parent),
-        fontsize=FONT_SIZE / 2,
-    )
-
-    axes[1].set_title(
-        format_species_label(daughter),
-        fontsize=FONT_SIZE / 2,
-    )
+    axes[0].set_title(format_species_label(parent),   fontsize=FONT_SIZE / 2)
+    axes[1].set_title(format_species_label(daughter), fontsize=FONT_SIZE / 2)
     axes[1].set_ylabel('')
 
-    # --------------------------------------------------------------
-    # Layout (same style as compare-fractions)
-    # --------------------------------------------------------------
     fig.subplots_adjust(
-        left=0.08,
-        right=0.88,
-        bottom=0.10,
-        top=0.92,
+        left=0.08, right=0.88,
+        bottom=0.10, top=0.92,
         wspace=0.1,
     )
 
     fig.canvas.draw()
 
-    left_pos = axes[0].get_position()
+    left_pos  = axes[0].get_position()
     right_pos = axes[1].get_position()
 
     cbar_ax = fig.add_axes([
@@ -1298,33 +1260,178 @@ def plot_parent_daughter_pair(
         left_pos.y1 - left_pos.y0,
     ])
 
-    cbar = fig.colorbar(
-        parent_img,
-        cax=cbar_ax,
-    )
-
+    cbar = fig.colorbar(parent_img, cax=cbar_ax)
     cbar.set_label(
-        quantity_label(
-            parent,
-            dens_weight,
-            col_dens=col_dens,
-        ),
+        quantity_label(parent, dens_weight, col_dens=col_dens),
         fontsize=FONT_SIZE / 2,
     )
+    cbar.ax.tick_params(labelsize=FONT_SIZE / 2)
 
-    cbar.ax.tick_params(
-        labelsize=FONT_SIZE / 2,
+    if save_path is not None:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"Saved: {save_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+def _maybe_use_offset_cbar_ticks(cbar, log_scale, font_size):
+    """
+    Fix colorbar tick labels when the mapped data range spans < 1 order of
+    magnitude.  Two distinct failure modes are handled:
+    """
+    vmin, vmax = cbar.norm.vmin, cbar.norm.vmax
+    if vmin is None or vmax is None or vmin <= 0 or vmax <= 0:
+        return
+
+    log_span = math.log10(vmax) - math.log10(vmin)
+    if log_span >= 1.0:
+        return  # ≥ 1 decade: default formatting is fine for both norm types
+
+    # ── shared power-of-ten exponent from the larger bound ─────────────────
+    exp    = math.floor(math.log10(vmax))
+    factor = 10.0 ** exp
+
+    # Candidate significands; pick those whose product with factor falls in range
+    subs  = [1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
+    ticks = [s * factor for s in subs
+             if vmin * 0.999 <= s * factor <= vmax * 1.001]
+
+    if len(ticks) < 2:
+        # Extremely tight range: fall back to 3 linearly spaced interior points
+        ticks = list(np.linspace(vmin, vmax, 5)[1:-1])
+
+    # set_ticks accepts actual data-space values for both LogNorm and Normalize
+    cbar.set_ticks(ticks)
+    cbar.set_ticklabels([f"{t / factor:.2g}" for t in ticks])
+
+    # Shared multiplier annotation just above the bar
+    cbar.ax.text(
+        0.5, 1.02,
+        rf"$\times10^{{{exp}}}$",
+        transform=cbar.ax.transAxes,
+        ha="center", va="bottom",
+        fontsize=font_size * 0.70,
+        clip_on=False,
     )
 
-    # --------------------------------------------------------------
-    # Save / show
-    # --------------------------------------------------------------
-    if save_path is not None:
-        fig.savefig(
-            save_path,
-            dpi=300,
-            bbox_inches="tight",
+# ===========================================================================
+# Molecule grid  (4-column overview with per-panel colorbars)
+# ===========================================================================
+def plot_molecule_grid(
+    phantom_path,
+    dump_path,
+    quantities,
+    plane,
+    xlim,
+    xsec,
+    dens_weight,
+    interpolate,
+    log_scale,
+    cmap,
+    save_path,
+    show,
+    col_dens=False,
+    contours=False,
+    radii_save_path=None,
+):
+    n = len(quantities)
+    if n == 0:
+        print("plot_molecule_grid: no quantities supplied, skipping.")
+        return
+
+    ncols     = 4
+    nrows     = math.ceil(n / ncols)
+    panel_w   = 1.9
+    cbar_w_in = 0.18
+    gap_w_in  = 0.45
+    fig_w     = ncols * (panel_w + cbar_w_in + gap_w_in)
+    fig_h     = nrows * panel_w
+
+    col_ratios = [panel_w, cbar_w_in, gap_w_in] * ncols
+
+    fig = plt.figure(figsize=(fig_w, fig_h), dpi=150)
+    gs  = fig.add_gridspec(
+        nrows, ncols * 3,
+        width_ratios=col_ratios,
+        wspace=0.0,
+        hspace=0.25,   # ← was 0.15; extra room for the ×10^N annotation
+        left=0.09, right=0.98,
+        bottom=0.08, top=0.97,
+    )
+
+    shared_ax = None
+
+    for i, quantity in enumerate(quantities):
+        print(f"Rendering {quantity} ({i+1}/{n})")
+        row    = i // ncols
+        col    = i % ncols
+        gs_col  = col * 3
+        gs_cbar = gs_col + 1
+
+        kwargs = dict(sharex=shared_ax, sharey=shared_ax) if shared_ax else {}
+        ax  = fig.add_subplot(gs[row, gs_col], **kwargs)
+        cax = fig.add_subplot(gs[row, gs_cbar])
+
+        if shared_ax is None:
+            shared_ax = ax
+
+        is_bottom_in_col = (i + ncols) >= n
+        is_leftmost      = (col == 0)
+
+        sdf, meta = prepare_render_dataframe(
+            phantom_path, dump_path, quantity,
+            fraction=1.0, col_dens=col_dens,
         )
+
+        render_quantity(
+            sdf=sdf, quantity=quantity, plane=plane, ax=ax,
+            xlim=xlim, xsec=xsec, dens_weight=dens_weight,
+            cmap=cmap, log_scale=log_scale, interpolate=interpolate,
+            fraction=1.0, contours=contours, radii_save_path=radii_save_path,
+        )
+
+        format_render_axes(
+            ax, quantity, plane, meta,
+            xlim=xlim, xsec=xsec,
+            show_xlabel=is_bottom_in_col,
+            show_ylabel=is_leftmost,
+            small_ticks=True,
+        )
+
+        if not is_bottom_in_col:
+            ax.tick_params(labelbottom=False)
+            ax.set_xlabel("")
+        if not is_leftmost:
+            ax.tick_params(labelleft=False)
+            ax.set_ylabel("")
+
+        mappable = ax.images[0]
+        cbar = fig.colorbar(mappable, cax=cax)
+
+        cbar.ax.tick_params(
+            labelsize=FONT_SIZE * 0.7,
+            direction="out",
+            length=2,
+            width=0.6,
+        )
+        if col == ncols - 1 or i == n - 1:
+            cbar.set_label(
+                quantity_label(quantity, dens_weight, col_dens=col_dens),
+                fontsize=FONT_SIZE * 0.75,
+            )
+        cbar.ax.yaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+
+        # ── compact tick labels for narrow-range colorbars ─────────────────
+        # Must come after set_label so the helper can read any existing ylabel.
+        _maybe_use_offset_cbar_ticks(cbar, log_scale, FONT_SIZE)
+        # ───────────────────────────────────────────────────────────────────
+
+        ax.set_title(ax.get_title(), y=0.98)
+
+    if save_path is not None:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
         print(f"Saved: {save_path}")
 
     if show:
@@ -1368,11 +1475,6 @@ def load_render_config_lists(path):
                 else float(xlim)
             )
 
-            # # dens_weight
-            # dens_weight_list.append(
-            #     row["dens_weight"].strip().lower() == "true"
-            # )
-
             # xsec
             xsec = row["xsec"]
             xsec_list.append(
@@ -1380,17 +1482,10 @@ def load_render_config_lists(path):
                 else float(xsec)
             )
 
-            # # log
-            # log_list.append(
-            #     row["log"].strip().lower() == "true"
-            # )
-
     return (
         plane_list,
         xlim_list,
-        # dens_weight_list,
         xsec_list,
-        # log_list,
     )
 
 def _as_list(val, *, boolean=False):
@@ -1455,9 +1550,9 @@ def main():
     parser.add_argument("--vmin", type=float, default=None)
     parser.add_argument("--vmax", type=float, default=None)
     parser.add_argument(
-    "--contours",
-    action="store_true",
-    help="Draw white dashed contours at 0.5× and 0.01× of the colourbar maximum.",
+        "--contours",
+        action="store_true",
+        help="Draw white dashed contours at 0.5x and 0.01x of the colourbar maximum.",
     )
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dark-mode", action="store_true")
@@ -1467,66 +1562,78 @@ def main():
         "--phys-overview",
         action="store_true",
         help=(
-            "Render a 2×3 overview panel of all three physical parameters "
+            "Render a 2x3 overview panel of all three physical parameters "
             "(temperature, density, Av) in xy and xz projections.  "
             "Only --xlim is needed alongside --dump / --dump-index."
         ),
     )
     parser.add_argument(
-    "--radii-save-path",
-    type=str,
-    default=None,
-    help="Path to a .txt file where contour radii are saved/appended.",
+        "--radii-save-path",
+        type=str,
+        default=None,
+        help="Path to a .txt file where contour radii are saved/appended.",
     )
     parser.add_argument(
-    "--parent-daughter",
-    action="store_true",
-    help="Plot predefined parent/daughter chemistry pairs."
+        "--parent-daughter",
+        action="store_true",
+        help="Plot predefined parent/daughter chemistry pairs."
     )
-    # plane_list, xlim_list, xsec_list = load_render_config_lists("render_configs.txt")
+    parser.add_argument(
+        "--mol-grid",
+        action="store_true",
+        help=(
+            "Render all --quantity values together as a 4-column grid, each "
+            "panel with its own colorbar and shared spatial axes.  Saved "
+            "directly to <base>/render/ as a final figure.  Incompatible "
+            "with --compare-fractions and --parent-daughter."
+        ),
+    )
 
-    mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN', 
-                'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
-                'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
+    mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN',
+                'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC',
+                'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2',
                 'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
-    parents = ["CO", "N2", "CH4", "H2O", "SiC2", "CS", "C2H2", 
+    parents = ["CO", "N2", "CH4", "H2O", "SiC2", "CS", "C2H2",
                "HCN", "SiS", "SiO", "HCl", "C2H4", "NH3", "HCP", "HF", "H2S"]
     daughters = ['CH2', 'CH3', 'CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N',
-                'C2H', 'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO']
-    # print(len(parents), len(daughters))
+                'C2H', 'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO', 'SO2']
 
     PARENT_DAUGHTER_PAIRS = [
-    ("C2H2", "C2H"),
-    ("HCN",  "CN"),
+        ("C2H2", "C2H"),
+        ("HCN",  "CN"),
     ]
-    
+
     if is_interactive():
         args = parser.parse_args([
             "--dump-index", "1581",
             "--plane", "xz",
-            "--quantity", *parents,
-            "--xlim", "100",
+            "--quantity", "CO",
+            "--xlim", "2000",
+            # "--mol-grid",
             # "--parent-daughter",
             "--dens-weight", "True",
             # "--vmin", "1e-8",
-            # # "--vmax", "1e-4",1
+            # "--vmax", "1e-4",
             # "--contours",
             # "--xsec", "0",
             # "--log", "False",
-            # "--compare-fractions",
-            # "--nine-fractions",
+            "--compare-fractions",
+            "--nine-fractions",
             # "--interpolate",
             # "--col-dens",
-            "--radii-save-path", "/fred/oz304/beckers/v10a09_out/output/radii_contours.txt",
+            # "--radii-save-path", "/fred/oz304/beckers/v10a09_out/output/radii_contours.txt",
             "--show",
             # "--dark-mode",
         ])
     else:
         args = parser.parse_args()
-
-    # args.plane = plane_list
-    # args.xlim = xlim_list
-    # args.xsec = xsec_list
+    
+    # args.dump_index = '1581'
+    # args.dens-weight = True
+    # args.quantity = parents
+    # args.plane = ["xy", "xz"]
+    # args.xlim = [200,500]
+    # args.xsec = [None]
 
     args.plane       = _as_list(args.plane)
     args.xlim        = _as_list(args.xlim)
@@ -1571,7 +1678,7 @@ def main():
     # Physical overview mode — ignores --quantity / --plane / --compare
     # ------------------------------------------------------------------
     if args.phys_overview:
-        xlim = args.xlim[0]   # take the first (and typically only) value
+        xlim = args.xlim[0]
         save_dir  = _save_dir(xlim, compare=False, overview=True)
         xlim_tag  = f"_{xlim:.0f}AU" if xlim is not None else ""
         save_path = save_dir / f"phys_{dump_stem}{xlim_tag}.{save_ext}"
@@ -1590,11 +1697,7 @@ def main():
     # ------------------------------------------------------------------
     if args.parent_daughter:
 
-        for plane, xlim, xsec in zip(
-            args.plane,
-            args.xlim,
-            args.xsec,
-        ):
+        for plane, xlim, xsec in zip(args.plane, args.xlim, args.xsec):
 
             for parent, daughter in PARENT_DAUGHTER_PAIRS:
 
@@ -1625,6 +1728,56 @@ def main():
                     show=args.show,
                     col_dens=args.col_dens,
                 )
+
+        return
+
+    # ------------------------------------------------------------------
+    # Molecule grid mode — all quantities in one 4-column figure
+    # ------------------------------------------------------------------
+    if args.mol_grid:
+
+        for plane in args.plane:
+            for xlim in args.xlim:
+                for xsec in args.xsec:
+                    xsec_tag = f"_xsec{xsec:.0f}" if xsec is not None else ""
+                    xlim_tag = f"_{xlim:.0f}AU"   if xlim is not None else ""
+                    dw_tag   = "_dw"              if args.dens_weight  else ""
+                    cd_tag   = "n"                if args.col_dens     else ""
+
+                    # Label the file by which canonical list was passed, or fall back
+                    # to a generic tag
+                    if all(q in parents for q in args.quantity):
+                        mol_tag = "parents"
+                    elif all(q in daughters for q in args.quantity):
+                        mol_tag = "daughters"
+                    else:
+                        mol_tag = "molecules"
+
+                    save_dir = SAVE_DIR_BASE / args.chemistry / "render" / 'grid'
+                    save_dir.mkdir(parents=True, exist_ok=True)
+
+                    save_path = save_dir / (
+                        f"grid_{plane}_{cd_tag}{mol_tag}_{dump_stem}"
+                        f"{xsec_tag}{dw_tag}{xlim_tag}.{save_ext}"
+                    )
+
+                    plot_molecule_grid(
+                        phantom_path=phantom_path,
+                        dump_path=dump_path,
+                        quantities=args.quantity,
+                        plane=plane,
+                        xlim=xlim,
+                        xsec=xsec,
+                        dens_weight=args.dens_weight,
+                        interpolate=args.interpolate,
+                        log_scale=args.log_scale,
+                        cmap=args.cmap,
+                        save_path=save_path,
+                        show=args.show,
+                        col_dens=args.col_dens,
+                        contours=args.contours,
+                        radii_save_path=Path(args.radii_save_path) if args.radii_save_path else None,
+                    )
 
         return
 
