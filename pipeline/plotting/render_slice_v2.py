@@ -216,6 +216,35 @@ def read_field_from_hdf5(f: h5py.File, name: str) -> np.ndarray:
         f"Available keys: {sorted(p.keys())}"
     )
 
+def _read_time_yr(dump_path: Path) -> float | None:
+    """Read simulation time in years from the HDF5 chemistry dump (stored in seconds)."""
+    try:
+        with h5py.File(dump_path, "r") as f:
+            for loc in ("time", "header/time", "particles/time"):
+                try:
+                    t_s = float(np.asarray(f[loc]).flat[0])
+                    return t_s / (365.25 * 24 * 3600)
+                except KeyError:
+                    continue
+        return None
+    except Exception:
+        return None
+
+
+def _add_time_label(fig, time_yr: float, fontsize: int = 10,
+                    x: float = 0.05, y: float = 0.98) -> None:
+    """Add a figure-level time stamp for animation frames."""
+    color = matplotlib.rcParams.get("text.color", "black")
+    fig.text(
+        x, y,
+        rf"$t = {round(time_yr)}$ yr",
+        ha="left", va="top",
+        fontsize=fontsize,
+        color=color,
+        fontweight="bold",
+        transform=fig.transFigure,
+    )
+
 # ===========================================================================
 # Chemistry (and physical param) field attachment
 # ===========================================================================
@@ -713,6 +742,7 @@ def plot_single_render(
     show,
     col_dens=False,
     radii_save_path=None,
+    time_yr=None,
 ):
     """Produce and optionally save a single SPH render for one quantity."""
     sdf, meta = prepare_render_dataframe(
@@ -751,6 +781,9 @@ def plot_single_render(
     cbar.ax.tick_params(labelsize=FONT_SIZE / 2)
 
     plt.tight_layout()
+
+    if time_yr is not None:
+        _add_time_label(fig, time_yr)
 
     if save_path is not None:
         fig.savefig(save_path, dpi=300, bbox_inches="tight")
@@ -987,6 +1020,7 @@ def plot_phys_overview(
     save_path: Path | None,
     show: bool,
     log_scale: bool = True,
+    time_yr = None,
 ):
     quantities = ["temperature", "density", "av"]
     planes     = ["xy", "xz"]
@@ -1142,6 +1176,13 @@ def plot_phys_overview(
             pad=8,
         )
 
+    # Place time label just above the top row of axes
+    top_ax_pos = axes[0, 0].get_position()
+    time_label_y = top_ax_pos.y1 + 0.075   # small gap above the top row
+    time_yr = _read_time_yr(dump_path)
+    if time_yr is not None:
+        _add_time_label(fig, time_yr, fontsize=20, x=0.06, y=min(time_label_y, 0.98))
+
     if save_path is not None:
         fig.savefig(save_path, dpi=300, bbox_inches="tight")
         print(f"Saved: {save_path}")
@@ -1165,11 +1206,12 @@ def plot_parent_daughter_pair(
     save_path,
     show,
     col_dens=False,
+    time_yr=None,
 ):
 
     fig, axes = plt.subplots(
         1, 2,
-        figsize=(12, 6),
+        figsize=(8, 4),
         dpi=300,
         sharex=True,
         sharey=True,
@@ -1269,6 +1311,9 @@ def plot_parent_daughter_pair(
     )
     cbar.ax.tick_params(labelsize=FONT_SIZE / 2)
 
+    if time_yr is not None:
+        _add_time_label(fig, time_yr)
+
     if save_path is not None:
         fig.savefig(save_path, dpi=300, bbox_inches="tight")
         print(f"Saved: {save_path}")
@@ -1337,6 +1382,7 @@ def plot_molecule_grid(
     col_dens=False,
     contours=False,
     radii_save_path=None,
+    time_yr=None,
 ):
     n = len(quantities)
     if n == 0:
@@ -1433,6 +1479,9 @@ def plot_molecule_grid(
         # ───────────────────────────────────────────────────────────────────
 
         ax.set_title(ax.get_title(), y=0.98)
+    
+    if time_yr is not None:
+        _add_time_label(fig, time_yr, x=0.03, y=0.995)
 
     if save_path is not None:
         fig.savefig(save_path, dpi=150, bbox_inches="tight")

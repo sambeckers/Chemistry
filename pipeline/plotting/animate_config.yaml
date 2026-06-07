@@ -1,24 +1,24 @@
 # Mode: single, parent_daughter, phys_overview, mol_grid
-mode: single
-quantity: CO          # special keyword (or list of species)
+mode: mol_grid
+quantity: parents          # special keyword (or list of species)
 
-# For parent_daughter mode, use:
+# # For parent_daughter mode, use:
 # parent_daughter_pair: [C2H2, C2H]
 
-plane: xy
+plane: xz
 chemistry: Crich
 dark_mode: true
-col_dens: true
-dens_weight: false
+col_dens: false
+dens_weight: true
 cmap: gist_heat
 
-# xlim_mode: fixed
+xlim_mode: fixed
 xlim: 200.0
 # For ramp:
 # xlim_mode: ramp
-# xlim_start: 100.0
+# xlim_start: 200.0
 # xlim_end: 500.0
-frame_fraction: 0.1
+frame_fraction: 0.5
 
 xsec: null                 # null = column integration
 fps: 60

@@ -26,7 +26,7 @@
 #SBATCH --job-name=anim_frames
 #SBATCH --output=logs/logs_%A/anim_%A_%a.out
 #SBATCH --error=logs/logs_%A/anim_%A_%a.err
-#SBATCH --array=0-157
+#SBATCH --array=0-255
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=4G          # increase to 16G for mol_grid
@@ -39,7 +39,7 @@
 CONFIG=${CONFIG:-"${SLURM_SUBMIT_DIR}/animate_config.yaml"}
 
 # Number of parallel tasks — must equal the number of slots in --array above.
-N_TASKS=158
+N_TASKS=256
 
 mkdir -p "logs/logs_${SLURM_ARRAY_JOB_ID}"
 

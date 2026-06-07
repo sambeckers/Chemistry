@@ -59,6 +59,8 @@ from render_slice_v2 import (  # noqa: E402
     plot_parent_daughter_pair,
     plot_phys_overview,
     plot_molecule_grid,
+    _read_time_yr,   
+    _add_time_label, 
 )
 
 import matplotlib
@@ -305,6 +307,7 @@ def render_single_frame(
     frame_file: Path,
 ) -> None:
     phantom_path, dump_path = resolve_dump_pair(dump_dir, phantom_dir, None, dump_index)
+    time_yr = _read_time_yr(dump_path)
     quantity = config["quantity"]
     sdf, meta = prepare_render_dataframe(
         phantom_path, dump_path, quantity,
@@ -328,6 +331,8 @@ def render_single_frame(
         fontsize=FONT_SIZE / 2,
     )
     cbar.ax.tick_params(labelsize=FONT_SIZE / 2)
+    if time_yr is not None:                      
+        _add_time_label(fig, time_yr)
     plt.tight_layout()
     fig.savefig(frame_file, dpi=FRAME_DPI, bbox_inches="tight")
     plt.close(fig)
@@ -342,6 +347,7 @@ def render_parent_daughter_frame(
     frame_file: Path,
 ) -> None:
     phantom_path, dump_path = resolve_dump_pair(dump_dir, phantom_dir, None, dump_index)
+    time_yr = _read_time_yr(dump_path)
     parent, daughter = config["parent_daughter_pair"]
     plot_parent_daughter_pair(
         phantom_path=phantom_path,
@@ -357,6 +363,7 @@ def render_parent_daughter_frame(
         save_path=frame_file,
         show=False,
         col_dens=config["col_dens"],
+        time_yr=time_yr,
     )
 
 
@@ -369,6 +376,7 @@ def render_phys_overview_frame(
     frame_file: Path,
 ) -> None:
     phantom_path, dump_path = resolve_dump_pair(dump_dir, phantom_dir, None, dump_index)
+    time_yr = _read_time_yr(dump_path)
     plot_phys_overview(
         phantom_path=phantom_path,
         dump_path=dump_path,
@@ -376,6 +384,7 @@ def render_phys_overview_frame(
         save_path=frame_file,
         show=False,
         log_scale=True,
+        time_yr=time_yr,
     )
 
 
@@ -388,6 +397,7 @@ def render_mol_grid_frame(
     frame_file: Path,
 ) -> None:
     phantom_path, dump_path = resolve_dump_pair(dump_dir, phantom_dir, None, dump_index)
+    time_yr = _read_time_yr(dump_path)
     plot_molecule_grid(
         phantom_path=phantom_path,
         dump_path=dump_path,
@@ -402,6 +412,7 @@ def render_mol_grid_frame(
         save_path=frame_file,
         show=False,
         col_dens=config["col_dens"],
+        time_yr=time_yr,
     )
 
 
@@ -480,11 +491,11 @@ def run_frames(args) -> None:
             frame_file = fdir / f"frame_{dump_index:05d}.png"
             sentinel = fdir / f"FAILED_{dump_index:05d}.txt"
 
-            # Skip already-rendered frames; size check catches zero-byte/truncated files
-            # that a previously crashed task may have left behind.
-            if frame_file.exists() and frame_file.stat().st_size > 1024:
-                print(f"[{q} frame {dump_index:05d}] already exists, skipping")
-                continue
+            # # Skip already-rendered frames; size check catches zero-byte/truncated files
+            # # that a previously crashed task may have left behind.
+            # if frame_file.exists() and frame_file.stat().st_size > 1024:
+            #     print(f"[{q} frame {dump_index:05d}] already exists, skipping")
+            #     continue
 
             # Clear any leftover failure sentinel before retrying
             if sentinel.exists():
@@ -523,6 +534,9 @@ def run_frames(args) -> None:
 # cleanly without any temp directories.
 # ---------------------------------------------------------------------------
 def run_assemble(args) -> None:
+    if getattr(args, "all_configs", False):
+        run_assemble_all(args)
+        return
     import shutil
     import subprocess
 
@@ -612,6 +626,7 @@ def run_assemble(args) -> None:
             "ffmpeg", "-y",
             "-f", "concat", "-safe", "0",
             "-i", str(concat_file),
+            "-vf", "crop=trunc(iw/2)*2:trunc(ih/2)*2"
             "-c:v", "libx264",
             "-pix_fmt", "yuv420p",   # broadest player compatibility
             "-crf", "18",            # visually lossless; raise to 23 to shrink file
@@ -626,6 +641,77 @@ def run_assemble(args) -> None:
         else:
             print(f"[{q}] Done → {out_path}")
 
+def run_assemble_all(args) -> None:
+    """Scan the animation directory and assemble every frame set found."""
+    import shutil
+    import subprocess
+
+    if shutil.which("ffmpeg") is None:
+        print(
+            "ffmpeg not found on PATH.\n"
+            "Try: module load ffmpeg  or  conda install -c conda-forge ffmpeg"
+        )
+        sys.exit(1)
+
+    fps        = args.fps or 15
+    chemistry  = args.chemistry or "Crich"
+    anim_dir   = SAVE_DIR_BASE / chemistry / "animation"
+
+    if not anim_dir.exists():
+        print(f"Animation directory not found: {anim_dir}")
+        sys.exit(1)
+
+    frame_dirs = sorted(anim_dir.glob("*/frames"))
+    if not frame_dirs:
+        print(f"No frame directories found under {anim_dir}")
+        return
+
+    print(f"Found {len(frame_dirs)} frame set(s) under {anim_dir}\n")
+
+    for fdir in frame_dirs:
+        tag      = fdir.parent.name          # e.g. xy_CO_fixed1000AU_p10
+        out_path = anim_dir / f"{tag}_{fps}fps.mp4"
+
+        failed = sorted(fdir.glob("FAILED_?????.txt"))
+        if failed:
+            print(f"[{tag}] WARNING: {len(failed)} failed frame(s)")
+
+        frame_files = sorted(
+            (p for p in fdir.glob("frame_?????.png") if p.stat().st_size > 1024),
+            key=lambda p: int(p.stem.split("_")[1]),
+        )
+
+        if not frame_files:
+            print(f"[{tag}] No valid frames — skipping")
+            continue
+
+        print(f"[{tag}] {len(frame_files)} frames → {out_path}")
+
+        duration    = 1.0 / fps
+        concat_file = fdir / "_concat.txt"
+        with open(concat_file, "w") as cf:
+            for f in frame_files:
+                cf.write(f"file '{f.resolve()}'\n")
+                cf.write(f"duration {duration:.6f}\n")
+            cf.write(f"file '{frame_files[-1].resolve()}'\n")
+
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0",
+            "-i", str(concat_file),
+            "-vf", "crop=trunc(iw/2)*2:trunc(ih/2)*2",
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-crf", "18",
+            str(out_path),
+        ]
+        result = subprocess.run(cmd)
+        concat_file.unlink()
+
+        if result.returncode != 0:
+            print(f"[{tag}] ffmpeg failed (return code {result.returncode})")
+        else:
+            print(f"[{tag}] Done\n")
 
 # ---------------------------------------------------------------------------
 # CLI
@@ -672,6 +758,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_assemble = sub.add_parser(
         "assemble",
         help="Stitch pre-rendered frames into MP4 via matplotloom",
+    )
+    p_assemble.add_argument(
+    "--all", dest="all_configs", action="store_true",
+    help="Scan the animation directory and assemble all available frame sets.",
     )
     add_overrides(p_assemble)
 
