@@ -13,11 +13,11 @@ from kb import path
 import glob as gl
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import BASE_PATH, parents_He_extended as parents, daughters_Crich_no_CN, daughters_Orich
-
+from config import BASE_PATH, parents as parents, daughters_Crich_no_CN, daughters_Orich
+from code_chem.plotting.plot_utils import set_plot_style, format_species_label
 # Output folder where the figure will be saved
 savedirmain = BASE_PATH
-CRICH = True
+CRICH = False
 if CRICH:
     print("Running for C-rich model")
     model_folder = 'output_1D/complete_1D_model_Crich'
@@ -61,8 +61,8 @@ def phys_params():
   return radius,hnr,tempgas,tempdust,av,radfield,fracs,nums
 
 # # Parent and daughter molecules (loaded from config.py)
-daughters = daughters_Crich_no_CN  # C-rich (uncomment to use)
-# daughters = daughters_Orich  # O-rich
+# daughters = daughters_Crich_no_CN  # C-rich (uncomment to use)
+daughters = daughters_Orich  # O-rich
 
 MLOSS = ["$\dot{M}=10^{-7} M_{\odot} \\rm{yr}^{-1}$", 
          "$\dot{M}=10^{-7} M_{\odot} \\rm{yr}^{-1}$", 
@@ -78,6 +78,7 @@ colors_parents = tab20(np.linspace(0, 1, len(parents)))
 colors_daughters = _oranges(np.linspace(0.3, 0.95, len(daughters)))
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9), dpi=300, sharey='row', sharex=True) # Each row will share an y-axis
+set_plot_style()
 for col, ((star), mloss_label, vinf_label) in enumerate(zip(model.star_grid, MLOSS, VELOCITY)):
   folder = os.path.join(path.cout, 'models', star['LAST_CHEMISTRY_MODEL']) + '/'
   print(folder)
@@ -90,7 +91,7 @@ for col, ((star), mloss_label, vinf_label) in enumerate(zip(model.star_grid, MLO
     # Only label on the rightmost panel to keep legends there
     label = mol if col == 2 else None
     ax_top.loglog(radius, fracs[mol], color=colors_parents[imol], linewidth=1.2, label=label)
-  ax_top.set_title(f"{mloss_label}, {vinf_label}", fontsize=14)
+  ax_top.set_title(f"{mloss_label}, {vinf_label}", fontsize=18)
   ax_top.grid(True, which='both', alpha=0.25)
   # ax_top.set_ylim(1e-25)
 
@@ -100,24 +101,55 @@ for col, ((star), mloss_label, vinf_label) in enumerate(zip(model.star_grid, MLO
     label = mol if col == 2 else None
     ax_bot.loglog(radius, fracs[mol], color=colors_daughters[imol % len(colors_daughters)], linewidth=1.2, label=label)
   # No mdot/vinf titles on the bottom row
-  ax_bot.set_xlabel('Radius [cm]')
+  ax_bot.set_xlabel('Radius [cm]', fontsize=20)
   ax_bot.grid(True, which='both', alpha=0.25)
   # ax_bot.set_ylim(1e-12)
-axes[0, 0].set_ylabel('Fractional abundance') # Top left
-axes[1, 0].set_ylabel('Fractional abundance') # Bottom left
-handles_top, labels_top = axes[0, 2].get_legend_handles_labels() # Top right
-if handles_top:
-  axes[0, 2].legend(handles=handles_top, labels=labels_top, loc='upper right', fontsize='small')
-handles_bot, labels_bot = axes[1, 2].get_legend_handles_labels() # Bottom right
-if handles_bot:
-  axes[1, 2].legend(handles=handles_bot, labels=labels_bot, loc='upper right', fontsize='small')
-fig.text(0.52, 1.01, 'Parents', ha='center', va='top', fontsize=14)
-axes[1, 1].text(0.5, 1.01, 'Daughters', transform=axes[1, 1].transAxes, ha='center', va='bottom', fontsize=14)
+  axes[0, 0].set_ylabel('Fractional abundance', fontsize=20) # Top left
+  axes[1, 0].set_ylabel('Fractional abundance', fontsize=20) # Bottom left
+  handles_top, labels_top = axes[0, 2].get_legend_handles_labels() # Top right
+  labels_top = [format_species_label(label) for label in labels_top]
+  if handles_top:
+    axes[0, 2].legend(handles=handles_top, labels=labels_top,
+                      loc='upper left',
+                      bbox_to_anchor=(1.02, 1.0),
+                      borderaxespad=0,
+                  fontsize=16, ncol=2)
+
+  handles_bot, labels_bot = ax_bot.get_legend_handles_labels() # Bottom right
+  labels_bot = [format_species_label(label) for label in labels_bot]
+  axes[1, 2].legend(handles=handles_bot, labels=labels_bot,
+                    loc='upper left',
+                    bbox_to_anchor=(1.02, 1.0),
+                    borderaxespad=0,
+                    fontsize=16)
+  
+left  = axes[1, 0].get_position().x0
+right = axes[1, 2].get_position().x1
+
+xcenter = 0.5 * (left + right)
+
+axes[0, 1].text(0.5, 1.1, 'Parents', transform=axes[0, 1].transAxes, ha='center', va='bottom', fontsize=20)
+axes[1, 1].text(0.5, 1.01, 'Daughters', transform=axes[1, 1].transAxes, ha='center', va='bottom', fontsize=20)
+for ax in axes.flat:
+    ax.tick_params(
+        axis='both',
+        which='major',
+        labelsize=16,
+        length=6,
+        width=1.2
+    )
+    ax.tick_params(
+        axis='both',
+        which='minor',
+        length=3,
+        width=0.8
+    )
+    ax.set_xlim(radius[0], radius[-1])
 fig.tight_layout()
 plt.savefig(savedirmain / 'figures' / '1D_model' / f'fracab_{out}_PD.pdf', bbox_inches='tight', dpi=300)
 plt.show()
 
-# mol = 'C2H2'
+  # mol = 'C2H2'
 
 # fig = plt.figure()
 # for istar,star in enumerate(model1.star_grid):

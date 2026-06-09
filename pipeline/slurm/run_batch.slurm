@@ -1,7 +1,7 @@
 #!/bin/bash
 # One array task = one pipeline batch index.
 #SBATCH --job-name=batch
-#SBATCH --time=48:00:00
+#SBATCH --time=60:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=2G
 #SBATCH --array=0-0

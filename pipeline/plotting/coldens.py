@@ -304,27 +304,70 @@ def calc_int_1D_coldens(molecule: str, radius_1d: np.ndarray, fracs_1d: dict[str
     nMol = nH2 * frac
     return np.trapz(nMol, radius_1d)
 
-def calc_3D_int_coldens(molecule: str, chemistry: str, n_tasks: int) -> float:
+
+def interp_1d_nH2_onto_grid(radius_1d: np.ndarray, nH2_1d: np.ndarray) -> np.ndarray:
+    """
+    Interpolate the 1D nH2 profile onto R_CENTRES using log-log interpolation.
+
+    Grid points outside the 1D radial range are set to NaN.
+
+    Parameters
+    ----------
+    radius_1d : (M,)  radial grid of the 1D model [cm]
+    nH2_1d    : (M,)  H2 number density on that grid [cm^-3]
+
+    Returns
+    -------
+    nH2_grid  : (N_BINS,)  nH2 interpolated onto R_CENTRES
+    """
+    log_r_1d   = np.log10(radius_1d)
+    log_nH2_1d = np.log10(nH2_1d)
+    log_r_grid = np.log10(R_CENTRES)
+    log_nH2_interp = np.interp(
+        log_r_grid, log_r_1d, log_nH2_1d,
+        left=np.nan, right=np.nan,
+    )
+    return 10.0 ** log_nH2_interp
+
+
+def calc_3D_int_coldens(
+    molecule: str,
+    chemistry: str,
+    n_tasks: int,
+    nH2_override: np.ndarray | None = None,
+) -> float:
+    """
+    Integrate the 3D median fractional abundance against a density profile.
+
+    Parameters
+    ----------
+    nH2_override : (N_BINS,) or None
+        If provided, use this nH2 profile (already on R_CENTRES) instead of
+        the 3D median density.  Pass the output of
+        ``interp_1d_nH2_onto_grid`` to mix 3D chemistry with the 1D density.
+    """
     bin_sum, bin_count, hist_2d = aggregate_molecule(
         molecule, chemistry, n_tasks)
-    
+
     median_frac = compute_stats(
         bin_sum, bin_count, hist_2d,
         val_centres=AB_CENTRES,
         clip_at_one=True)["p50"]
 
-    param = 'density'
-    bin_sum, bin_count, hist_2d = aggregate_phys_param(
-        param, chemistry, n_tasks)
-    
-    nH2 = compute_stats(
-        bin_sum, bin_count, hist_2d,
-        val_centres=PHYS_PARAMS[param]["centres"],
-        clip_at_one=False)["p50"]
+    if nH2_override is not None:
+        nH2 = nH2_override
+    else:
+        param = "density"
+        bin_sum, bin_count, hist_2d = aggregate_phys_param(
+            param, chemistry, n_tasks)
+        nH2 = compute_stats(
+            bin_sum, bin_count, hist_2d,
+            val_centres=PHYS_PARAMS[param]["centres"],
+            clip_at_one=False)["p50"]
 
     mask = np.isfinite(median_frac) & np.isfinite(nH2)
 
-    return np.trapz(nH2[mask] * median_frac[mask],R_CENTRES[mask])
+    return np.trapz(nH2[mask] * median_frac[mask], R_CENTRES[mask])
 
 
 def plot_column_densities(
@@ -333,58 +376,75 @@ def plot_column_densities(
     cd_3d: dict[str, float],
     chemistry: str,
     save_path: Path | None = None,
+    cd_3d_1d_nh2: dict[str, float] | None = None,
 ) -> plt.Figure:
-    """
-    Bar/scatter comparison of integrated column densities [cm^-3] for a
-    list of molecules, with one point per molecule for the 1D model and
-    one for the 3D (median) model.
-
-    Parameters
-    ----------
-    molecules  : ordered list of species strings, e.g. ["CO", "HCN", ...]
-    cd_1d      : mapping molecule -> 1D column density  [cm^-3]
-    cd_3d      : mapping molecule -> 3D column density  [cm^-3]
-    chemistry  : "Crich" or "Orich" — used only for the figure title/filename
-    save_path  : if given, the figure is saved there before being returned
-    """
     set_plot_style()
+    cd_active = cd_3d_1d_nh2 if cd_3d_1d_nh2 is not None else cd_3d
 
-    x = np.arange(len(molecules))
+    # Sort molecules by log10(3D / 1D) descending (3D > 1D first).
+    def _ratio(m: str) -> float:
+        v1 = cd_1d.get(m, np.nan)
+        v3 = cd_active.get(m, np.nan)
+        if np.isfinite(v1) and np.isfinite(v3) and v1 > 0 and v3 > 0:
+            return np.log10(v3 / v1)
+        return -np.inf
+
+    molecules = sorted(molecules, key=_ratio, reverse=True)
+
+    x    = np.arange(len(molecules))
+    y_1d = np.array([cd_1d.get(m, np.nan) for m in molecules])
+
+    if cd_3d_1d_nh2 is not None:
+        y_3d      = np.array([cd_3d_1d_nh2.get(m, np.nan) for m in molecules])
+        label_3d  = r"3D (w/ 1D $n^{\mathrm{H_2}}$ profile)"
+        marker_3d = "D"
+        color_3d  = "#2ca02c"
+    else:
+        y_3d      = np.array([cd_3d.get(m, np.nan) for m in molecules])
+        label_3d  = "3D (median)"
+        marker_3d = "s"
+        color_3d  = "tomato"
 
     fig, ax = plt.subplots(figsize=(max(6, len(molecules) * 0.5), 5), dpi=300)
+    ax.set_yscale("log")
 
-    # --- 1D points ---
-    y_1d = np.array([cd_1d.get(m, np.nan) for m in molecules])
-    ax.scatter(
-        x, y_1d,
-        marker="o", s=70, zorder=3,
-        color="steelblue", label="1D model",
-    )
 
-    # --- 3D points ---
-    y_3d = np.array([cd_3d.get(m, np.nan) for m in molecules])
-    ax.scatter(
-        x, y_3d,
-        marker="s", s=70, zorder=3,
-        color="tomato", label="3D (median)",
-    )
 
-    # Connect 1D and 3D for each molecule with a thin vertical line so
-    # the offset is immediately visible.
+    # Dashed vertical line at the 3D>1D / 3D<1D transition
+    ratios      = np.array([_ratio(m) for m in molecules])
+    cross_idx   = np.searchsorted(-ratios, 0)   # first index where ratio < 0
+    if 0 < cross_idx < len(molecules):
+        ax.axvline(cross_idx - 0.5, color="grey", lw=1.0,
+                   ls="--", zorder=2, alpha=0.7)
+
+    # ------------------------------------------------------------------ #
+    # Connector lines coloured by direction                               #
+    # ------------------------------------------------------------------ #
     for xi, v1, v3 in zip(x, y_1d, y_3d):
         if np.isfinite(v1) and np.isfinite(v3):
-            ax.plot([xi, xi], [v1, v3], color="grey", lw=0.8,
-                    zorder=2, alpha=0.6)
+            ax.plot([xi, xi], [v1, v3],
+                    color='k', lw=1.2, zorder=3, alpha=0.85)
 
-    # --- axes ---
-    ax.set_yscale("log")
+    # ------------------------------------------------------------------ #
+    # Scatter points (drawn on top)                                       #
+    # ------------------------------------------------------------------ #
+    ax.scatter(x, y_1d,
+               marker="o", s=70, zorder=5,
+               color="steelblue", label="1D model")
+    ax.scatter(x, y_3d,
+               marker=marker_3d, s=60, zorder=5,
+               color=color_3d, label=label_3d)
+
+    # ------------------------------------------------------------------ #
+    # Axes / labels                                                        #
+    # ------------------------------------------------------------------ #
     ax.set_xticks(x)
-    ax.tick_params(axis='y', labelsize=16)
+    ax.tick_params(axis="y", labelsize=16)
     ax.set_xticklabels(
         [format_species_label(m) for m in molecules],
-        rotation=45, ha="right", rotation_mode="anchor", fontsize=16
+        rotation=45, ha="right", rotation_mode="anchor", fontsize=16,
     )
-    ax.set_ylabel(r"Column density [cm$^{-3}$]", fontsize=16)
+    ax.set_ylabel(r"Column density [cm$^{-2}$]", fontsize=16)
     ax.legend(fontsize=12)
     ax.set_xlim(-0.5, len(molecules) - 0.5)
 
@@ -426,6 +486,15 @@ def main() -> None:
         "--save", action="store_true",
         help="Save the column-density comparison figure to SAVE_DIR_BASE.",
     )
+    parser.add_argument(
+        "--use-1d-nh2", action="store_true",
+        help=(
+            "Also compute a hybrid column density using the 3D median "
+            "fractional abundance combined with the 1D nH2 profile "
+            "(interpolated onto the 3D radial grid).  Adds a third series "
+            "to the plot."
+        ),
+    )
     parents = ["CO", "N2", "CH4", "NH3", "H2S", "HCP", "H2O", "C2H2", "HCN",
            "CS", "SiC2", "HCl", "HF", "C2H4", "SiO", "SiS"]
     daughters = ['CN', 'CH2', 'CH3', 'C2H', 'C4H', 'C6H', 'CH3CN', 
@@ -434,6 +503,7 @@ def main() -> None:
         args = parser.parse_args([
             "--molecule",       *daughters,
             "--chemistry",      "Crich",
+            "--use-1d-nh2",
             "--n-tasks",        "32",
             "--save",
         ])
@@ -442,23 +512,35 @@ def main() -> None:
 
     radius_1d, fracs_1d, coldens, nH2, mloss_label, vinf_label = load_1d_data("Crich")
 
+    # Interpolate 1D nH2 onto the 3D radial grid once, reused for every molecule.
+    nH2_on_grid = interp_1d_nH2_onto_grid(radius_1d, nH2) if args.use_1d_nh2 else None
+
     if args.molecule:
         cd_1d: dict[str, float] = {}
         cd_3d: dict[str, float] = {}
+        cd_3d_1d_nh2: dict[str, float] = {} if args.use_1d_nh2 else None
 
         for molecule in args.molecule:
             cd_1d[molecule] = coldens[molecule]
             cd_3d[molecule] = calc_3D_int_coldens(
                 molecule, args.chemistry, args.n_tasks
             )
-            print(f"{molecule}: 1D column density = {cd_1d[molecule]:.3e} cm^-3")
-            print(f"{molecule}: 3D column density = {cd_3d[molecule]:.3e} cm^-3")
+            print(f"{molecule}: 1D column density        = {cd_1d[molecule]:.3e} cm^-3")
+            print(f"{molecule}: 3D column density        = {cd_3d[molecule]:.3e} cm^-3")
+
+            if args.use_1d_nh2:
+                cd_3d_1d_nh2[molecule] = calc_3D_int_coldens(
+                    molecule, args.chemistry, args.n_tasks,
+                    nH2_override=nH2_on_grid,
+                )
+                print(f"{molecule}: 3D frac × 1D nH2         = {cd_3d_1d_nh2[molecule]:.3e} cm^-3")
 
         save_dir = SAVE_DIR_BASE / args.chemistry
         save_dir.mkdir(parents=True, exist_ok=True)
+        suffix = "_1d_nh2" if args.use_1d_nh2 else ""
         if args.save:
             save_path = (
-                save_dir / f"coldens_comparison_{args.chemistry}_daughters.png"
+                save_dir / f"coldens_comparison_daughters{suffix}.png"
             )
 
         fig = plot_column_densities(
@@ -467,6 +549,7 @@ def main() -> None:
             cd_3d=cd_3d,
             chemistry=args.chemistry,
             save_path=save_path,
+            cd_3d_1d_nh2=cd_3d_1d_nh2,
         )
         plt.show()
 
