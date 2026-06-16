@@ -1,241 +1,168 @@
+# Chemistry
 
-# 3D chemical modelling of AGB outflows
-Python + Fortran pipeline for running chemistry models on SPH particle traces from AGB stellar wind simulations (Phantom), and comparing them to 1D models via KoekenBak.
+Post-processing pipeline for computing chemical abundances from Phantom SPH simulations of AGB stellar winds.
 
----
+## Installation
 
-## Repository structure
+<!-- TODO: Add installation instructions for the following -->
 
-```
-Chemistry/
-├── config.py                  # ← NOT tracked by git — you must create this
-├── molecules.py               # Shared molecule lists
-├── evolving_model/            # Fortran chemistry model source + reaction files
-│   ├── Crich/                 # Working directories for C-rich runs
-│   └── Orich/                 # Working directories for O-rich runs
-├── KoekenBak/kb/              # Local KoekenBak Python package (1D model)
-├── traces/                    # ← NOT tracked by git — particle trace files go here
-├── output_1D/                 # 1D model output (KoekenBak)
-├── figures/                   # Saved plots
-└── code/
-    ├── run_evolving_models.py          # Main driver: run chemistry on Phantom traces
-    ├── run_em_parallel.slurm           # SLURM array job submission script
-    ├── run_plot_1D_model.py            # Plot all 1D model results
-    ├── run_plot_single_config_1D_model.py  # Plot a single Mdot/Vinf configuration
-    └── plotting/
-        ├── plot_avg_abundance_radius.py    # Average 3D abundance vs radius
-        ├── plot_evolution_all.py           # Per-particle evolution traces
-        ├── plot_evolution_single.py        # Single-particle deep-dive
-        ├── plot_auv_av_wind_v10.py         # AUV/AV diagnostic plot
-        ├── inspect_particles.py            # Interactive HTML particle explorer
-        └── plot_utils.py                   # Shared axis-limit & tick helpers
-```
+- **KoekenBak (KB)**: *placeholder*
+- **MRP_env**: *placeholder*
+- **Magritte**: *placeholder*
+- **Phantom**: *placeholder*
+- **Splash**: *placeholder*
 
----
+## Repository layout
 
-## Prerequisites
-
-| Dependency | Purpose |
+| Directory | Description |
 |---|---|
-| `gfortran` ≥ 9 | Compile the Fortran chemistry model |
-| `conda` (Miniconda / Anaconda) | Python environment management |
-| LaTeX (`pdflatex` + `times` package) | Matplotlib `text.usetex` rendering in plots |
+| `pipeline/` | Batch-parallel HDF5 pipeline |
+| `code_chem/` | Python wrappers around the Fortran chemistry model. `run_evolving_models.py` drives single or parallel evolving-model runs and manages input/output file handling. |
+| `code_trace/` | column density raytracing. **`column_densities.py` is a dependency for the pipeline** — it computes the visual extinction ($A_V$) files the pipeline reads. |
+| `evolving_model/` | Fortran source for the chemistry model (Rate12 network, DVODE solver, shielding). |
+| `src-includeDust-completeSurfaceChemistry-VR-adjustEbind-IPAP/` | Rate12 input for the 1D model: reaction rates, species files, binding energies, and shielding data. |
+| `plotting/`, `code_chem/plotting/`, `pipeline/plotting/` | Visualization scripts (see [Plotting](#plotting)). |
 
-Install `gfortran` on macOS via Homebrew:
-```bash
-brew install gcc
+## Pipeline
+
+The pipeline lives in `pipeline/` and runs on an HPC cluster via SLURM.
+All settings are in `pipeline/config/pipeline_config.yaml`.
+
+The recommended workflow is to run each step separately (not the end-to-end `batch.sh`, which chains everything with SLURM dependencies, which is harder to resume if a node crashes).
+
+### Configuration
+
+Key fields in `pipeline_config.yaml`, e.g. for v20a25:
+
+```yaml
+paths:
+  phantom_dump_dir: v20a25               # Phantom dump directory (relative to base_path)
+  av_dir: v20a25_out/AV                  # AV_XXXXX files from column_densities.py
+  batch_output_dir: .../output/batches   # per-batch HDF5 output
+  final_output_dir: .../output/dumps     # merged per-dump HDF5 output
+
+processing:
+  start_dump: 0
+  end_dump: 1200
+  n_batches: 10000
+  n_boundary: 50000           # low-ID boundary particles to exclude
+  chemistry_types: [Crich]    # or [Orich], or [Crich, Orich]
 ```
 
-On Linux (Debian/Ubuntu):
-```bash
-sudo apt install gfortran
-```
+Paths may be absolute or relative to `paths.base_path`. See the config file for the full list.
 
----
+### Pre-requisite: compute column densities
 
-## Setup
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/<your-username>/Chemistry.git
-cd Chemistry
-```
-
-### 2. Create a conda environment
-
-....
-> The plotting scripts also require `matplotlib`'s `text.usetex=True` renderer. Make sure a working LaTeX installation (with `times.sty`) is on your `PATH`.
-
-### 3. Create `config.py`
-
-`config.py` is excluded from version control (it is listed in `.gitignore`) because it contains a machine-specific path. Create it at the repo root:
-
-```python
-# config.py
-from pathlib import Path
-from molecules import (
-    atoms, atoms_plus,
-    daughters_2, daughters_3,
-    daughters_Crich, daughters_Crich_no_CN, daughters_Orich,
-    grains, molecules_plot,
-    parents, parents_He_extended,
-    pd_daughters, pd_parents,
-)
-
-# ← Change this to the absolute path where you cloned the repo
-BASE_PATH = Path('/path/to/your/Chemistry')
-```
----
-
-## Step 1 — Compile the Fortran chemistry model
-
-The evolving model is written in Fortran 77/90. Compile it once before running:
+Before running the pipeline, generate the $A_V$ files with `code_trace/column_densities.py`. Can be run in parallel with a SLURM array job (submit in bash script with your configuration):
 
 ```bash
-cd evolving_model
-make
+cd code_trace
+./submit_cd_parallel.sh   # produces AV_XXXXX files in the configured av_dir
 ```
 
-This runs:
-```
-gfortran -O2 -w -std=legacy -o model \
-    inputmodel.f main.f rate12_complex_odes.f drive.f dvode.f subs.f shielding.f ismana.f
-```
+The pipeline reads these files at batch time. Without them, chemistry runs will fail.
 
-A compiled binary called `model` will appear in `evolving_model/`. The model binary is not tracked by git; you must recompile on each machine.
+### Step 1 — Particle discovery
 
-> **Intel Fortran (`ifort`)**: an alternative `ifort` command is commented out at the top of the `makefile` — uncomment it if ifort is available and preferred.
-
----
-
-## Step 2 — Provide particle trace files
-
-The `traces/` directory is not tracked by git. Each trace is a `.phys` file with columns:
-
-```
-time(s)  x(AU)  y(AU)  z(AU)  n(cm⁻³)  T(K)  A_UV(mag)  A_V(mag)
-```
-
-Expected layout:
-
-```
-traces/
-└── wind_v10/
-    ├── particle_IDs.txt          # one integer particle ID per line
-    └── trace_output_with_av/
-        ├── 12345.phys
-        ├── 29823.phys
-        └── ...
-```
-
-The name of the subdirectory (`wind_v10`) is set by the `pmf` variable in `run_evolving_models.py`.
-
----
-
-## Step 3 — Run chemistry models
-
-### Local (interactive)
-
-Edit the **CONFIG section** near the top of `main()` in `code/run_evolving_models.py`:
-
-| Variable | Description |
-|---|---|
-| `pmf` | Trace folder name inside `traces/` (e.g. `'wind_v10'`) |
-| `chemistry_type` | `'Crich'` or `'Orich'` |
-| `n_select` | Number of particles to sample |
-| `analysis` | `True` to run the Fortran analyse subroutine |
-
-Then run:
+Scan Phantom dumps to build a cache of particle IDs. Run once (or when the dump range changes).
 
 ```bash
-cd code
-python run_evolving_models.py
+cd pipeline
+./workflow/submit_discover_particle_ids.sh
+# Options: --serial, --max-concurrent N, --config PATH
 ```
 
-The script will interactively ask whether to empty existing output directories before proceeding.
+This writes `particle_ids_all.npy` and `dump_time_map_cache.json`, and updates `pipeline_config.yaml` with discovered counts.
 
-### HPC (SLURM array)
+### Step 2 — Tracing
 
-Edit the paths in `run_em_parallel.slurm` (particularly `WORKDIR` and the `conda activate` path), then submit:
+Extract physical histories (position, density, temperature, $A_V$) for each particle across all dumps using `phantomanalysis`.
 
 ```bash
-# C-rich, 15 particles (array index 0–14)
-sbatch run_em_parallel.slurm Crich
-
-# O-rich with analysis
-sbatch run_em_parallel.slurm Orich analysis
+./workflow/submit_tracing.sh
+# Options: --after <discover_merge_job_id>, --config PATH
 ```
 
-Each array task processes one particle independently. `n_select` in the script must match `--array=0-<n_select-1>` in the SLURM header.
+Use `--after` to chain this after the discovery merge job if needed.
+Output: per-batch `tracing_batch_XXXXX.h5` files.
 
-### Output
+### Step 3 — Batch (chemistry)
 
-Results appear in `evolving_model/Crich/` (or `Orich/`):
-
-```
-evolving_model/Crich/
-├── input/          # converted trace files (.txt) fed to Fortran
-├── output/         # raw Fortran output (model_output_<id>.dat, model_rates_<id>.dat)
-├── ev_output/      # post-processed evolution files (ev_<id>.dat)
-├── param/
-│   └── trace_file_param/   # per-particle file_parameters files
-└── analyse_output/ # (only when analysis=True)
-```
-
----
-
-## Step 4 — Run the 1D model (optional)
-
-The 1D model uses KoekenBak with pre-built input grids in `KoekenBak/input/`.
+Run the Fortran chemistry model on each batch of particles. Each SLURM array task loads the tracing HDF5 for its batch and produces a `batch_XXXXX.h5` file.
 
 ```bash
-cd code
-python run_plot_single_config_1D_model.py   # single Mdot/Vinf configuration
-python run_plot_1D_model.py                 # all configurations
+./workflow/submit_batch.sh
+# Options: --after <tracing_job_id>, --max-concurrent N, --config PATH
 ```
 
-Set `CRICH = True/False` near the top of either script to switch chemistry. Output is saved to `output_1D/`.
+Use `--after` to chain this after the tracing job.
 
----
+### Step 4 — Scatter
 
-## Step 5 — Plotting
-
-All plotting scripts live in `code/plotting/` and read `BASE_PATH` from `config.py`.
-
-| Script | What it produces |
-|---|---|
-| `plot_evolution_all.py` | Per-particle density/temperature/AV/abundance traces |
-| `plot_auv_av_wind_v10.py` | AUV / AV diagnostic for the wind |
-| `inspect_particles.py` | Interactive HTML explorer (opens in browser) |
-| `plot_ab_mean.py` | Average 3D abundance vs radius; optional 1D comparison |
-
-Run from the `code/plotting/` directory:
+Distribute and run chemistry across batches using the scatter–gather framework.
 
 ```bash
-cd code/plotting
-python plot_avg_abundance_radius.py
-python inspect_particles.py   # writes HTML to figures/Inspection/{Crich,Orich}/index.html
+./workflow/submit_scatter_gather.sh --scatter-only
+# Options: --scatter-tasks-per-job N, --resume-scatter STATUS_FILE
 ```
 
-Figures are written to the `figures/` subdirectory.
+### Step 5 — Gather (merge)
 
----
+Merge per-batch outputs into per-dump HDF5 files.
 
-## Chemistry types
+```bash
+./workflow/submit_scatter_gather.sh --gather-only
+# Options: --resume-gather STATUS_FILE
+```
 
-| Type | Parent inputs | Daughter species tracked |
-|---|---|---|
-| `Crich` | CO, N₂, CH₄, NH₃, H₂S, HCP, H₂O, C₂H₂, HCN, CS, SiC₂, HCl, HF, C₂H₄, SiO, SiS | CN, C₂H, C₄H, C₆H, HC₃N, HC₅N, HC₇N |
-| `Orich` | (same parent set) | SiN, SiC, OH, CN, SiOH⁺ |
+Final output appears in `paths.final_output_dir` as `dump_XXXXX.h5`.
 
-Reaction networks are in `evolving_model/rate12_complex_atomic_{Crich,Orich}.specs` and `evolving_model/rate12_complex.rates`.
+### Resume mode
 
----
+If batches fail, you can resubmit only the incomplete ones:
 
-## Notes
+1. **Scan batch status** — run `scan_batch_status.py` to classify each batch as COMPLETED, FAILED, or RUNNING:
 
-- `config.py` and `traces/` are in `.gitignore` — you must supply both.
-- The compiled `model` binary and all `.o`/`.mod` build artifacts are also gitignored.
-- Model output directories (`evolving_model/Crich/output`, etc.) are gitignored; they are created automatically by `run_evolving_models.py`.
-- On macOS, `gfortran` from Homebrew (`gcc`) works. The makefile includes an ARM-compatible flag (`-march=armv8-a`) in a commented alternative if needed on Apple Silicon.
+   ```bash
+   python pipeline/scripts/scan_batch_status.py --log-root /path/to/scratch/logs --output batch_status.txt
+   ```
+
+2. **Resume** — pass the status file to `submit_batch.sh` or `submit_scatter_gather.sh`:
+
+   ```bash
+   ./workflow/submit_batch.sh --resume batch_status.txt
+   # or
+   ./workflow/submit_scatter_gather.sh --scatter-only --resume-scatter batch_status.txt
+   ```
+
+   Only batches not marked COMPLETED are resubmitted.
+
+### End-to-end submission (not recommended)
+
+`workflow/batch.sh` chains all steps (discovery → tracing → batch → scatter → merge → summary) with SLURM dependencies in a single command. This is convenient but harder to debug when individual steps fail.
+
+```bash
+./workflow/batch.sh
+# Options: --max-concurrent N, --resume STATUS_FILE
+```
+
+## `code_chem`
+
+Python wrappers for running the Fortran evolving model outside the pipeline. `run_evolving_models.py` sets up input files, calls the compiled model binary, and collects output. Useful for single-particle or small-scale runs and for running 1D reference models. Includes its own SLURM submit scripts (`submit_em_parallel.sh`).
+
+## `code_trace`
+
+SPH raytracing tools. Key files:
+
+- `column_densities.py` — computes visual extinction ($A_V$) per particle per dump. **Required by the pipeline.**
+- `particleIDs.py` — particle ID extraction utilities.
+- `utils_raytracer.py` — raytracing helper functions.
+- `submit_cd_parallel.sh` / `submit_trace_parallel.sh` — SLURM submission wrappers.
+
+## Plotting
+
+Visualization scripts are spread across three locations:
+
+- **`pipeline/plotting/`** — post-pipeline analysis: slice renders (`render_slice_v2.py`), abundance point-density plots (`plot_pointdensity.py`), column-density maps (`coldens.py`), statistics (`plot_stats.py`), radial comparisons (`compare_radii.py`), and animation tools (`animate_renders_v2.py`).
+- **`code_chem/plotting/`** — 1D model plots: mean abundances (`plot_ab_mean.py`), particle evolution traces (`plot_evolution_all.py`), particle inspection (`inspect_particles.py`). `plot_utils.py` provides shared plotting helpers used across these scripts.
+- **`pipeline/scripts/`** — batch/dump inspection utilities (`inspect_batch.py`, `inspect_dump.py`).
