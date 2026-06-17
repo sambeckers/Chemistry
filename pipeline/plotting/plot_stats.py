@@ -1000,7 +1000,7 @@ def plot_fraction_comparison(
     radius_1d, fracs_1d, mloss_label, vinf_label = load_1d_data(chemistry)
     frac_1d = get_fractional_abundance(fracs_1d, molecule)
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5), dpi=300, sharex=True, sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(13, 7), dpi=300, sharex=True, sharey=True)
 
     for ax, (fraction, (bin_sum, bin_count, hist_2d)) in zip(axes, sorted(results.items())):
         mean = smooth_mean(bin_sum, bin_count)
@@ -1043,7 +1043,7 @@ def plot_fraction_comparison(
         bbox_to_anchor=(0.81, 0.5),
         fontsize=16,
     )
-    plt.suptitle(rf"{molecule}",fontsize=18, y=0.95)
+    plt.suptitle(rf"{molecule}",fontsize=18, y=0.97)
     plt.tight_layout(rect=[0, 0, 0.82, 1])
     
     fig.savefig(save_path, bbox_inches="tight", dpi=300)
