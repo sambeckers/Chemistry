@@ -1137,7 +1137,7 @@ def run_plot_fraction_compare(
     save_dir.mkdir(parents=True, exist_ok=True)
     plot_fraction_comparison(
         R_CENTRES, results, molecule, chemistry,
-        save_dir / f"ab_fraction_compare_{molecule}.png", show=show,
+        save_dir / f"ab_fraction_compare_{molecule}.pdf", show=show,
     )
 
 
