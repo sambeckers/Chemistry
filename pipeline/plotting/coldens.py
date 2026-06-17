@@ -405,10 +405,8 @@ def plot_column_densities(
         marker_3d = "s"
         color_3d  = "tomato"
 
-    fig, ax = plt.subplots(figsize=(max(6, len(molecules) * 0.5), 5), dpi=300)
+    fig, ax = plt.subplots(figsize=(7, 5), dpi=300)
     ax.set_yscale("log")
-
-
 
     # Dashed vertical line at the 3D>1D / 3D<1D transition
     ratios      = np.array([_ratio(m) for m in molecules])
