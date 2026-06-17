@@ -286,6 +286,164 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
             plt.savefig(outpath, bbox_inches='tight', dpi=300)
         # plt.show()
 
+from scipy.signal import find_peaks
+
+def _find_c2h_peaks(r, abundance, prominence=0.1, distance=1):
+    """Find all local maxima of a (log-scaled) abundance profile.
+
+    Parameters
+    ----------
+    prominence : float
+        Minimum peak prominence in dex (log10 units). Filters out tiny
+        numerical wiggles so only genuine bumps/peaks are returned.
+        Increase this if too many spurious peaks show up; decrease it if
+        a real peak is being missed. Only used if scipy is available.
+    distance : int
+        Minimum number of samples between neighbouring peaks.
+
+    Returns
+    -------
+    idx : ndarray of int
+        Indices into `r`/`abundance` of each local maximum.
+    """
+    log_ab = np.log10(np.clip(abundance, 1e-30, None))
+
+    if _HAVE_SCIPY:
+        idx, _ = find_peaks(log_ab, prominence=prominence, distance=distance)
+        return idx
+
+    # Fallback: plain neighbour-comparison local maxima (no prominence filter)
+    idx = np.where((log_ab[1:-1] > log_ab[:-2]) & (log_ab[1:-1] > log_ab[2:]))[0] + 1
+    return idx
+
+
+def plot_abundance_physics_comparison(all_data, bounds, particle_left, particle_right,
+                                       mark_peaks=True, peak_prominence=0.1,
+                                       peak_distance=1, verbose=True, save=True):
+    """Compare C2H2/C2H abundance against density, temperature, and A_V.
+
+    Layout: 4 rows x 2 columns.
+        Row 1 (large panel): C2H2 (parent, orange) / C2H (daughter, dotted) abundance
+        Row 2: number density
+        Row 3: gas temperature
+        Row 4: visual extinction A_V
+    Columns: left = particle_left, right = particle_right.
+
+    All panels share the radius (x) axis, and each row shares its y-axis
+    between the two columns, so the two particles sit on the same physical
+    scale. If mark_peaks=True, every local maximum of C2H abundance is found
+    (see _find_c2h_peaks) and marked with a thin vertical guide line running
+    through all panels in that column, plus a marker dot on the abundance
+    curve itself, so it's easy to read off whether physical peaks line up
+    with abundance peaks.
+    """
+    par, dau = 'C2H2', 'C2H'
+    color_par = '#e67e22'   # orange
+    color_dau = color_par
+    color_phys = '#3a3a3a'  # dark grey
+    color_peak = '#c0392b'  # red, for contrast against the grid
+
+    column_data = (all_data[particle_left], all_data[particle_right])
+    column_titles = (f'Particle {particle_left}', f'Particle {particle_right}')
+
+    physical_vars = [
+        ('DENSITY', '$n$ [cm$^{-3}$]', bounds['density']),
+        ('TEMP', '$T$ [K]', bounds['temp']),
+        ('AV', '$A_V$ [mag]', bounds['av']),
+    ]
+    n_rows = 1 + len(physical_vars)
+
+    fig, axes = plt.subplots(n_rows, 2, figsize=(13, 11), dpi=300,
+                              sharex=True, sharey='row',
+                              gridspec_kw={'height_ratios': [2.2, 1, 1, 1]})
+
+    fig.subplots_adjust(right=0.97, hspace=0.12, wspace=0.08)
+
+    for j, (data, pid) in enumerate(zip(column_data, (particle_left, particle_right))):
+        r = data['R']
+        has_pd = par in data.dtype.names and dau in data.dtype.names
+
+        # --- Row 0: C2H2 / C2H abundance ---
+        ax = axes[0, j]
+        if has_pd:
+            ax.plot(r, data[par], color=color_par, lw=3, ls='-')
+            ax.plot(r, data[dau], color=color_dau, lw=2.5, ls=':')
+        ax.set_yscale('log')
+        ax.set_ylim(1e-12, 1e-4)
+        ax.set_title(column_titles[j], fontsize=22, fontweight='bold', pad=12)
+        if j == 0:
+            ax.set_ylabel('Abundance rel. to H$_2$', fontsize=18)
+        else:
+            ax.tick_params(labelleft=False)
+
+        # --- Rows 1-3: density, temperature, A_V ---
+        for k, (var, ylabel, ylim) in enumerate(physical_vars, start=1):
+            axp = axes[k, j]
+            axp.plot(r, data[var], color=color_phys, lw=3)
+            axp.set_yscale('log')
+            axp.set_ylim(ylim)
+            if j == 0:
+                axp.set_ylabel(ylabel, fontsize=16)
+            else:
+                axp.tick_params(labelleft=False)
+
+        # --- Find and mark every local maximum of C2H ---
+        if mark_peaks and has_pd:
+            peak_idx = _find_c2h_peaks(r, data[dau], prominence=peak_prominence,
+                                        distance=peak_distance)
+            if verbose:
+                print(f"Particle {pid}: {len(peak_idx)} C2H local maxima found")
+                for pi in peak_idx:
+                    print(f"    R = {r[pi]:.3e}{' cm' if to_cm else ' pc'}, "
+                          f"C2H = {data[dau][pi]:.3e}")
+
+            for pi in peak_idx:
+                r_peak = r[pi]
+                for i in range(n_rows):
+                    axes[i, j].axvline(r_peak, color=color_peak, ls='--', lw=1.1,
+                                        alpha=0.75, zorder=4)
+                ax.plot(r_peak, data[dau][pi], marker='o', ms=7,
+                        mfc=color_peak, mec='white', mew=0.8, zorder=5, ls='')
+
+
+    # --- Shared cosmetic formatting across all panels ---
+    for i in range(n_rows):
+        for j in range(2):
+            ax = axes[i, j]
+            ax.set_xscale('log')
+            ax.set_xlim(2*10**14, 5*10**16)
+            # Light major-only grid so the red peak guide lines stay legible
+            ax.grid(True, which='major', alpha=0.2, lw=0.6, zorder=0)
+            add_log_ticks(ax)
+            ax.tick_params(axis='both', which='major', labelsize=14)
+            ax.tick_params(axis='both', which='minor', labelsize=10)
+            if i < n_rows - 1:
+                ax.tick_params(labelbottom=False)
+
+    for j in range(2):
+        axes[-1, j].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=18)
+
+    # Legend inside the abundance panel, right column only
+    legend_handles = [
+        Line2D([0], [0], color=color_par, lw=2.5, ls='-', label='C$_2$H$_2$ (parent)'),
+        Line2D([0], [0], color=color_dau, lw=2.0, ls=':', label='C$_2$H (daughter)'),
+    ]
+    if mark_peaks:
+        legend_handles.append(
+            Line2D([0], [0], color=color_peak, lw=1.1, ls='--', alpha=0.85,
+                   marker='o', ms=6, mfc=color_peak, mec='white', mew=0.8,
+                   label='C$_2$H local max.')
+        )
+    axes[0, 1].legend(handles=legend_handles, loc='upper right', fontsize=16,
+                       frameon=True)
+
+    plt.tight_layout()
+
+    if save:
+        outpath = savedirmain / ff / f'ev_c2h2_physics_comparison_{particle_left}_{particle_right}.png'
+        plt.savefig(outpath, bbox_inches='tight', dpi=300)
+    plt.show()
+
 def plot_parent_daughter(all_data, bounds, particle_IDs, save=True):
     """Plot parent-daughter abundances for C2H2 -> C2H and HCN -> CN."""
     parents = pd_parents
@@ -349,8 +507,6 @@ def plot_parent_daughter(all_data, bounds, particle_IDs, save=True):
     if save:
         plt.savefig(savedirmain / ff / 'ev_pd.', bbox_inches='tight', dpi=300)
     plt.show()
-
-
 
 def create_animation(all_data, bounds, particle_IDs, 
                      save=True, max_frames=200, fps=30) -> None:
@@ -566,7 +722,7 @@ def main():
     # plot_all_params_time(all_data, bounds, particle_IDs, save=True)
 
     # Plot n, T, A_V, and C2H2 abundance vs radius for all particles
-    plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
+    # plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
     
     # Plot normalized abundances for selected molecules
     # plot_molecules(all_data, bounds, particle_IDs, save=True)
@@ -575,9 +731,9 @@ def main():
     # plot_abundances(all_data, particle_IDs, savedirmain, save=True)
 
     # Plot parent-daughter abundances
-    plot_parent_daughter(all_data, bounds, particle_IDs, save=True)
+    # plot_parent_daughter(all_data, bounds, particle_IDs, save=True)
 
-    # # Create and save animation (faster: max_frames=200, fps=30)
+    plot_abundance_physics_comparison(all_data, bounds, 21549, 269772, save=True)    # # Create and save animation (faster: max_frames=200, fps=30)
     # create_animation(all_data, bounds, particle_IDs, save=True, max_frames=200, fps=30)
 
 if __name__ == '__main__':
