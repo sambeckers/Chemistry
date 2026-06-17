@@ -1000,7 +1000,7 @@ def plot_fraction_comparison(
     radius_1d, fracs_1d, mloss_label, vinf_label = load_1d_data(chemistry)
     frac_1d = get_fractional_abundance(fracs_1d, molecule)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5), dpi=300, sharex=True, sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5), dpi=300, sharex=True, sharey=True)
 
     for ax, (fraction, (bin_sum, bin_count, hist_2d)) in zip(axes, sorted(results.items())):
         mean = smooth_mean(bin_sum, bin_count)
@@ -1020,20 +1020,32 @@ def plot_fraction_comparison(
         ax.plot(r_grid, mean, lw=1.5, ls=":", color=color,     label="Mean")
         if frac_1d is not None:
             ax.plot(radius_1d, frac_1d, lw=2, ls="-.", color=color,
-                    label=f"1D ({mloss_label}, {vinf_label})")
+                    label=f"1D ({mloss_label},\n{vinf_label})")
 
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.set_title(f"{int(fraction * 100)}\% of particles", fontsize=13, y=1.01)
-        ax.legend(loc="lower left", fontsize=10)
+        ax.set_title(f"{int(fraction * 100)}\% of particles", fontsize=18, y=1.01)
+        # ax.legend(loc="lower left", fontsize=10)
         apply_abundance_axis_limits(ax)
         add_log_ticks(ax)
-        ax.set_xlabel("Radius [cm]", fontsize=12)
+        ax.set_xlabel("Radius [cm]", fontsize=18)
+        ax.tick_params(axis='both', which='major', labelsize=16)
         if ax is axes[0]:
-            ax.set_ylabel(r"Abundance relative to $\mathrm{{H}}_2$", fontsize=12)
+            ax.set_ylabel(r"Abundance relative to $\mathrm{{H}}_2$", fontsize=18)
 
-    plt.suptitle(rf"{molecule}",fontsize=14)
-    plt.tight_layout()
+    fig.subplots_adjust(right=0.82)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        loc="center left",
+        bbox_to_anchor=(0.81, 0.5),
+        fontsize=16,
+    )
+    plt.suptitle(rf"{molecule}",fontsize=18, y=0.95)
+    plt.tight_layout(rect=[0, 0, 0.82, 1])
+    
     fig.savefig(save_path, bbox_inches="tight", dpi=300)
     print(f"Saved: {save_path}")
     if show:
@@ -1178,9 +1190,9 @@ def main() -> None:
 
     if is_interactive():
         args = parser.parse_args([
-            "--mode", "plot",
+            "--mode", "plot-fraction-compare",
             "--chemistry", "Crich",
-            # "--molecule", "CH2",
+            "--molecule", "CH2",
             "--n-tasks", "32",
             "--show",
         ])
