@@ -29,7 +29,7 @@ from run_plot_single_config_1D_model import (
     TARGET_MLOSS,
     TARGET_VELOCITY,
 )
-from plot_utils import apply_abundance_axis_limits, apply_abundance_axis_limits_shared, add_log_ticks
+from plot_utils import apply_abundance_axis_limits, apply_abundance_axis_limits_shared, add_log_ticks, format_species_label
 
 
 def resolve_path(path_value):
@@ -123,8 +123,8 @@ def interpolate_species_on_grid(data, species, r_grid):
     return y_interp
 
 
-def average_species(all_data, species_list, r_grid):
-    averages = {}
+def median_species(all_data, species_list, r_grid):
+    medians = {}
     contributors = {}
 
     for species in species_list:
@@ -138,17 +138,17 @@ def average_species(all_data, species_list, r_grid):
             continue
 
         stack = np.vstack(curves)
-        averages[species] = np.nanmean(stack, axis=0)
+        medians[species] = np.nanmedian(stack, axis=0)
         contributors[species] = stack.shape[0]
 
-    return averages, contributors
+    return medians, contributors
 
 
-def _get_species_and_colors(averages, chemistry):
+def _get_species_and_colors(medians, chemistry):
     daughters = daughters_Orich if chemistry == "Orich" else daughters_Crich
 
-    parent_species = [s for s in parents if s in averages]
-    daughter_species = [s for s in daughters if s in averages]
+    parent_species = [s for s in parents if s in medians]
+    daughter_species = [s for s in daughters if s in medians]
 
     if not parent_species and not daughter_species:
         raise ValueError("None of the parent/daughter species were found in loaded data.")
@@ -159,15 +159,15 @@ def _get_species_and_colors(averages, chemistry):
 
     return parent_species, daughter_species, species_colors
 
-def plot_avg_abundances(r_grid, averages, contributors, chemistry, save_path, show=False):
-    parent_species, daughter_species, species_colors = _get_species_and_colors(averages, chemistry)
+def plot_avg_abundances(r_grid, medians, contributors, chemistry, save_path, show=False):
+    parent_species, daughter_species, species_colors = _get_species_and_colors(medians, chemistry)
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 6), dpi=300, sharex=True, sharey=False)
 
     for species in parent_species:
         axes[0].plot(
             r_grid,
-            averages[species],
+            medians[species],
             lw=2,
             color=species_colors[species],
             label=f"{species} (N={contributors[species]})",
@@ -176,7 +176,7 @@ def plot_avg_abundances(r_grid, averages, contributors, chemistry, save_path, sh
     for species in daughter_species:
         axes[1].plot(
             r_grid,
-            averages[species],
+            medians[species],
             lw=2,
             color=species_colors[species],
             label=f"{species} (N={contributors[species]})",
@@ -219,7 +219,7 @@ def load_1d_data(chemistry):
     return radius_1d, fracs_1d, mloss_label, vinf_label
 
 def plot_avg_abundances_compare_1d(
-    r_grid, averages, contributors, chemistry, save_path, show=False
+    r_grid, medians, contributors, chemistry, save_path, show=False
 ):
     """Plot 3-D averaged abundances (top row) and 1-D model abundances (bottom row).
 
@@ -228,7 +228,7 @@ def plot_avg_abundances_compare_1d(
         Row 1 – 1-D model parents              |  daughters
     """
     parent_species, daughter_species, species_colors = _get_species_and_colors(
-        averages, chemistry
+        medians, chemistry
     )
 
     radius_1d, fracs_1d, mloss_label, vinf_label = load_1d_data(chemistry)
@@ -241,7 +241,7 @@ def plot_avg_abundances_compare_1d(
     for species in parent_species:
         ax_par_3d.plot(
             r_grid,
-            averages[species],
+            medians[species],
             lw=3,
             color=species_colors[species],
             label=f"{species} (N={contributors[species]})",
@@ -250,7 +250,7 @@ def plot_avg_abundances_compare_1d(
     for species in daughter_species:
         ax_dau_3d.plot(
             r_grid,
-            averages[species],
+            medians[species],
             lw=3,
             color=species_colors[species],
             label=f"{species} (N={contributors[species]})",
@@ -319,21 +319,21 @@ def plot_avg_abundances_compare_1d(
 
 
 def plot_compare_1d_grid(
-    r_grid, averages, contributors, chemistry, save_path, show=False,
+    r_grid, medians, contributors, chemistry, save_path, show=False,
     n_per_panel=3,
 ):
     """Thorough per-molecule comparison: 3-D average (solid) vs 1-D model (dashed).
-
     Molecules are grouped into panels of at most *n_per_panel* (default 3),
     laid out in a grid of up to 4 columns.  All panels share the x-axis;
     y-limits are set independently per panel based on the highest-abundance
     molecule in that panel (10 decades of dynamic range).
-
-    A global legend at the bottom of the figure shows the solid/dashed
+    A global legend at the top of the figure shows the solid/dashed
     convention for 3-D vs 1-D.
     """
-    parent_species, daughter_species, species_colors = _get_species_and_colors(
-        averages, chemistry
+    FIXED_COLORS = ['k', '#1f77b4', '#ff7f0e']
+
+    parent_species, daughter_species, _ = _get_species_and_colors(
+        medians, chemistry
     )
     radius_1d, fracs_1d, mloss_label, vinf_label = load_1d_data(chemistry)
 
@@ -343,9 +343,14 @@ def plot_compare_1d_grid(
     # Group into panels of n_per_panel
     groups = [all_species[i:i + n_per_panel]
               for i in range(0, len(all_species), n_per_panel)]
+
+    n_cols = min(3, len(groups))
+    max_panels = 3 * n_cols
+    groups = groups[:max_panels]
+
     n_panels = len(groups)
-    n_cols = min(4, n_panels)
-    n_rows = math.ceil(n_panels / n_cols)
+    n_cols   = min(3, n_panels)
+    n_rows   = math.ceil(n_panels / n_cols)
 
     fig, axes = plt.subplots(
         n_rows, n_cols,
@@ -354,23 +359,25 @@ def plot_compare_1d_grid(
         sharex=True,
         sharey=False,
     )
-    axes_arr = np.array(axes).reshape(n_rows, n_cols)
+
+    if n_rows == 1 and n_cols == 1:
+        axes = np.array([[axes]])
+    axes_arr  = np.array(axes).reshape(n_rows, n_cols)
     axes_flat = axes_arr.flatten()
 
     for panel_idx, group in enumerate(groups):
         ax = axes_flat[panel_idx]
 
-        for species in group:
-            color = species_colors[species]
+        for i, species in enumerate(group):
+            color = FIXED_COLORS[i % len(FIXED_COLORS)]
 
             # 3-D average — solid line
-            if species in averages:
-                n = contributors.get(species, 0)
+            if species in medians:
                 ax.plot(
                     r_grid,
-                    averages[species],
+                    medians[species],
                     lw=3, color=color, ls='-',
-                    label=f"{species} (N={n})",
+                    label=f"{format_species_label(species)}",
                 )
 
             # 1-D model — dashed line, same colour
@@ -383,9 +390,10 @@ def plot_compare_1d_grid(
 
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.legend(loc="best", fontsize=9, ncol=1)
+        ax.legend(loc="best", fontsize=18, ncol=1, framealpha=0.8)
         apply_abundance_axis_limits(ax)
         add_log_ticks(ax)
+        ax.tick_params(axis='both', which='major', labelsize=22)
 
     # Hide unused panels in the last row
     for idx in range(n_panels, len(axes_flat)):
@@ -395,35 +403,29 @@ def plot_compare_1d_grid(
     for col_idx in range(n_cols):
         for row_idx in range(n_rows - 1, -1, -1):
             if row_idx * n_cols + col_idx < n_panels:
-                axes_arr[row_idx, col_idx].set_xlabel("Radius [cm]", fontsize=13)
+                axes_arr[row_idx, col_idx].set_xlabel("Radius [cm]", fontsize=24)
                 break
 
     # y-axis label: left column only
     for row_idx in range(n_rows):
         if row_idx * n_cols < n_panels:
             axes_arr[row_idx, 0].set_ylabel(
-                "Abundance (wrt H$_{\\mathrm{nuc}}$)", fontsize=13
+                r"Abundance relative to $\mathrm{H}_2$", fontsize=24
             )
 
     # Global legend: solid = 3-D, dashed = 1-D
     style_handles = [
-        Line2D([0], [0], color='k', lw=3, ls='-',  label="3D average"),
-        Line2D([0], [0], color='k', lw=3, ls='--',
-               label=f"1D ({mloss_label}, {vinf_label})"),
+        Line2D([0], [0], color='k', lw=3, ls='-',  label=f"3D median ($N$={contributors.get(species, 0)})"),
+        Line2D([0], [0], color='k', lw=3, ls='--', label=f"1D ({mloss_label}, {vinf_label})"),
     ]
     fig.legend(
         handles=style_handles,
-        loc='lower center',
+        loc='upper center',
         ncol=2,
-        fontsize=12,
-        bbox_to_anchor=(0.5, 0.0),
+        fontsize=22,
+        bbox_to_anchor=(0.5, 1.06),
         frameon=True,
     )
-
-    # # fig.suptitle(
-    # #     f"3D vs 1D abundance comparison — {chemistry}",
-    # #     fontsize=15, y=1.01,
-    # )
 
     plt.tight_layout(rect=[0, 0.04, 1, 1])
     fig.savefig(save_path, bbox_inches="tight", dpi=300)
@@ -446,7 +448,7 @@ def main():
     use_select_particle_ids = True
     max_particles = None
 
-    source_dir = BASE_PATH / f"evolving_model/v10_n460_0326_v2/{chemistry}/ev_output"
+    source_dir = BASE_PATH / f"evolving_model/v10_n15_0226/{chemistry}/ev_output"
     save_dir = BASE_PATH / f"figures/Evolution_traces/{chemistry}"
     save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -485,23 +487,23 @@ def main():
     r_grid = common_radius_grid(all_data, n_points=n_radius)
 
     species_to_average = list(dict.fromkeys(parents + daughters_Crich + daughters_Orich))
-    averages, contributors = average_species(all_data, species_to_average, r_grid)
+    medians, contributors = median_species(all_data, species_to_average, r_grid)
 
     if compare_1d:
         output_file = save_dir / f"ab_mean_compare1D.pdf"
-        plot_avg_abundances_compare_1d(
-            r_grid,
-            averages,
-            contributors,
-            chemistry,
-            output_file,
-            show=show_plot,
-        )
+        # plot_avg_abundances_compare_1d(
+        #     r_grid,
+        #     medians,
+        #     contributors,
+        #     chemistry,
+        #     output_file,
+        #     show=show_plot,
+        # )
 
         output_file = save_dir / f"ab_mean_compare1D_grid.pdf"
         plot_compare_1d_grid(
             r_grid,
-            averages,
+            medians,
             contributors,
             chemistry,
             output_file,
@@ -511,7 +513,7 @@ def main():
         output_file = save_dir / f"ab_mean.pdf"
         plot_avg_abundances(
             r_grid,
-            averages,
+            medians,
             contributors,
             chemistry,
             output_file,

@@ -115,16 +115,16 @@ def plot_all_params_time(all_data, bounds, particle_IDs, save=True):
     plt.tight_layout()
     
     if save:
-        plt.savefig(savedirmain / ff / 'ev_all_params_time.pdf', 
+        plt.savefig(savedirmain / ff / 'ev_all_params_time.png', 
                    bbox_inches='tight', dpi=300)
     plt.show()
 
 def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False, save=True):
-    fig, axes = plt.subplots(4, 1, figsize=(10, 10), dpi=300, sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(10, 10), dpi=300, sharex=True)
     
     # Generate colors for all particles
     colors = plt.cm.Oranges(np.linspace(0.2, 1, len(particle_IDs)))
-    colors = generate_colormap(len(particle_IDs)).colors
+    # colors = generate_colormap(len(particle_IDs)).colors
 
     ref_data = all_data[particle_IDs[0]]['C2H2']
     
@@ -147,14 +147,14 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
                     label=f'{pid}')
         
         # C2H2 abundance
-        ab = data['C2H2']
-        if normalize_ab:
-            norm_ab = ab * (ref_abundance[0] / ab[0])
-            axes[3].plot(r, norm_ab, color=colors[i], lw=2, 
-                    label=f'{pid}')
-        else:
-            axes[3].plot(r, ab, color=colors[i], lw=2, 
-                    label=f'{pid}')
+        # ab = data['C2H2']
+        # if normalize_ab:
+        #     norm_ab = ab * (ref_abundance[0] / ab[0])
+        #     axes[3].plot(r, norm_ab, color=colors[i], lw=2, 
+        #             label=f'{pid}')
+        # else:
+        #     axes[3].plot(r, ab, color=colors[i], lw=2, 
+        #             label=f'{pid}')
 
     # Format axes
     axes[0].set_ylabel('$n$ [cm$^{-3}$]', fontsize=16)
@@ -163,7 +163,7 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
     axes[0].set_xlim(bounds['r'])
     axes[0].set_ylim(bounds['density'])
     axes[0].grid(True, alpha=0.7)
-    axes[0].legend(loc='best', fontsize=8, ncol=3)
+    axes[0].legend(loc='best', fontsize=11, ncol=3)
     
     axes[1].set_ylabel('$T$ [K]', fontsize=16)
     axes[1].set_xscale('log')
@@ -176,23 +176,24 @@ def plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab = False,
     axes[2].set_yscale('log')
     axes[2].set_ylim(bounds['av'])
     axes[2].grid(True, alpha=0.7)
+    axes[2].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=16)
 
-    axes[3].set_ylabel('C$_2$H$_2$ Abundance', fontsize=16)
-    axes[3].set_xscale('log')
-    axes[3].set_yscale('log')
-    axes[3].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=16)
-    axes[3].grid(True, alpha=0.7)
+    # axes[3].set_ylabel('C$_2$H$_2$ Abundance', fontsize=16)
+    # axes[3].set_xscale('log')
+    # axes[3].set_yscale('log')
+    # axes[3].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=16)
+    # axes[3].grid(True, alpha=0.7)
 
-    apply_abundance_axis_limits(axes[3])
+    # apply_abundance_axis_limits(axes[3])
     for ax in axes:
         add_log_ticks(ax)
 
     plt.tight_layout()
     
     if save and normalize_ab:
-        plt.savefig(savedirmain / ff / 'ev_all_params_radius_normab.pdf', bbox_inches='tight', dpi=300)
+        plt.savefig(savedirmain / ff / 'ev_all_params_radius_normab.png', bbox_inches='tight', dpi=300)
     elif save:
-        plt.savefig(savedirmain / ff / 'ev_physics.pdf', bbox_inches='tight', dpi=300)
+        plt.savefig(savedirmain / ff / 'ev_physics.png', bbox_inches='tight', dpi=300)
     plt.show()
 
 def plot_molecules(all_data, bounds, particle_IDs, save=True):
@@ -235,7 +236,7 @@ def plot_molecules(all_data, bounds, particle_IDs, save=True):
     plt.tight_layout()
     
     if save:
-        plt.savefig(savedirmain / ff / 'ev_molecules.pdf', bbox_inches='tight', dpi=300)
+        plt.savefig(savedirmain / ff / 'ev_molecules.png', bbox_inches='tight', dpi=300)
     plt.show()
 
 def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
@@ -281,7 +282,7 @@ def plot_abundances(all_data, particle_IDs, savedirmain, save=True):
         plt.tight_layout()
         
         if save:
-            outpath = savedirmain / ff / 'abundances' / f'ev_{pid}_abundances.pdf'
+            outpath = savedirmain / ff / 'abundances' / f'ev_{pid}_abundances.png'
             plt.savefig(outpath, bbox_inches='tight', dpi=300)
         # plt.show()
 
@@ -291,6 +292,8 @@ def plot_parent_daughter(all_data, bounds, particle_IDs, save=True):
     daughters = pd_daughters
 
     fig, axes = plt.subplots(1, len(parents), figsize=(14,7), dpi=300, sharey=True)
+
+    fig.subplots_adjust(right=0.78)
     
     # Generate colors for all particles
     colors = plt.cm.Oranges(np.linspace(0.2, 1, len(particle_IDs)))
@@ -301,7 +304,7 @@ def plot_parent_daughter(all_data, bounds, particle_IDs, save=True):
     ]
     pd_handles = [
         Line2D([0], [0], color='k', lw=2.5, ls='-', label='Parent'),
-        Line2D([0], [0], color='k', lw=1.5, ls=':', label='Daughter')
+        Line2D([0], [0], color='k', lw=1.5, ls=':', label='Daughter'),
     ]
     
     for i, pid in enumerate(particle_IDs):
@@ -318,26 +321,33 @@ def plot_parent_daughter(all_data, bounds, particle_IDs, save=True):
                         label=f'{pid}')
             axes[j].plot(r, ab_dau, color=colors[i], lw=1.5, ls=':')
     
+    fig.legend(
+    handles=particle_handles,
+    loc='center left',
+    bbox_to_anchor=(1, 0.5),
+    fontsize=18,
+    )
+
     # Format axes
     for j,(par, dau) in enumerate(zip(parents, daughters)):
         axes[j].set_xscale('log')
         axes[j].set_yscale('log')
         axes[j].set_xlim(bounds['r'])
         axes[j].grid(True, alpha=0.7)
-        particle_legend = axes[j].legend(handles=particle_handles, loc='best', fontsize=10, ncol=3)
-        axes[j].add_artist(particle_legend)
-        axes[j].legend(handles=pd_handles, loc='upper right', fontsize=10)
-        axes[j].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=16)
-        axes[j].set_title(f'{par} - {dau}', fontsize=16)
+        axes[j].legend(handles=pd_handles, loc='upper right', fontsize=20)
+        axes[j].set_xlabel('Radius [cm]' if to_cm else 'Radius [pc]', fontsize=24)
+        axes[j].set_title(f'{par} - {dau}', fontsize=24)
         if j==0:
-            axes[j].set_ylabel('Abundance (wrt H$_{nuc}$)', fontsize=16)
+            axes[j].set_ylabel('Abundance relative to $\\mathrm{{H}}_2$', fontsize=24)
         apply_abundance_axis_limits(axes[j])
         add_log_ticks(axes[j])
+        axes[j].tick_params(axis='both', which='major', labelsize=24)
+        axes[j].tick_params(axis='both', which='minor', labelsize=16)
 
     plt.tight_layout()
     
     if save:
-        plt.savefig(savedirmain / ff / 'ev_pd.pdf', bbox_inches='tight', dpi=300)
+        plt.savefig(savedirmain / ff / 'ev_pd.', bbox_inches='tight', dpi=300)
     plt.show()
 
 
@@ -458,7 +468,7 @@ def create_animation(all_data, bounds, particle_IDs,
 
     fig_anim.subplots_adjust(left=0.1, right=0.95, top=0.95, bottom=0.1)
     plt.tight_layout()
-    plt.savefig(savedirmain / ff / 'ev_all_3D.pdf', dpi=300)
+    plt.savefig(savedirmain / ff / 'ev_all_3D.png', dpi=300)
 
 def setup_figure_directories(base_path, figure_folder):
     """Create or clear figure directories for evolution traces and abundances.
@@ -497,7 +507,7 @@ def main():
     global savedirmain, mf, of, ff, to_cm
     global daughters
 
-    chemistry_type = 'Orich'  # 'Crich' or 'Orich'
+    chemistry_type = 'Crich'  # 'Crich' or 'Orich'
     pmf = 'wind_v10'
     max_particle_id = 300000
     start_index = 2
@@ -507,30 +517,47 @@ def main():
 
     to_cm = True
     savedirmain = BASE_PATH
-    mf = f'evolving_model/{chemistry_type}'
+    mf = f'evolving_model/v10_n15_0226/{chemistry_type}'
     of = 'ev_output'
     ff = f'figures/Evolution_traces/{chemistry_type}'
 
-    if not setup_figure_directories(savedirmain, ff):
-        print("\n✗ Setup cancelled by user")
-        return
+    # if not setup_figure_directories(savedirmain, ff):
+    #     print("\n✗ Setup cancelled by user")
+    #     return
 
-    particle_IDs_file = savedirmain / 'traces' / pmf / 'particle_IDs.txt'
-    tracesf = f'traces/{pmf}/trace_output_with_av'
-    trace_dir = savedirmain / tracesf
-    particle_IDs = select_particle_ids(
-        particle_IDs_file,
-        trace_dir,
-        max_particle_id=max_particle_id,
-        start_index=start_index,
-        n_select=n_select,
-    )
-    print(f"Selected particle IDs: {particle_IDs}")
-    particle_IDs[1] = 29823
-    particle_IDs[2] = 46371
+    # particle_IDs_file = savedirmain / 'traces' / pmf / 'particle_IDs.txt'
+    # tracesf = f'traces/{pmf}/trace_output_with_av'
+    # trace_dir = savedirmain / tracesf
+    # particle_IDs = select_particle_ids(
+    #     particle_IDs_file,
+    #     trace_dir,
+    #     max_particle_id=max_particle_id,
+    #     start_index=start_index,
+    #     n_select=n_select,
+    # )
+    # print(f"Selected particle IDs: {particle_IDs}")
+    # particle_IDs[1] = 29823
+    # particle_IDs[2] = 46371
 
     # particle_IDs = [0, 1, 2, 3, 4]
     # particle_IDs = [21549, 311143]
+    particle_IDs = [
+    21549,
+    29823,
+    46371,
+    71193,
+    104290,
+    120838,
+    137386,
+    162209,
+    178757,
+    195305,
+    211853,
+    236676,
+    253224,
+    269772,
+    294594,
+]
 
     # Load all particle data
     all_data, bounds = load_all_particles(particle_IDs)
@@ -542,10 +569,10 @@ def main():
     plot_all_params_radius(all_data, bounds, particle_IDs, normalize_ab=False, save=True)
     
     # Plot normalized abundances for selected molecules
-    plot_molecules(all_data, bounds, particle_IDs, save=True)
+    # plot_molecules(all_data, bounds, particle_IDs, save=True)
  
     # Plot abundances for each particle
-    plot_abundances(all_data, particle_IDs, savedirmain, save=True)
+    # plot_abundances(all_data, particle_IDs, savedirmain, save=True)
 
     # Plot parent-daughter abundances
     plot_parent_daughter(all_data, bounds, particle_IDs, save=True)

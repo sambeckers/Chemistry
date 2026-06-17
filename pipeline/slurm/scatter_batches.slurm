@@ -12,7 +12,7 @@
 # Time note: scale --time with SCATTER_TASKS_PER_JOB.  At ~2 min/batch,
 # 10 batches/task needs ~20 min; 4:00:00 is a safe default.
 #SBATCH --job-name=scatter
-#SBATCH --time=4:00:00
+#SBATCH --time=8:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=16G
 #SBATCH --array=0-0

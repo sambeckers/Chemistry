@@ -45,7 +45,7 @@ from code_chem.run_plot_single_config_1D_model import (
     TARGET_MLOSS,
     TARGET_VELOCITY,
 )
-from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, _collect_xy
+from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, _collect_xy, format_species_label
 
 
 # ---------------------------------------------------------------------------
@@ -833,7 +833,6 @@ def plot_avg_abundances_compare_1d(
     else:
         plt.close(fig)
 
-
 def plot_compare_1d_grid(
     r_grid,
     averages,
@@ -917,7 +916,7 @@ def plot_compare_1d_grid(
                     lw=3,
                     color=color,
                     ls="-",
-                    label=f"{sp}",
+                    label=f"{format_species_label(sp)}",
                 )
 
             frac_1d = get_fractional_abundance(fracs_1d, sp)
@@ -932,9 +931,10 @@ def plot_compare_1d_grid(
 
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.legend(loc="best", fontsize=12, ncol=1)
+        ax.legend(loc="best", fontsize=18, ncol=1, framealpha=0.8)
         apply_abundance_axis_limits(ax)
         add_log_ticks(ax)
+        ax.tick_params(axis='both', which='major', labelsize=22)
 
     for idx in range(n_panels, len(axes_flat)):
         axes_flat[idx].set_visible(False)
@@ -944,7 +944,7 @@ def plot_compare_1d_grid(
             if row_idx * n_cols + col_idx < n_panels:
                 axes_arr[row_idx, col_idx].set_xlabel(
                     "Radius [cm]",
-                    fontsize=13,
+                    fontsize=24,
                 )
                 break
 
@@ -952,7 +952,7 @@ def plot_compare_1d_grid(
         if row_idx * n_cols < n_panels:
             axes_arr[row_idx, 0].set_ylabel(
                 r"Abundance relative to $\mathrm{{H}}_2$",
-                fontsize=13,
+                fontsize=24,
             )
 
     style_handles = [
@@ -962,10 +962,10 @@ def plot_compare_1d_grid(
 
     fig.legend(
         handles=style_handles,
-        loc="lower center",
+        loc="upper center",
         ncol=2,
-        fontsize=12,
-        bbox_to_anchor=(0.5, 0.0),
+        fontsize=22,
+        bbox_to_anchor=(0.5, 1.06),
         frameon=True,
     )
 
@@ -1064,10 +1064,10 @@ def run_plot_compare(chemistry: str, n_tasks: int, show: bool = False) -> None:
     save_dir = SAVE_DIR_BASE / chemistry / 'ab'
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    plot_avg_abundances_compare_1d(
-        R_CENTRES, averages, contributors, chemistry,
-        save_dir / "ab_median_compare1D.png", show=show,
-    )
+    # plot_avg_abundances_compare_1d(
+    #     R_CENTRES, averages, contributors, chemistry,
+    #     save_dir / "ab_median_compare1D.png", show=show,
+    # )
     plot_compare_1d_grid(
         R_CENTRES, averages, contributors, chemistry,
         save_dir / "ab_median_compare1D_grid.png",

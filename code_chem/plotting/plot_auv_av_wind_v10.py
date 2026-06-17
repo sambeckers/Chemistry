@@ -110,9 +110,10 @@ def plot_ratios(
 
     ax.fill_between(grid, p16, p84, color="#ff9896", alpha=0.35, label="16–84\%", zorder=3)
     ax.plot(grid, median, color="#db2c2c", lw=2.0, label="Median", zorder=4)
+    ax.axhline(4.65, color="#000000", lw=1.5, ls="--", label=r"$A_{UV} / A_{V}$=4.56 (Van de Sande+2018)", zorder=2)
 
     ax.set_xlabel(f"Time [{time_unit}]", fontsize=12)
-    ax.set_ylabel(r"$A_{UV} / A_V$", fontsize=12)
+    ax.set_ylabel(r"$A_{UV} / A_{V}$", fontsize=12)
     # ax.grid(True, alpha=0.4)
     ax.legend(loc="best", fontsize=10)
     add_log_ticks(ax)
