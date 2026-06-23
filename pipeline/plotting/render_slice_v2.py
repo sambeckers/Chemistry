@@ -713,6 +713,8 @@ def render_quantity(
             for level, r in radii.items():
                 print(f"Level {level:.3e}  ->  R (median per path) = {r}")
 
+            draw_radii_arrows(ax, radii, plane=plane)
+
             if radii_save_path is not None:
                 save_contour_radii(
                     radii_save_path, quantity, plane,
@@ -1766,7 +1768,7 @@ def main():
         args = parser.parse_args([
             # "--dump-index", "1190",
             "--dump-index", "1581",
-            "--plane", "xz",
+            "--plane", "xy",
             "--quantity", "CO",
             "--xlim", "5000",
             # "--phys-overview",
