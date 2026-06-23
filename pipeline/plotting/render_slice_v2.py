@@ -52,6 +52,10 @@ format_species_label = _mod2.format_species_label
 # Paths
 # ===========================================================================
 
+# DUMP_DIR = Path('/aphid/scratch-3month/sbeckers/v20a25_out/output/dumps')
+# PHANTOM_DIR = Path("/fred/oz304/beckers/v20a25")
+# SAVE_DIR_BASE = BASE_PATH / "figures/v20a25_out"
+
 DUMP_DIR = Path("/fred/oz304/beckers/v10a09_out/output/dumps")
 PHANTOM_DIR = Path("/fred/oz304/beckers/v10a09")
 SAVE_DIR_BASE = BASE_PATH / "figures/v10a09_out"
@@ -700,7 +704,7 @@ def render_quantity(
                 data,
                 levels=valid,
                 colors="white",
-                linestyles="--",
+                linestyles=["--", "-"],
                 linewidths=1.0,
                 origin="image",
                 extent=img.get_extent(),
@@ -1760,10 +1764,11 @@ def main():
 
     if is_interactive():
         args = parser.parse_args([
+            # "--dump-index", "1190",
             "--dump-index", "1581",
             "--plane", "xz",
-            "--quantity", "HCP",
-            "--xlim", "1000",
+            "--quantity", "CO",
+            "--xlim", "5000",
             # "--phys-overview",
             # "--mol-grid",
             # "--parent-daughter",

@@ -10,9 +10,9 @@
 # The submit script overrides --array so the placeholder value below is never
 # used in production.
 #SBATCH --job-name=gather
-#SBATCH --time=24:00:00
+#SBATCH --time=1:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=32G
+#SBATCH --mem-per-cpu=64G
 #SBATCH --array=0-0
 #SBATCH --output=logs/logs_%A/gather_%A_%a.out
 #SBATCH --error=logs/logs_%A/gather_%A_%a.err
