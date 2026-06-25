@@ -24,6 +24,7 @@ from astropy import units as u
 from scipy.spatial import cKDTree
 import matplotlib
 from itertools import product
+import matplotlib.patheffects as pe
 
 import h5py
 import matplotlib.pyplot as plt
@@ -925,16 +926,17 @@ def plot_fraction_compare(
         ax.set_title('')
 
         frac_pct = int(frac * 100)
-        frac_label = rf"{frac_pct}\%" if frac_pct >= 1 else rf"{frac * 100:.1f}\%"
-        ax.text(
+        frac_label = rf"\textbf{{{frac_pct}\%}}" if frac_pct >= 1 else rf"\textbf{{{frac * 100:.1f}\%}}"
+        text = ax.text(
             0.97, 0.97,
             frac_label,
             transform=ax.transAxes,
             ha="right", va="top",
-            fontsize=FONT_SIZE,
+            fontsize=FONT_SIZE+6,
             color="white",
             fontweight="bold",
         )
+        text.set_path_effects([pe.Stroke(linewidth=2.5, foreground='black'), pe.Normal()])
 
     cbar_left = right + cbar_gap - 0.02
 
@@ -1768,20 +1770,20 @@ def main():
         args = parser.parse_args([
             # "--dump-index", "1190",
             "--dump-index", "1581",
-            "--plane", "xy",
+            "--plane", "xz",
             "--quantity", "CO",
-            "--xlim", "5000",
+            "--xlim", "2000",
             # "--phys-overview",
             # "--mol-grid",
             # "--parent-daughter",
             "--dens-weight", "True",
             # "--vmin", "1e-8",
             # "--vmax", "1e-4",
-            "--contours",
+            # "--contours",
             # "--xsec", "0",
             # "--log", "False",
-            # "--compare-fractions",
-            # "--nine-fractions",
+            "--compare-fractions",
+            "--nine-fractions",
             # "--interpolate",
             # "--col-dens",
             # "--radii-save-path", "/fred/oz304/beckers/v10a09_out/output/radii_contours.txt",
