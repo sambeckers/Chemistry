@@ -188,7 +188,7 @@ def _field_mask(arr: np.ndarray, name: str) -> np.ndarray:
       • chemical species / abundances:                  finite & > 0 & <= 1
     """
     base = np.isfinite(arr) & (arr > 0)
-    if name in PHYS_HDF5_KEY:
+    if name in PHYS_HDF5_KEY or name == "velocity":
         return base
     return base & (arr <= 1.0)
 
@@ -303,6 +303,24 @@ def assign_chemistry_fields(
 
     return sdf
 
+def assign_velocity_field(sdf):
+    """
+    Attach a 'velocity' column (speed magnitude, km/s) to a Sarracen
+    DataFrame, computed from its own vx/vy/vz columns and unit_velocity
+    """
+    unit_dist     = sdf._params["udist"]
+    unit_time     = sdf._params["utime"]
+    unit_velocity = unit_dist / unit_time  # cm/s per code unit
+
+    speed_cms = np.sqrt(sdf["vx"]**2 + sdf["vy"]**2 + sdf["vz"]**2).to_numpy() * unit_velocity
+    cms_to_kms = (1 * u.cm / u.s).to(u.km / u.s).value
+    speed_kms = speed_cms * cms_to_kms
+
+    mask = _field_mask(speed_kms, "velocity")
+    sdf["velocity"] = np.where(mask, speed_kms, np.nan)
+    print("Assigned 'velocity' column (km/s) to Sarracen DataFrame from vx/vy/vz")
+    return sdf
+
 # ===========================================================================
 # Dump helpers
 # ===========================================================================
@@ -346,6 +364,8 @@ def quantity_label(quantity: str, dens_weight: bool, col_dens: bool = False) -> 
         return rf"$T$ [K]"
     if quantity == "av":
         return rf"$A_V$ [mag]"
+    if quantity == "velocity":
+        return r"$v$ [km s$^{-1}$]"
 
     if col_dens:
         spec = format_species_label(quantity)
@@ -398,11 +418,14 @@ def prepare_render_dataframe(
     """
     print(f"\nLoading {phantom_path.name}")
 
-    sdf, _ = sarracen.read_phantom(phantom_path)
+    sdf, sinks = sarracen.read_phantom(phantom_path)
 
     # Always read the requested field from HDF5 -- this covers both physical
     # params and chemistry species, and avoids column-name mismatches.
-    sdf = assign_chemistry_fields(sdf, dump_path, [quantity])
+    if quantity == "velocity":
+        sdf = assign_velocity_field(sdf)
+    else:
+        sdf = assign_chemistry_fields(sdf, dump_path, [quantity])
 
     n_total = len(sdf)
 
@@ -438,6 +461,7 @@ def prepare_render_dataframe(
         "fraction": fraction,
         "n_particles": len(sdf),
         "dump_name": phantom_path.name.split("_", 1)[1],
+        "sinks": sinks,
     }
 
     return sdf, meta
@@ -517,7 +541,8 @@ def format_render_axes(
         if xsec is not None:
             title += rf", cross section at $z$={xsec:.0f} AU"
 
-        ax.set_title(title, fontsize=fs)
+        if not quantity == "velocity":
+            ax.set_title(title, fontsize=fs)
 
 # ===========================================================================
 # Post-render interpolation
@@ -537,7 +562,7 @@ def interpolate_rendered_image(ax):
     img.set_array(arr)
 
 # ===========================================================================
-# Sarracen rendering
+# Contour radii
 # ===========================================================================
 def extract_contour_radii(contour_set):
     results = {}
@@ -574,10 +599,6 @@ def draw_radii_arrows(ax, radii, plane="xy"):
         )
 
     return ax
-
-# ===========================================================================
-# Contour radius I/O
-# ===========================================================================
 
 CONTOUR_COLS = ["molecule", "R_xy_001", "R_xy_050", "R_xz_001", "R_xz_050"]
 
@@ -636,6 +657,96 @@ def save_contour_radii(
 
     print(f"Contour radii saved -> {save_path}")
 
+# ===========================================================================
+# AGB velocity and wind angle line
+# ===========================================================================
+
+def compute_velAGB(sdf, sinks):
+    """AGB (sink) velocity vector in cm/s."""
+    unit_dist     = sdf._params["udist"]
+    unit_time     = sdf._params["utime"]
+    unit_velocity = unit_dist / unit_time
+
+    vxAGB = sinks["vx"][0] * unit_velocity
+    vyAGB = sinks["vy"][0] * unit_velocity
+    vzAGB = sinks["vz"][0] * unit_velocity
+    return np.array([vxAGB, vyAGB, vzAGB])
+
+def compute_wind_cone_angle(sinks, sdf, v_wind_kms: float = 10.0) -> float:
+    """
+    theta = arctan(v_wind / v_orb), where v_orb is the AGB's orbital
+    speed in the xy-plane (assumed orbital plane) and v_wind is the
+    wind expansion speed [km/s]. This is the canonical half-opening
+    angle of the companion-wind interaction cone, measured from the
+    orbital (z=0) plane -- i.e. from the horizontal line in an xz slice.
+    """
+    unit_dist     = sdf._params["udist"]
+    unit_time     = sdf._params["utime"]
+    unit_velocity = unit_dist / unit_time
+    cms_to_kms    = (1 * u.cm / u.s).to(u.km / u.s).value
+
+    vxAGB = sinks["vx"][0] * unit_velocity * cms_to_kms
+    vzAGB = sinks["vz"][0] * unit_velocity * cms_to_kms
+    v_orb = np.hypot(vxAGB, vzAGB)   # km/s
+    print(v_orb)
+
+    return np.arctan2(v_wind_kms, v_orb)
+
+import matplotlib.patheffects as mpl_pe
+def draw_wind_cone_lines(ax, theta, xlim=None, color="k", lw=1, ls="-"):
+    """
+    Draw an X through the origin at +/-theta from the horizontal
+    (z=0) line -- the wind-cone opening angle, with an arc annotation
+    showing the narrow opening angle between the lines on the left side.
+    """
+    if xlim is not None:
+        r = xlim
+    else:
+        xlims, ylims = ax.get_xlim(), ax.get_ylim()
+        r = max(abs(v) for v in (*xlims, *ylims)) + 100
+
+    dx = -r * np.sin(theta)
+    dz =  r * np.cos(theta)
+
+    ax.plot([-dx, dx], [-dz, dz], color=color, lw=lw, ls=ls, alpha=0.8)
+    ax.plot([-dx, dx], [dz, -dz], color=color, lw=lw, ls=ls, alpha=0.8)
+
+    # Narrow angle in the left-side notch between the two arms
+    narrow_deg = 2.0 * (90.0 - np.degrees(theta))  # = 180 - 2*theta
+
+    arc_r = r * 0.18
+    half  = narrow_deg / 2.0
+
+    angle1_deg = 180.0 - half  # upper-left arm direction
+    angle2_deg = 180.0 + half  # lower-left arm direction
+
+    arc_angles = np.linspace(np.radians(angle1_deg), np.radians(angle2_deg), 100)
+    arc_x = arc_r * np.cos(arc_angles)
+    arc_z = arc_r * np.sin(arc_angles)
+    ax.plot(arc_x, arc_z, color=color, lw=lw * 0.8, alpha=0.9)
+
+    # Label at arc midpoint (straight left, 180°)
+    label_r = arc_r * 1.4
+    label_x = -label_r
+    label_z = 0.0
+
+    label_str = rf"${narrow_deg:.1f}^\circ$"
+
+    txt = ax.text(
+        label_x, label_z, label_str,
+        ha="right", va="center",
+        fontsize=FONT_SIZE / 2,
+        color=color,
+    )
+    txt.set_path_effects([
+        mpl_pe.withStroke(linewidth=2, foreground="white"),
+    ])
+
+    return theta, ax
+
+# ===========================================================================
+# Sarracen rendering
+# ===========================================================================
 def render_quantity(
     sdf,
     quantity,
@@ -750,6 +861,8 @@ def plot_single_render(
     col_dens=False,
     radii_save_path=None,
     time_yr=None,
+    wind_angle=False,
+    v_wind_kms=10.0,
 ):
     """Produce and optionally save a single SPH render for one quantity."""
     sdf, meta = prepare_render_dataframe(
@@ -1195,6 +1308,122 @@ def plot_phys_overview(
         fig.savefig(save_path, dpi=300, bbox_inches="tight")
         print(f"Saved: {save_path}")
 
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+def plot_velocity_components(
+    phantom_path: Path,
+    dump_path: Path,
+    plane: str = "xz",
+    xlim: float | None = None,
+    fraction: float = 1.0,
+    cmap: str = "bwr",
+    vsym: float | None = None,
+    wind_angle: bool = False,
+    v_wind_kms: float = 10.0,
+    save_path: Path | None = None,
+    show: bool = False,
+    time_yr=None,
+):
+    """
+    Render the two in-plane signed velocity components side by side
+    (v_x left, v_z right for plane='xz'; v_x left, v_y right for
+    plane='xy'), using a diverging blue(negative)/red(positive)
+    colormap centered on zero. Optionally overplots the wind-cone
+    half-angle X (see compute_wind_cone_angle / draw_wind_cone_lines).
+    """
+    print(f"\nLoading {phantom_path.name} (velocity components)")
+    sdf, sinks = sarracen.read_phantom(phantom_path)
+
+    unit_dist     = sdf._params["udist"]
+    unit_time     = sdf._params["utime"]
+    unit_velocity = unit_dist / unit_time
+    cms_to_kms    = (1 * u.cm / u.s).to(u.km / u.s).value
+
+    comp1 = "x"
+    comp2 = "z" if plane == "xz" else "y"
+
+    sdf["v1_kms"] = sdf[f"v{comp1}"].to_numpy() * unit_velocity * cms_to_kms
+    sdf["v2_kms"] = sdf[f"v{comp2}"].to_numpy() * unit_velocity * cms_to_kms
+
+    if fraction < 1.0:
+        ids  = sdf["iorig"].to_numpy(dtype=np.int64)
+        keep = _particle_keep_mask(ids, fraction)
+        sdf  = sdf[keep]
+        print(f"Retained {keep.sum():,} particles")
+
+    fig, axes = plt.subplots(
+        1, 2, figsize=(8, 3), dpi=300, sharex=True, sharey=True,
+    )
+    fig.tight_layout(rect=[0,0,0.95,1])
+    # plt.tight_layout()
+
+    panel_specs = [("v1_kms", comp1, axes[0]), ("v2_kms", comp2, axes[1])]
+    theta = None
+    if wind_angle:
+        theta = compute_wind_cone_angle(sinks, sdf, v_wind_kms=v_wind_kms)
+
+    for col_name, comp, ax in panel_specs:
+        vals = sdf[col_name].to_numpy()
+        vals = vals[np.isfinite(vals)]
+
+        render_kwargs = dict(
+            x="x", y="y" if plane == "xy" else "z",
+            cmap=cmap, cbar=False, log_scale=False,
+            dens_weight=True, ax=ax, normalize=True,
+        )
+        if xlim is not None:
+            render_kwargs["xlim"] = (-xlim, xlim)
+            render_kwargs["ylim"] = (-xlim, xlim)
+
+        sdf.render(col_name, **render_kwargs)
+        if col_name == "v1_kms":
+            ax.images[0].set_clim(-6, 6)
+        else:
+            ax.images[0].set_clim(-3, 3)
+
+        format_render_axes(
+            ax, "velocity", plane, {"fraction": fraction},
+            xlim=xlim, show_title=False, plot_single=True, 
+            show_xlabel=True, show_ylabel=True,
+        )
+
+        cbar = fig.colorbar(ax.images[0], ax=ax)
+        cbar.set_label(rf"$v_{{{comp}}}$ [km s$^{{-1}}$]", fontsize=FONT_SIZE/2)
+        cbar.ax.tick_params(labelsize=FONT_SIZE/2)
+
+        tick_size=4
+        ax.tick_params(
+        axis="both", which="major",
+        direction="in", length=tick_size, width=1,
+        colors="k", top=True, right=True,
+        labelsize=FONT_SIZE/2,
+        )
+        ax.tick_params( 
+            axis="both", which="minor",
+            direction="in", length=tick_size/2, width=1,
+            colors="k", top=True, right=True,
+        )
+
+        if wind_angle:
+            theta, ax = draw_wind_cone_lines(ax, theta, xlim=xlim, color="k")
+
+        # if col_name == "v2_kms":
+        #     ax.legend()
+
+    if theta is not None:
+        print(f"Wind-cone angle theta = {np.degrees(theta):.2f} deg "
+              f"(v_wind={v_wind_kms} km/s)")
+
+    if time_yr is not None:
+        _add_time_label(fig, time_yr)
+
+    if save_path is not None:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"Saved: {save_path}")
+    
     if show:
         plt.show()
     else:
@@ -1689,6 +1918,24 @@ def main():
         ),
     )
     parser.add_argument(
+        "--velocity-components",
+        action="store_true",
+        help=(
+            "Render v_x (left) and v_z (or v_y for plane=xy) (right) "
+            "side by side with a diverging (signed) colormap. "
+            "Combine with --wind-angle to overplot the cone X."
+        ),
+    )
+    parser.add_argument(
+        "--vsym", type=float, default=None,
+        help="Symmetric color limit [+/-vsym km/s] for --velocity-components "
+             "(default: 99th percentile of |v|).",
+    )
+    parser.add_argument("--wind-angle", action="store_true",
+        help="Overplot a line at theta = arctan(v_wind/|velAGB|) from the AGB's direction of motion.")
+    parser.add_argument("--v-wind", type=float, default=10.0,
+        help="Wind speed in km/s used for --wind-angle (default: 10).")
+    parser.add_argument(
         "--radii-save-path",
         type=str,
         default=None,
@@ -1771,19 +2018,22 @@ def main():
             # "--dump-index", "1190",
             "--dump-index", "1581",
             "--plane", "xz",
-            "--quantity", "CO",
-            "--xlim", "2000",
+            # "--quantity", "velocity",
+            "--xlim", "750",
             # "--phys-overview",
+            "--velocity-components",
+            "--wind-angle",
+            "--v-wind", "10.0",
             # "--mol-grid",
             # "--parent-daughter",
-            "--dens-weight", "True",
+            # "--dens-weight", "True",
             # "--vmin", "1e-8",
             # "--vmax", "1e-4",
             # "--contours",
             # "--xsec", "0",
             # "--log", "False",
-            "--compare-fractions",
-            "--nine-fractions",
+            # "--compare-fractions",
+            # "--nine-fractions",
             # "--interpolate",
             # "--col-dens",
             # "--radii-save-path", "/fred/oz304/beckers/v10a09_out/output/radii_contours.txt",
@@ -1883,7 +2133,27 @@ def main():
             log_scale=args.log_scale,
         )
         return
+    
+    if args.velocity_components:
+        for plane, xlim, xsec in product(args.plane, args.xlim, args.xsec):
+            xlim_tag = f"_{xlim:.0f}AU" if xlim is not None else ""
+            save_dir = SAVE_DIR_BASE / args.chemistry / "render" / "velocity_components"
+            save_dir.mkdir(parents=True, exist_ok=True)
+            save_path = save_dir / f"velcomp_{plane}_{dump_stem}{xlim_tag}.{save_ext}"
 
+            plot_velocity_components(
+                phantom_path=phantom_path,
+                dump_path=dump_path,
+                plane=plane,
+                xlim=xlim,
+                fraction=args.fraction,
+                vsym=args.vsym,
+                wind_angle=args.wind_angle,
+                v_wind_kms=args.v_wind,
+                save_path=save_path,
+                show=args.show,
+            )
+        return
     # ------------------------------------------------------------------
     # Parent / daughter comparison mode
     # ------------------------------------------------------------------
@@ -2033,6 +2303,7 @@ def main():
                     show=args.show,
                     col_dens=args.col_dens,
                     radii_save_path=Path(args.radii_save_path) if args.radii_save_path else None,
+                    wind_angle=args.wind_angle, v_wind_kms=args.v_wind,
                 )
 
 
