@@ -410,7 +410,7 @@ class DumpSelection:
         start_dump = int(processing.get("start_dump", all_dump_numbers[0]))
         end_dump = int(processing.get("end_dump", all_dump_numbers[-1]))
         selected = [number for number in all_dump_numbers if start_dump <= number <= end_dump]
-        selected = selected[::step]
+        selected = selected[::-1][::step][::-1] # Step from the end dump and then reverse to preserve order (and always include the end dump)
         if len(selected) < 2:
             raise FileNotFoundError(
                 f"Need at least 2 dumps in configured range [{start_dump}, {end_dump}] for prefix {prefix}"
