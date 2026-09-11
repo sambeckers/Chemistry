@@ -398,11 +398,14 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       ! write(*,*) N_CO, N_N2
 
       DO I=1,NSPEC
-            IF(SPEC(I).EQ.'CO') N_CO = Y(I)/DENS*N_H2
-      !    IF(SPEC(I).EQ.'CO') write(*,*) Y(I)/DENS
-            IF(SPEC(I).EQ.'N2') N_N2 = Y(I)/DENS*N_H2
+          IF(SPEC(I).EQ.'CO') N_CO = Y(I)/DENS*N_H2
+          
+      !     IF(SPEC(I).EQ.'CO') write(*,*) Y(I),DENS,N_H2,N_CO
+
+          IF(SPEC(I).EQ.'N2') N_N2 = Y(I)/DENS*N_H2
       END DO
-      ! write(*,*) N_CO, N_N2                   
+      ! write(*,*) N_CO, N_N2
+                                              
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCCCCC   BEGIN INITIALISING MODEL   CCCCCCCCCCCCCCCCCCCCCCCC    
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -490,10 +493,12 @@ C Self-shielding of H2
 C Self- and mutual-shielding of CO
 
          ELSE IF (RE1(I).EQ.'CO') THEN
+      !    write(*,*) 'SHIELD_IN', N_H2, N_CO, N_N2, TEMPGAS
       
          CALL SHIELDING(RE1(I),N_H2,N_CO,N_N2,TEMPGAS,SHIELD)
 
          K(I) = K(I)*SHIELD
+      !    write(*,*) K(I)
       
 C Self- and mutual-shielding of N2
 
@@ -970,4 +975,3 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       RETURN
       
       END SUBROUTINE MAIN
-         

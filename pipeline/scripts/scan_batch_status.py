@@ -7,6 +7,7 @@ For each batch_<JOBID>_<TASKID>.out file the script reads only the last
 
   1. The SLURM job-report line:  Job Report: NNNNNN (COMPLETED|FAILED)
   2. The pipeline status line:   BATCH_STATUS|batch=N|status=ok|...
+  3. The batch wall-time line:   TIMING|batch=N|stage=batch_total|seconds=...
 
 A batch is classified as:
   COMPLETED  — SLURM says COMPLETED  **and**  pipeline emitted status=ok
@@ -22,7 +23,8 @@ value found inside the .out file itself.
 Output
 ------
   batch_status.txt   — one line per batch:  "<index> <STATUS>"
-  (stdout)           — human-readable summary
+  (stdout)           — human-readable summary, including average/min/max
+                        wall-clock time for COMPLETED batches
 
 Usage
 -----
@@ -59,6 +61,11 @@ RE_BATCH_STATUS_OK = re.compile(r"BATCH_STATUS\|batch=\d+\|status=ok\b")
 # Matches: BATCH_INDEX_OFFSET=2048  (exported env var echoed in some logs)
 # Also matches the BATCH_TASK line: BATCH_TASK|batch=42|phase=start|...
 RE_BATCH_INDEX = re.compile(r"BATCH_TASK\|batch=(?P<idx>\d+)\|phase=start")
+
+# Matches:  TIMING|batch=4|stage=batch_total|seconds=51267.590055
+RE_BATCH_TOTAL_TIME = re.compile(
+    r"TIMING\|batch=\d+\|stage=batch_total\|seconds=(?P<sec>[\d.]+)"
+)
 
 # Matches filename:  batch_<JOBID>_<TASKID>.out
 RE_OUT_FILENAME = re.compile(r"^batch_\d+_(?P<task_id>\d+)\.out$")
@@ -111,9 +118,9 @@ def parse_batch_index_from_head(path: Path) -> int | None:
     return None
 
 
-def classify_out_file(path: Path) -> tuple[str, int | None]:
+def classify_out_file(path: Path) -> tuple[str, int | None, float | None]:
     """
-    Returns (status, batch_index_or_None).
+    Returns (status, batch_index_or_None, batch_total_seconds_or_None).
 
     status is one of: 'COMPLETED', 'FAILED', 'RUNNING'
     """
@@ -135,7 +142,11 @@ def classify_out_file(path: Path) -> tuple[str, int | None]:
         status = "RUNNING"
 
     batch_idx = parse_batch_index_from_head(path)
-    return status, batch_idx
+
+    time_match = RE_BATCH_TOTAL_TIME.search(text)
+    batch_seconds = float(time_match.group("sec")) if time_match else None
+
+    return status, batch_idx, batch_seconds
 
 
 def read_chunk_offset_from_metadata(folder: Path) -> int | None:
@@ -153,17 +164,22 @@ def read_chunk_offset_from_metadata(folder: Path) -> int | None:
     return None
 
 
-def scan_folder(folder: Path) -> dict[int, str]:
+def scan_folder(folder: Path) -> tuple[dict[int, str], dict[int, float]]:
     """
-    Scan one log folder and return {absolute_batch_index: status}.
+    Scan one log folder and return:
+      ({absolute_batch_index: status}, {absolute_batch_index: batch_total_seconds})
+
+    The timings dict only contains entries for which a batch_total TIMING
+    line was found (regardless of final status).
     """
     results: dict[int, str] = {}
+    timings: dict[int, float] = {}
 
     chunk_offset = read_chunk_offset_from_metadata(folder)
 
     out_files = sorted(folder.glob("batch_*.out"))
     if not out_files:
-        return results
+        return results, timings
 
     for out_path in out_files:
         fn_match = RE_OUT_FILENAME.match(out_path.name)
@@ -171,7 +187,7 @@ def scan_folder(folder: Path) -> dict[int, str]:
             continue
         task_id = int(fn_match.group("task_id"))
 
-        status, batch_idx_from_log = classify_out_file(out_path)
+        status, batch_idx_from_log, batch_seconds = classify_out_file(out_path)
 
         # Resolve absolute batch index in priority order:
         #   1. Parsed from the BATCH_TASK start line inside the file (most reliable)
@@ -189,8 +205,28 @@ def scan_folder(folder: Path) -> dict[int, str]:
         priority = {"COMPLETED": 2, "FAILED": 1, "RUNNING": 0}
         if abs_idx not in results or priority[status] > priority[results[abs_idx]]:
             results[abs_idx] = status
+            if batch_seconds is not None:
+                timings[abs_idx] = batch_seconds
+        elif abs_idx not in timings and batch_seconds is not None:
+            timings[abs_idx] = batch_seconds
 
-    return results
+    return results, timings
+
+
+# ---------------------------------------------------------------------------
+# Formatting helpers
+# ---------------------------------------------------------------------------
+
+def format_duration(seconds: float) -> str:
+    """Format seconds as e.g. '14h 16m 08s' for readability."""
+    seconds = int(round(seconds))
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours}h {minutes:02d}m {secs:02d}s"
+    if minutes:
+        return f"{minutes}m {secs:02d}s"
+    return f"{secs}s"
 
 
 # ---------------------------------------------------------------------------
@@ -281,16 +317,21 @@ def main() -> None:
 
     # Aggregate across all folders
     combined: dict[int, str] = {}
+    combined_timings: dict[int, float] = {}
     priority = {"COMPLETED": 2, "FAILED": 1, "RUNNING": 0}
     folder_counts: dict[str, dict[str, int]] = {}
 
     for folder in folders:
-        folder_results = scan_folder(folder)
+        folder_results, folder_timings = scan_folder(folder)
         folder_counts[folder.name] = defaultdict(int)
         for idx, status in folder_results.items():
             folder_counts[folder.name][status] += 1
             if idx not in combined or priority[status] > priority[combined[idx]]:
                 combined[idx] = status
+                if idx in folder_timings:
+                    combined_timings[idx] = folder_timings[idx]
+            elif idx not in combined_timings and idx in folder_timings:
+                combined_timings[idx] = folder_timings[idx]
 
     # Per-folder breakdown
     for fname, counts in folder_counts.items():
@@ -321,6 +362,32 @@ def main() -> None:
     print(f"  {'─'*36}")
     print(f"  Log files seen : {n_total_seen:>6} / {n_expected}")
     print("=" * 52)
+
+    # Batch duration statistics (only over batches that finished COMPLETED
+    # *and* for which a batch_total TIMING line was found)
+    completed_durations = [
+        combined_timings[idx]
+        for idx, status in combined.items()
+        if status == "COMPLETED" and idx in combined_timings
+    ]
+
+    if completed_durations:
+        avg_s = sum(completed_durations) / len(completed_durations)
+        min_s = min(completed_durations)
+        max_s = max(completed_durations)
+        n_missing_time = n_completed - len(completed_durations)
+
+        print()
+        print("Batch duration (COMPLETED batches, stage=batch_total):")
+        print(f"  Average : {format_duration(avg_s)}  ({avg_s:.1f}s)")
+        print(f"  Shortest: {format_duration(min_s)}  ({min_s:.1f}s)")
+        print(f"  Longest : {format_duration(max_s)}  ({max_s:.1f}s)")
+        print(f"  Based on: {len(completed_durations)} / {n_completed} completed batch(es)")
+        if n_missing_time:
+            print(f"  (no batch_total TIMING line found for {n_missing_time} completed batch(es))")
+    else:
+        print()
+        print("Batch duration: no batch_total TIMING lines found among COMPLETED batches.")
 
     # Write output file
     out_path = Path(args.output)

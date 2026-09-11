@@ -89,7 +89,7 @@ C Interpolate to find H2 shielding factor
             
 C Extrapolate if column density is higher than upper bound
       
-      IF(N_H2.GT.H2_COL_H2(NH2_H2)) THEN 
+      IF(N_H2.GE.H2_COL_H2(NH2_H2)) THEN 
       
          SHIELD = LOG10(THETA_H2(NH2_H2-1,1,1)) + 
      *      LOG10(THETA_H2(NH2_H2,1,1)/THETA_H2(NH2_H2-1,1,1))*
@@ -261,7 +261,7 @@ C Interpolate/Extrapolate to find CO shielding factors
          END IF
       END DO
       
-      IF(N_H2.GT.H2_COL_CO(NH2_CO)) THEN
+      IF(N_H2.GE.H2_COL_CO(NH2_CO)) THEN
          X0 = H2_COL_CO(NH2_CO-1)
          X1 = H2_COL_CO(NH2_CO)
          IL = NH2_CO-1
@@ -282,7 +282,7 @@ C Interpolate/Extrapolate to find CO shielding factors
          END IF
       END DO
 
-      IF(N_CO.GT.CO_COL(NX_CO)) THEN
+      IF(N_CO.GE.CO_COL(NX_CO)) THEN
          Y0 = CO_COL(NX_CO-1)
          Y1 = CO_COL(NX_CO)
          JL = NX_CO-1
@@ -303,7 +303,7 @@ C Interpolate/Extrapolate to find CO shielding factors
          END IF
       END DO
 
-      IF(TEMP.GT.TRANGE(NT)) THEN
+      IF(TEMP.GE.TRANGE(NT)) THEN
          Z0 = TRANGE(NT-1)
          Z1 = TRANGE(NT)
          KL = NT-1
@@ -491,7 +491,7 @@ C Interpolate/Extrapolate to find N2 shielding factors
          END IF         
       END DO
       
-      IF(N_H2.GT.H2_COL_N2(NH2_N2)) THEN
+      IF(N_H2.GE.H2_COL_N2(NH2_N2)) THEN
          X0 = H2_COL_N2(NH2_N2-1)
          X1 = H2_COL_N2(NH2_N2)
          IL = NH2_N2-1
@@ -512,7 +512,7 @@ C Interpolate/Extrapolate to find N2 shielding factors
          END IF
       END DO
 
-      IF(N_N2.GT.N2_COL(NX_N2)) THEN
+      IF(N_N2.GE.N2_COL(NX_N2)) THEN
          Y0 = N2_COL(NX_N2-1)
          Y1 = N2_COL(NX_N2)
          JL = NX_N2-1
@@ -533,7 +533,7 @@ C Interpolate/Extrapolate to find N2 shielding factors
          END IF
       END DO
 
-      IF(TEMP.GT.TRANGE(NT)) THEN
+      IF(TEMP.GE.TRANGE(NT)) THEN
          Z0 = TRANGE(NT-1)
          Z1 = TRANGE(NT)
          KL = NT-1
