@@ -1,0 +1,47 @@
+paths:
+  base_path: /fred/oz304/beckers/
+  phantom_dump_dir: v10a09
+  av_dir: v10a09_out/AV
+  phantomanalysis_binary: v10a09_out/phantomanalysis
+  chemistry_model_root: Chemistry/evolving_model
+  batch_output_dir: /aphid/scratch-3month/sbeckers/v10a09_out/output/batches
+  scatter_output_dir: /aphid/scratch-3month/sbeckers/v10a09_out/output/scatter
+  final_output_dir: /aphid/scratch-3month/sbeckers/v10a09_out/output/dumps
+  scratch_root: v10a09_out/work
+  python: MRP_env/bin/python
+  analysis_trace_source: /fred/oz304/beckers/phantom/src/utils/analysis_trace.f90
+  tracing_root: v10a09_out/work/tracing
+  trace_batches_dir: /fred/oz304/beckers/v10a09_out/work/tracing/batches
+  trace_binary_batches_dir: /fred/oz304/beckers/v10a09_out/work/tracing/batches
+  trace_metadata_file: /fred/oz304/beckers/v10a09_out/work/tracing/tracing_metadata.yaml
+  dump_time_map_cache: /fred/oz304/beckers/v10a09_out/work/particle_discovery/run_2026-03-16_15-27-59/per_dump_ids/dump_time_map_cache.json
+  particle_ids_cache: /fred/oz304/beckers/v10a09_out/work/particle_discovery/run_2026-03-16_15-27-59/per_dump_ids/particle_ids_all.npy
+  particle_ids_cache_mode: all_ids
+simulation:
+  prefix: wind
+processing:
+  start_dump: 0
+  end_dump: 1600
+  dump_step: 1
+  discovery_mode: serial
+  time_key_decimals: 0
+  n_batches: 10000
+  n_boundary: 50000
+  chemistry_types:
+  - Crich
+  compression: gzip
+  compression_level: 4
+  cleanup_temporary: true
+  overwrite_batch: true
+  verbose_chemistry_output: false
+  retain_batch_files_after_merge: true
+  discovered_particle_count_all: 4099320
+  discovered_particle_count: 4079320
+  discovered_batch_count: 10000
+  verbose_tracing: false
+  auto_compile_analysis: true
+  force_recompile_analysis: false
+  analysis_compile_system: gfortran
+hdf5:
+  backend: python
+  fortran_converter_executable: /path/to/convert_ev_to_hdf5

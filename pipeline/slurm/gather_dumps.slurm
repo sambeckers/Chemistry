@@ -12,7 +12,8 @@
 #SBATCH --job-name=gather
 #SBATCH --time=1:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=64G
+#SBATCH --mem-per-cpu=32G
+#SBATCH --tmp=20G
 #SBATCH --array=0-0
 #SBATCH --output=logs/logs_%A/gather_%A_%a.out
 #SBATCH --error=logs/logs_%A/gather_%A_%a.err
@@ -38,13 +39,26 @@ if [[ -z "${REAL_INDEX}" ]]; then
     exit 1
 fi
 
-cd "${ROOT}"
 echo "WORKFLOW_TASK|stage=gather_dumps|dump_index=${SLURM_ARRAY_TASK_ID}|phase=start|epoch=$(date +%s)"
 set +e
 "${PYTHON_BIN}" "${ROOT}/scripts/gather_dumps.py" \
     --config "${CONFIG_PATH}" \
-    --dump-index "${REAL_INDEX}"
+    --dump-index "${REAL_INDEX}" \
+    --output-dir "${JOBFS}"
 status=$?
 set -e
+
+if [[ "${status}" -eq 0 ]]; then
+    shopt -s nullglob
+    staged=("${JOBFS}"/dump_*.h5)
+    shopt -u nullglob
+    if [[ "${#staged[@]}" -ne 1 ]]; then
+        echo "Error: expected exactly one dump_*.h5 in \$JOBFS, found ${#staged[@]}"
+        status=1
+    else
+        cp "${staged[0]}" "${FINAL_OUTPUT_DIR}/"
+    fi
+fi
+
 echo "WORKFLOW_TASK|stage=gather_dumps|dump_index=${SLURM_ARRAY_TASK_ID}|phase=end|epoch=$(date +%s)|status=${status}"
 exit "${status}"

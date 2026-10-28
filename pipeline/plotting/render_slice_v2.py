@@ -454,7 +454,7 @@ def prepare_render_dataframe(
         print(f"Multiplied {quantity} by H2 column density -> units: cm^-3")
 
     sdf = sdf.dropna(subset=[quantity])
-    sdf = remove_abundance_outliers(sdf, quantity, k=16, log_thresh=2.0)
+    # sdf = remove_abundance_outliers(sdf, quantity, k=16, log_thresh=2.0)
     print(f"Rendering with {len(sdf):,} particles")
 
     meta = {
@@ -762,6 +762,7 @@ def render_quantity(
     interpolate=False,
     fraction=1.0,
     contours=False,
+    hmin=None,
     radii_save_path=None,
 ):
     """Render an SPH quantity onto a Matplotlib axes using Sarracen."""
@@ -778,8 +779,11 @@ def render_quantity(
         cbar=False,
         log_scale=log_scale,
         dens_weight=dens_weight,
+        # vmin=vmin,
+        # vmax=vmax,
         ax=ax,
         normalize=True,
+        hmin=hmin,
     )
 
     if xlim is not None:
@@ -1904,6 +1908,7 @@ def main():
         action="store_true",
         help="Draw white dashed contours at 0.5x and 0.01x of the colourbar maximum.",
     )
+    parser.add_argument("--hmin", action="store_true")
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dark-mode", action="store_true")
     parser.add_argument("--chemistry", choices=["Crich", "Orich"], default="Crich")
@@ -2018,18 +2023,19 @@ def main():
             # "--dump-index", "1190",
             "--dump-index", "1581",
             "--plane", "xz",
-            # "--quantity", "velocity",
-            "--xlim", "750",
+            "--quantity", "CO",
+            "--xlim", "6000",
             # "--phys-overview",
-            "--velocity-components",
-            "--wind-angle",
-            "--v-wind", "10.0",
+            # "--velocity-components",
+            # "--wind-angle",
+            # "--v-wind", "10.0",
             # "--mol-grid",
             # "--parent-daughter",
-            # "--dens-weight", "True",
-            # "--vmin", "1e-8",
-            # "--vmax", "1e-4",
+            "--dens-weight", "True",
+            # "--vmin", "1e9",
+            # "--vmax", "1e0",
             # "--contours",
+            # "--hmin",
             # "--xsec", "0",
             # "--log", "False",
             # "--compare-fractions",

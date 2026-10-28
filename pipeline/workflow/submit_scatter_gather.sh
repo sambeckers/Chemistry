@@ -157,10 +157,13 @@ batch_count = len(
     sorted(batch_dir.glob("batch_*.h5"))
 )
 
+final_output_dir = str(Path(cfg["paths"]["final_output_dir"]).resolve())
+
 print(python_bin)
 print(scratch_root)
 print(batch_count)
 print(dump_count)
+print(final_output_dir)
 PY
 )
 
@@ -168,6 +171,7 @@ PYTHON_BIN="${INFO[0]}"
 SCRATCH_ROOT="${INFO[1]}"
 TOTAL_BATCH_COUNT="${INFO[2]}"
 TOTAL_DUMP_COUNT="${INFO[3]}"
+FINAL_OUTPUT_DIR="${INFO[4]}"
 
 mkdir -p "${SCRATCH_ROOT}/logs"
 
@@ -371,7 +375,8 @@ if [[ "${SCATTER_ONLY}" -eq 0 ]]; then
             "${GATHER_PENDING_FILE}" \
             "${GATHER_SLURM}" \
             "gather" \
-            "${GATHER_DEP}"
+            "${GATHER_DEP}" \
+            "FINAL_OUTPUT_DIR=${FINAL_OUTPUT_DIR}"
     )
 
     echo

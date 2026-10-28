@@ -915,14 +915,14 @@ def main() -> None:
     
     if is_interactive():
         args = parser.parse_args([
-            # "--molecule",       *mol_list,
-            "--phys-param",    "all",
+            "--molecule",       *mol_list,
+            # "--phys-param",    "all",
             "--chemistry",      "Crich",
             "--n-tasks",        "32",
             "--overlay-stats",
             "--overlay-1d",
             # "--overlay-particle", "2073529",
-            # "--show",
+            "--show",
         ])
     else:
         args = parser.parse_args()

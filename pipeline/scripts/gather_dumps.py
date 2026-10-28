@@ -114,7 +114,7 @@ class ScatterGatherer:
 
     # ------------------------------------------------------------------ main
 
-    def gather_one(self, dump_index: int) -> Path:
+    def gather_one(self, dump_index: int, output_dir: Path | None = None) -> Path:
         """
         Gather all per-batch scatter contributions for one dump and write the
         final dump_XXXXX.h5.
@@ -216,7 +216,8 @@ class ScatterGatherer:
             }
 
         # ---- write ----------------------------------------------------------
-        output_path = self.final_output_dir / f"dump_{dump_number:05d}.h5"
+        target_dir = Path(output_dir) if output_dir else self.final_output_dir
+        output_path = target_dir / f"dump_{dump_number:05d}.h5"
         self._write_dump_file(
             output_path,
             dump_number,
@@ -295,6 +296,13 @@ class GatherCLI:
             required=True,
             help="0-based dump index to gather (SLURM_ARRAY_TASK_ID).",
         )
+        p.add_argument(
+            "--output-dir",
+            type=str,
+            default=None,
+            help="Directory to write the dump file to (default: final_output_dir "
+                 "from config). Pass $JOBFS to stage locally",
+        )
         return p.parse_args()
 
     @classmethod
@@ -302,7 +310,7 @@ class GatherCLI:
         args = cls.parse_args()
         config = PipelineConfigManager.load(args.config)
         gatherer = ScatterGatherer(config)
-        output = gatherer.gather_one(args.dump_index)
+        output = gatherer.gather_one(args.dump_index, output_dir=args.output_dir)
         print(f"Gathered dump file: {output}")
 
 

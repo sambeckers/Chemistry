@@ -11,7 +11,7 @@
 # --- chemistry to process: Crich or Orich ---
 CHEMISTRY=${CHEMISTRY:-Crich}
 # Fraction of particles to keep (0.1, 0.5, 1.0). Override with --export=FRACTION=0.1
-FRACTION=${FRACTION:-0.5}
+FRACTION=${FRACTION:-1.0}
 
 N_TASKS=$(( SLURM_ARRAY_TASK_MAX - SLURM_ARRAY_TASK_MIN + 1 ))
 

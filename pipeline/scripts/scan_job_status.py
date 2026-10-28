@@ -96,6 +96,11 @@ RE_WORKFLOW_START_IDX = re.compile(
 RE_BATCH_STATUS_OK = re.compile(r"BATCH_STATUS\|batch=\d+\|status=ok\b")
 RE_BATCH_INDEX = re.compile(r"BATCH_TASK\|batch=(?P<idx>\d+)\|phase=start")
 
+# Matches:  TIMING|batch=4|stage=batch_total|seconds=51267.590055
+RE_BATCH_TOTAL_TIME = re.compile(
+    r"TIMING\|batch=\d+\|stage=batch_total\|seconds=(?P<sec>[\d.]+)"
+)
+
 # ---------------------------------------------------------------------------
 # Filename patterns
 # ---------------------------------------------------------------------------
@@ -150,9 +155,9 @@ def _slurm_status(tail: list[str]) -> str | None:
     return m.group("slurm_status").upper() if m else None
 
 
-def classify_scatter(path: Path) -> tuple[str, list[int]]:
+def classify_scatter(path: Path) -> tuple[str, list[int], float | None]:
     """
-    Returns (status, batch_indices).
+    Returns (status, batch_indices, batch_total_seconds).
 
     status        : 'COMPLETED' | 'FAILED' | 'RUNNING'
     batch_indices : list of individual batch indices owned by this task.
@@ -185,12 +190,15 @@ def classify_scatter(path: Path) -> tuple[str, list[int]]:
     else:
         status = "RUNNING"
 
-    return status, indices
+    time_match = RE_BATCH_TOTAL_TIME.search(tail_text)
+    batch_seconds = float(time_match.group("sec")) if time_match else None
+
+    return status, indices, batch_seconds
 
 
-def classify_gather(path: Path, task_id: int, offset: int) -> tuple[str, list[int]]:
+def classify_gather(path: Path, task_id: int, offset: int) -> tuple[str, list[int], float | None]:
     """
-    Returns (status, [dump_index]).
+    Returns (status, [dump_index], batch_total_seconds).
 
     Dump index is resolved from the WORKFLOW_TASK start line if present,
     otherwise falls back to offset + task_id.
@@ -221,10 +229,13 @@ def classify_gather(path: Path, task_id: int, offset: int) -> tuple[str, list[in
     else:
         status = "RUNNING"
 
-    return status, [dump_idx]
+    time_match = RE_BATCH_TOTAL_TIME.search(tail_text)
+    batch_seconds = float(time_match.group("sec")) if time_match else None
+
+    return status, [dump_idx], batch_seconds
 
 
-def classify_batch(path: Path, task_id: int, offset: int) -> tuple[str, list[int]]:
+def classify_batch(path: Path, task_id: int, offset: int) -> tuple[str, list[int], float | None]:
     """Legacy batch classifier — preserves original scan_batch_status logic."""
     head = head_lines(path)
     tail = tail_lines(path)
@@ -251,7 +262,26 @@ def classify_batch(path: Path, task_id: int, offset: int) -> tuple[str, list[int
     else:
         status = "RUNNING"
 
-    return status, [batch_idx]
+    time_match = RE_BATCH_TOTAL_TIME.search(tail_text)
+    batch_seconds = float(time_match.group("sec")) if time_match else None
+
+    return status, [batch_idx], batch_seconds
+
+
+# ---------------------------------------------------------------------------
+# Formatting helpers
+# ---------------------------------------------------------------------------
+
+def format_duration(seconds: float) -> str:
+    """Format seconds as e.g. '14h 16m 08s' for readability."""
+    seconds = int(round(seconds))
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours}h {minutes:02d}m {secs:02d}s"
+    if minutes:
+        return f"{minutes}m {secs:02d}s"
+    return f"{secs}s"
 
 
 # ---------------------------------------------------------------------------
@@ -284,18 +314,19 @@ def detect_stage(folder: Path) -> str | None:
 def scan_folder(
     folder: Path,
     stage_override: str | None = None,
-) -> tuple[str, dict[int, str]]:
+) -> tuple[str, dict[int, str], dict[int, float]]:
     """
     Scan one log folder.
 
-    Returns (stage_name, {index: status}).
+    Returns (stage_name, {index: status}, {index: batch_total_seconds}).
     """
     stage = stage_override or detect_stage(folder)
     if stage is None:
-        return ("unknown", {})
+        return ("unknown", {}, {})
 
     offset = read_chunk_offset(folder) or 0
     results: dict[int, str] = {}
+    timings: dict[int, float] = {}
     priority = {"COMPLETED": 2, "FAILED": 1, "RUNNING": 0}
 
     for out_path in sorted(folder.glob(f"{stage}_*.out")):
@@ -305,7 +336,7 @@ def scan_folder(
         task_id = int(m.group("task_id"))
 
         if stage == "scatter":
-            status, indices = classify_scatter(out_path)
+            status, indices, batch_seconds = classify_scatter(out_path)
             if not indices:
                 # Log line missing — fall back: mark the single task_id slot.
                 # Resume-by-file-existence handles the rest safely.
@@ -316,15 +347,19 @@ def scan_folder(
                 )
                 indices = [offset + task_id]
         elif stage == "gather":
-            status, indices = classify_gather(out_path, task_id, offset)
+            status, indices, batch_seconds = classify_gather(out_path, task_id, offset)
         else:
-            status, indices = classify_batch(out_path, task_id, offset)
+            status, indices, batch_seconds = classify_batch(out_path, task_id, offset)
 
         for idx in indices:
             if idx not in results or priority[status] > priority[results[idx]]:
                 results[idx] = status
+                if batch_seconds is not None:
+                    timings[idx] = batch_seconds
+            elif idx not in timings and batch_seconds is not None:
+                timings[idx] = batch_seconds
 
-    return stage, results
+    return stage, results, timings
 
 
 # ---------------------------------------------------------------------------
@@ -417,11 +452,12 @@ def main() -> None:
     print()
 
     combined: dict[int, str] = {}
+    combined_timings: dict[int, float] = {}
     priority = {"COMPLETED": 2, "FAILED": 1, "RUNNING": 0}
     detected_stages: set[str] = set()
 
     for folder in folders:
-        stage, folder_results = scan_folder(folder, stage_override=args.stage)
+        stage, folder_results, folder_timings = scan_folder(folder, stage_override=args.stage)
         detected_stages.add(stage)
 
         counts: dict[str, int] = defaultdict(int)
@@ -429,6 +465,10 @@ def main() -> None:
             counts[status] += 1
             if idx not in combined or priority[status] > priority[combined[idx]]:
                 combined[idx] = status
+                if idx in folder_timings:
+                    combined_timings[idx] = folder_timings[idx]
+            elif idx not in combined_timings and idx in folder_timings:
+                combined_timings[idx] = folder_timings[idx]
 
         total_in_folder = sum(counts.values())
         parts = ", ".join(f"{s}: {n}" for s, n in sorted(counts.items()))
@@ -465,6 +505,32 @@ def main() -> None:
     print(f"  {'─' * 36}")
     print(f"  Log entries seen : {n_seen:>6} / {n_expected}")
     print(f"{'=' * 52}")
+
+    # Batch duration statistics (only over indices that finished COMPLETED
+    # *and* for which a batch_total TIMING line was found)
+    completed_durations = [
+        combined_timings[idx]
+        for idx, status in combined.items()
+        if status == "COMPLETED" and idx in combined_timings
+    ]
+
+    if completed_durations:
+        avg_s = sum(completed_durations) / len(completed_durations)
+        min_s = min(completed_durations)
+        max_s = max(completed_durations)
+        n_missing_time = n_completed - len(completed_durations)
+
+        print()
+        print("Batch duration (COMPLETED batches, stage=batch_total):")
+        print(f"  Average : {format_duration(avg_s)}  ({avg_s:.1f}s)")
+        print(f"  Shortest: {format_duration(min_s)}  ({min_s:.1f}s)")
+        print(f"  Longest : {format_duration(max_s)}  ({max_s:.1f}s)")
+        print(f"  Based on: {len(completed_durations)} / {n_completed} completed batch(es)")
+        if n_missing_time:
+            print(f"  (no batch_total TIMING line found for {n_missing_time} completed batch(es))")
+    else:
+        print()
+        print("Batch duration: no batch_total TIMING lines found among COMPLETED batches.")
 
     if args.dry_run:
         print("\n(dry-run: no output file written)")
