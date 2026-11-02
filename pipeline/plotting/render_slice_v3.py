@@ -3,20 +3,6 @@
 sph_render.py
 
 Native Sarracen SPH rendering, wrapped in one class (``SPHRenderer``).
-
-Colour limits
--------------
-Every plotting method accepts ``vmin``, ``vmax`` and ``decades``.
-
-* ``decades=4``      -> vmax = max of the rendered image, vmin = vmax / 10**4
-* ``vmax=...`` only  -> vmin = vmax / 10**decades
-* ``vmin=...`` only  -> vmax = vmin * 10**decades
-* ``vmin`` and ``vmax`` both given -> used as-is (decades ignored)
-* ``decades=0``      -> switch the automatic range off for this call
-* ``decades=None``   -> use the renderer's default (``SPHRenderer(decades=...)``)
-
-The limits are taken from the *rendered image* (not the raw particle
-values), so they always match what is actually drawn.
 """
 
 from __future__ import annotations
@@ -81,14 +67,14 @@ class SPHRenderer:
                  'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC',
                  'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O',
                  'C2H2', 'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
-    # PARENTS = ["CO", "N2", "CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
-    #            "SiO", "HCl", "C2H4", "NH3", "HCP", "HF", "H2S"]
-    PARENTS = ["CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
-               "SiO", "HCl", "NH3", "HCP", "H2S"]
-    # DAUGHTERS = ['CH2', 'CH3', 'CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
-    #              'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO', 'SO2']
-    DAUGHTERS = ['CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
-                'C4H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO']
+    PARENTS = ["CO", "N2", "CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
+               "SiO", "HCl", "C2H4", "NH3", "HCP", "HF", "H2S"]
+    # PARENTS = ["CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
+    #            "SiO", "HCl", "NH3", "HCP", "H2S"]
+    DAUGHTERS = ['CH2', 'CH3', 'CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
+                 'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO', 'SO2']
+    # DAUGHTERS = ['CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
+    #             'C4H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO']
     PARENT_DAUGHTER_PAIRS = [("C2H2", "C2H"), ("HCN", "CN")]
 
     CONTOUR_COLS = ["molecule", "R_xy_001", "R_xy_050", "R_xz_001", "R_xz_050"]
@@ -109,6 +95,8 @@ class SPHRenderer:
         font_size: int = 24,
         decades: float | None = None,
         cache: bool = True,
+        smooth_au: float = 0.0,      # Gaussian sigma in au; 0 = off
+        smooth_edge: float = 0.5,    # blurred-mask level that defines the edge
     ):
         self.dump_dir = Path(dump_dir)
         self.phantom_dir = Path(phantom_dir)
@@ -121,6 +109,8 @@ class SPHRenderer:
         self.decades = decades
         self.cache = cache
         self.fast = fast
+        self.smooth_au = smooth_au
+        self.smooth_edge = smooth_edge
 
         self.phantom_path: Path | None = None
         self.dump_path: Path | None = None
@@ -200,6 +190,7 @@ class SPHRenderer:
             sdf = sdf[keep]
             print(f"Retained {keep.sum():,} particles (fraction={eff:.4g})")
         return sdf
+
     # ------------------------------------------------------------------
     # NaN interpolation
     # ------------------------------------------------------------------
@@ -248,6 +239,56 @@ class SPHRenderer:
         arr[~np.isfinite(arr)] = np.nan
         arr[arr <= 0] = np.nan
         img.set_array(self.fill_nans_nearest(arr))
+
+    # ------------------------------------------------------------------
+    # Gaussian smoothing of the rendered image
+    # ------------------------------------------------------------------
+    def set_smooth(self, sigma_au: float, edge: float | None = None):
+        """Set the default Gaussian smoothing width [au]; 0 turns it off."""
+        self.smooth_au = sigma_au
+        if edge is not None:
+            self.smooth_edge = edge
+        return self
+
+    @staticmethod
+    def gaussian_smooth_image(arr, sigma_px, log=True, edge=0.5):
+        """Normalised Gaussian convolution of an image with NaN gaps.
+
+        arr      : 2-D image (NaN / <=0 = no data)
+        sigma_px : (sigma_y, sigma_x) in pixels
+        log      : blur log10(arr) instead of arr
+        edge     : pixels whose blurred validity weight is below this
+                   are left empty (0.5 keeps a straight edge in place)
+        """
+        valid = np.isfinite(arr) & ((arr > 0) if log else True)
+        if not valid.any():
+            return arr
+        vals = np.where(valid, np.log10(np.where(valid, arr, 1.0)) if log
+                        else arr, 0.0)
+        num = gaussian_filter(vals, sigma_px, mode="constant", cval=0.0)
+        den = gaussian_filter(valid.astype(float), sigma_px,
+                              mode="constant", cval=0.0)
+        out = np.full(arr.shape, np.nan)
+        keep = den >= edge
+        out[keep] = num[keep] / den[keep]
+        if log:
+            out[keep] = 10.0 ** out[keep]
+        return out
+
+    def smooth_rendered_image(self, ax, sigma_au, log_scale=True, edge=None):
+        """Gaussian-smooth the first image on ax (sigma in au)."""
+        if not ax.images or not sigma_au:
+            return
+        img = ax.images[0]
+        arr = np.ma.filled(np.asanyarray(img.get_array()).astype(float), np.nan)
+        ny, nx = arr.shape
+        left, right, bottom, top = img.get_extent()
+        sigma_px = (sigma_au / (abs(top - bottom) / ny),
+                    sigma_au / (abs(right - left) / nx))
+        img.set_array(self.gaussian_smooth_image(
+            arr, sigma_px, log=log_scale,
+            edge=self.smooth_edge if edge is None else edge))
+        img.autoscale()   # re-derive limits from the smoothed image
 
     # ------------------------------------------------------------------
     # Names, masks, HDF5 reading
@@ -648,8 +689,12 @@ class SPHRenderer:
                         xsec=None, dens_weight=False, cmap="gist_heat",
                         log_scale=True, vmin=None, vmax=None, decades=None,
                         interpolate=False, fraction=1.0, contours=False,
-                        hmin=None, radii_save_path=None):
-        """Render an SPH quantity onto a Matplotlib axes using Sarracen."""
+                        hmin=None, radii_save_path=None, smooth=None):
+        """Render an SPH quantity onto a Matplotlib axes using Sarracen.
+
+        smooth: Gaussian sigma [au] applied to the rendered image
+                (None -> renderer default, 0 -> off).
+        """
         if ax is None:
             _, ax = plt.subplots(dpi=300)
 
@@ -669,6 +714,11 @@ class SPHRenderer:
         fast_on = self.fast is not None and self.fast < 1.0
         if interpolate and (fraction < 1.0 or fast_on):
             self.interpolate_rendered_image(ax)
+
+        # Gaussian smoothing of the finished image (before clim / contours)
+        sigma = self.smooth_au if smooth is None else smooth
+        if sigma:
+            self.smooth_rendered_image(ax, sigma, log_scale)
 
         # vmin/vmax/decades are applied to the finished image
         self.apply_clim(ax, vmin, vmax, decades, log_scale)
@@ -767,9 +817,12 @@ class SPHRenderer:
                            log_scale=True, cmap="gist_heat", vmin=None,
                            vmax=None, decades=None, contours=False,
                            col_dens=False, hmin=None, radii_save_path=None,
-                           time_yr=None, save=False, save_path=None,
-                           show=True):
-        """Render one quantity for the current dump."""
+                           time_yr=None, smooth=None, save=False,
+                           save_path=None, show=True):
+        """Render one quantity for the current dump.
+
+        smooth: Gaussian sigma [au] (None -> renderer default, 0 -> off).
+        """
         sdf, meta = self.prepare_render_dataframe(quantity, fraction, col_dens)
 
         fig, ax = plt.subplots(dpi=300)
@@ -778,14 +831,14 @@ class SPHRenderer:
             dens_weight=dens_weight, cmap=cmap, log_scale=log_scale,
             vmin=vmin, vmax=vmax, decades=decades, interpolate=interpolate,
             fraction=fraction, contours=contours, hmin=hmin,
-            radii_save_path=radii_save_path,
+            radii_save_path=radii_save_path, smooth=smooth,
         )
         self.format_render_axes(ax, quantity, plane, meta, xlim=xlim,
                                 xsec=xsec, plot_single=True)
 
         cbar = fig.colorbar(ax.images[0], ax=ax)
         cbar.set_label(self.quantity_label(quantity, dens_weight, col_dens),
-                       fontsize=self.font_size / 2)
+                       fontsize=self.font_size / 2, rotation=270, va="bottom")
         cbar.ax.tick_params(labelsize=self.font_size / 2)
 
         plt.tight_layout()
@@ -843,7 +896,7 @@ class SPHRenderer:
         for idx, (ax, frac) in enumerate(zip(all_ax[:n], fractions)):
             row_idx, col_idx = divmod(idx, ncols)
             sdf, meta = self.prepare_render_dataframe(quantity, frac, col_dens)
-            
+
             self.render_quantity(
                 sdf, quantity, plane=plane, ax=ax, xlim=xlim, xsec=xsec,
                 dens_weight=dens_weight, cmap=cmap, log_scale=log_scale,
@@ -1196,7 +1249,7 @@ class SPHRenderer:
             return None
         fs = 12
 
-        ncols = 3
+        ncols = 4
         nrows = math.ceil(n / ncols)
 
         # ---- layout in inches ----------------------------------------------
@@ -1254,7 +1307,7 @@ class SPHRenderer:
             if col == ncols - 1 or i == n - 1:
                 cbar.set_label(
                     self.quantity_label(quantity, dens_weight, col_dens),
-                    fontsize=fs * 0.9)
+                    fontsize=fs * 0.9, rotation=270, va="bottom")
             cbar.ax.yaxis.set_minor_locator(mticker.NullLocator())
             self.maybe_use_offset_cbar_ticks(cbar, fs)
             ax.set_title(ax.get_title(), pad=4)

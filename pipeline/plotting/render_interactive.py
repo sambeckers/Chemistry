@@ -18,7 +18,8 @@ r = SPHRenderer(
     chemistry="Crich",
     dark_mode=False,
     decades=3,
-    fast=0.1,
+    fast=1,
+    # smooth_au=100,
 )
 
 # r.list_dumps()
@@ -27,11 +28,13 @@ r.set_dump(index=1581)
 
 # Single render
 # fig = r.plot_single_render(
-#     "CH2",
+#     "CO",
 #     plane="xz",
-#     xlim=5000,
-#     dens_weight=True,
+#     xlim=3000,
+#     # dens_weight=True,
+#     col_dens=True,
 #     show=True,
+#     # contours=True,
 #     # save=True,                      # use the standard directory/file naming
 # )
 
@@ -57,7 +60,7 @@ r.set_dump(index=1581)
 
 # Molecule grid -------------------------------------------------------
 fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=750, dens_weight=True)
-# fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True)
+fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True)
 
 # %% Contours + radii table ----------------------------------------------
 # fig = r.plot_single_render(

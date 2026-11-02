@@ -1190,9 +1190,9 @@ def main() -> None:
 
     if is_interactive():
         args = parser.parse_args([
-            "--mode", "plot-fraction-compare",
+            "--mode", "plot",
             "--chemistry", "Crich",
-            "--molecule", "CH2",
+            # "--molecule", "CH2",
             "--n-tasks", "32",
             "--show",
         ])
