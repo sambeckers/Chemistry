@@ -66,13 +66,13 @@ class SPHRenderer:
     MOLECULES = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN',
                  'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC',
                  'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O',
-                 'C2H2', 'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
+                 'C2H2', 'CS', 'SiC2', 'HF', 'C2H4', 'SiS', 'OH', 'SO', 'SO2', 'HCO+']
     PARENTS = ["CO", "N2", "CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
                "SiO", "HCl", "C2H4", "NH3", "HCP", "HF", "H2S"]
     # PARENTS = ["CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
     #            "SiO", "HCl", "NH3", "HCP", "H2S"]
     DAUGHTERS = ['CH2', 'CH3', 'CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
-                 'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO', 'SO2']
+                 'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO', 'SO2', "OH", "HCO+"]
     # DAUGHTERS = ['CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
     #             'C4H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO']
     PARENT_DAUGHTER_PAIRS = [("C2H2", "C2H"), ("HCN", "CN")]
@@ -447,6 +447,10 @@ class SPHRenderer:
             matched = hdf5_ids_sorted[ins] == sdf_ids
             dens_matched = np.where(matched, dens_raw[sort_idx][ins], np.nan)
             cm3_to_m3 = (1 * u.cm**-3).to(u.m**-3).value
+
+            # >>> keep the pure abundance for abundance-based contours <<<
+            sdf[f"{quantity}__abund"] = sdf[quantity].copy()
+
             sdf[quantity] = sdf[quantity] * dens_matched * cm3_to_m3
             print(f"Multiplied {quantity} by n(H2) -> units: m^-3")
 
@@ -689,11 +693,16 @@ class SPHRenderer:
                         xsec=None, dens_weight=False, cmap="gist_heat",
                         log_scale=True, vmin=None, vmax=None, decades=None,
                         interpolate=False, fraction=1.0, contours=False,
-                        hmin=None, radii_save_path=None, smooth=None):
+                        hmin=None, radii_save_path=None, smooth=None,
+                        col_dens=False):
         """Render an SPH quantity onto a Matplotlib axes using Sarracen.
 
         smooth: Gaussian sigma [au] applied to the rendered image
                 (None -> renderer default, 0 -> off).
+
+        When col_dens=True, contours are computed from the pure abundance
+        field (not n*abundance) - abundance contours drawn on the
+        column-density image.
         """
         if ax is None:
             _, ax = plt.subplots(dpi=300)
@@ -725,14 +734,43 @@ class SPHRenderer:
 
         if contours and ax.images:
             img = ax.images[0]
-            data = np.asarray(img.get_array())
-            dmax, dmin = np.nanmax(data), np.nanmin(data)
+            abund_col = f"{quantity}__abund"
+            is_species = (quantity not in self.PHYS_HDF5_KEY
+                          and quantity != "velocity")
+            use_abund = col_dens and is_species and abund_col in sdf.columns
+
+            if use_abund:
+                # Only reached when contours=True AND col_dens=True - no
+                # figure is built for column-density renders without contours.
+                # n*abundance contours would trace the density field rather
+                # than the chemistry, so re-render the pure abundance on a
+                # temp axes with matching pixel size so the resulting array
+                # sits on the same grid as the displayed image.
+                tmp_fig = plt.figure(figsize=ax.figure.get_size_inches(),
+                                     dpi=ax.figure.dpi)
+                tmp_ax = tmp_fig.add_axes(ax.get_position())
+                try:
+                    sdf.render(abund_col, **{**render_kwargs, "ax": tmp_ax})
+                    if interpolate and (fraction < 1.0 or fast_on):
+                        self.interpolate_rendered_image(tmp_ax)
+                    if sigma:
+                        self.smooth_rendered_image(tmp_ax, sigma, log_scale)
+                    contour_data = np.asarray(tmp_ax.images[0].get_array())
+                    contour_extent = tmp_ax.images[0].get_extent()
+                finally:
+                    plt.close(tmp_fig)
+                print(f"Contours from abundance ('{abund_col}'), not n*abundance")
+            else:
+                contour_data = np.asarray(img.get_array())
+                contour_extent = img.get_extent()
+
+            dmax, dmin = np.nanmax(contour_data), np.nanmin(contour_data)
             contour_values = [0.01 * dmax, 0.5 * dmax]
             valid = [cv for cv in contour_values if dmin < cv < dmax]
             if valid:
-                cs = ax.contour(data, levels=valid, colors="white",
+                cs = ax.contour(contour_data, levels=valid, colors="white",
                                 linestyles=["--", "-"], linewidths=1.0,
-                                origin="image", extent=img.get_extent())
+                                origin="image", extent=contour_extent)
                 radii = self.extract_contour_radii(cs)
                 for level, r in radii.items():
                     print(f"Level {level:.3e} -> R = {r}")
@@ -832,6 +870,7 @@ class SPHRenderer:
             vmin=vmin, vmax=vmax, decades=decades, interpolate=interpolate,
             fraction=fraction, contours=contours, hmin=hmin,
             radii_save_path=radii_save_path, smooth=smooth,
+            col_dens=col_dens,
         )
         self.format_render_axes(ax, quantity, plane, meta, xlim=xlim,
                                 xsec=xsec, plot_single=True)
@@ -901,7 +940,8 @@ class SPHRenderer:
                 sdf, quantity, plane=plane, ax=ax, xlim=xlim, xsec=xsec,
                 dens_weight=dens_weight, cmap=cmap, log_scale=log_scale,
                 vmin=vmin, vmax=vmax, decades=0,   # shared limits set below
-                interpolate=interpolate, fraction=frac)
+                interpolate=interpolate, fraction=frac,
+                col_dens=col_dens)
             self.format_render_axes(
                 ax, quantity, plane, meta, xlim=xlim, xsec=xsec,
                 interpolate=interpolate, q_in_title=False,
@@ -970,11 +1010,15 @@ class SPHRenderer:
     # Physical overview (2 rows x 3 cols)
     # ------------------------------------------------------------------
     def plot_phys_overview(self, xlim=None, log_scale=True, decades=None,
-                           save=False, save_path=None, show=True):
+                        save=False, save_path=None, show=True,
+                        xz_pct=(1.0, 99.7), xz_min_dex=0.2, nbins=4):
         """Temperature / density / Av in xy (top) and xz (bottom).
 
-        Each column shares one colour range (taken from the xy panel) and the
-        colourbar above it matches that range.
+        Each row has its own colour range and its own colourbar above it.
+        The xy range comes from apply_clim. The xz range is set from percentiles
+        of the xz data (xz_pct) so the bright central pixels don't compress the
+        colourmap and the disc / envelope structure uses the full colour range.
+        Set xz_pct=None to use apply_clim for xz as well.
         """
         self._require_dump()
         fs = self.font_size
@@ -993,11 +1037,14 @@ class SPHRenderer:
 
         panel_size = 6
         nrows, ncols = 2, 3
+        hspace = 0.34
+        # keep cells square: original layout used hspace=0.08
+        fig_h = panel_size * nrows * (nrows + hspace) / (nrows + 0.08)
         fig, axes = plt.subplots(
-            nrows, ncols, figsize=(panel_size * ncols, panel_size * nrows),
+            nrows, ncols, figsize=(panel_size * ncols, fig_h),
             dpi=300, squeeze=False, sharex=True, sharey=True)
 
-        clims = {}
+        clims = {"xy": {}, "xz": {}}
         for col_idx, quantity in enumerate(quantities):
             cmap = self.PHYS_OVERVIEW_DEFAULTS[quantity]["cmap"]
             for row_idx, plane in enumerate(planes):
@@ -1005,7 +1052,7 @@ class SPHRenderer:
                 self.render_quantity(
                     sdf_raw, quantity, plane=plane, ax=ax, xlim=xlim,
                     dens_weight=False, cmap=cmap, log_scale=log_scale,
-                    decades=0, interpolate=False, fraction=1.0)
+                    decades=decades, interpolate=False, fraction=1.0)
                 self.format_render_axes(
                     ax, quantity, plane, meta, xlim=xlim, q_in_title=False,
                     show_xlabel=False, show_ylabel=False, show_title=False)
@@ -1016,11 +1063,30 @@ class SPHRenderer:
                     ax.set_xlim(sdf_raw['x'].min(), sdf_raw['x'].max())
                     ax.set_ylim(sdf_raw['y'].min(), sdf_raw['y'].max())
 
-            # limits from the xy panel, applied to both rows
-            clim = self.apply_clim(axes[0, col_idx], None, None, decades,
-                                   log_scale)
-            axes[1, col_idx].images[0].set_clim(*clim)
-            clims[quantity] = clim
+            # xy: limits from apply_clim
+            clims["xy"][quantity] = self.apply_clim(
+                axes[0, col_idx], None, None, decades, log_scale)
+
+            # xz: own limits, tightened with percentiles so structure is bright
+            im_xz = axes[1, col_idx].images[0]
+            clim_xz = self.apply_clim(axes[1, col_idx], None, None, decades,
+                                    log_scale)
+            if xz_pct is not None:
+                arr = np.asarray(im_xz.get_array(), dtype=float).ravel()
+                arr = arr[np.isfinite(arr) & (arr > 0)]
+                if arr.size:
+                    p_lo, p_hi = np.percentile(arr, xz_pct)
+                    if p_hi > p_lo:
+                        clim_xz = (p_lo, p_hi)
+                        im_xz.set_clim(*clim_xz)
+            if xz_min_dex is not None:
+                span = np.log10(clim_xz[1] / clim_xz[0])
+                if span < xz_min_dex:
+                    mid = 0.5 * (np.log10(clim_xz[0]) + np.log10(clim_xz[1]))
+                    clim_xz = (10 ** (mid - xz_min_dex / 2),
+                            10 ** (mid + xz_min_dex / 2))
+                    im_xz.set_clim(*clim_xz)
+            clims["xz"][quantity] = clim_xz
 
         # ---- axis labels ---------------------------------------------------
         unit = r'$10^3$ au' if (xlim is not None and xlim > 1000) else 'au'
@@ -1029,39 +1095,64 @@ class SPHRenderer:
         axes[0, 0].set_ylabel(rf'$y$ [{unit}]', fontsize=fs)
         axes[1, 0].set_ylabel(rf'$z$ [{unit}]', fontsize=fs)
 
+        # extra vertical room so the xz colourbars fit between the rows
         fig.subplots_adjust(left=0.07, right=0.99, bottom=0.06, top=0.78,
-                            wspace=-0.3, hspace=0.08)
+                    wspace=-0.3, hspace=hspace)
         fig.canvas.draw()
 
-        # ---- colourbars above each xy panel --------------------------------
-        cbar_height, cbar_gap = 0.022, 0.025
-        for col_idx, quantity in enumerate(quantities):
-            pos = axes[0, col_idx].get_position()
-            cbar_ax = fig.add_axes([pos.x0, pos.y1 + cbar_gap, pos.width,
-                                    cbar_height])
-            lo, hi = clims[quantity]
-            norm = Normalize(vmin=np.log10(lo), vmax=np.log10(hi))
-            cbar = fig.colorbar(
-                ScalarMappable(norm=norm,
-                               cmap=self.PHYS_OVERVIEW_DEFAULTS[quantity]["cmap"]),
-                cax=cbar_ax, orientation='horizontal')
-            cbar.ax.xaxis.set_ticks_position('top')
-            cbar.ax.xaxis.set_label_position('top')
-            cbar.ax.tick_params(direction='out', length=5, width=1,
-                                colors='k', which='major')
-            cbar.ax.tick_params(direction='out', length=2.5, width=1,
-                                colors='k', which='minor')
-            cbar.ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
-            cbar.ax.xaxis.set_minor_locator(mticker.MultipleLocator(0.5))
-            cbar.ax.tick_params(axis='x', which='minor', labeltop=False)
-            cbar.ax.tick_params(labelsize=fs * 0.75)
-            cbar.ax.set_title(self.PHYS_OVERVIEW_DEFAULTS[quantity]["label"],
-                              fontsize=fs * 0.85, pad=8)
+        # ---- colourbars above each row -------------------------------------
+        cbar_height, cbar_gap = 0.022, 0.02
+        for row_idx, plane in enumerate(planes):
+            for col_idx, quantity in enumerate(quantities):
+                pos = axes[row_idx, col_idx].get_position()
+                cbar_ax = fig.add_axes([pos.x0, pos.y1 + cbar_gap, pos.width,
+                                        cbar_height])
+                lo, hi = clims[plane][quantity]
+                lo_log, hi_log = np.log10(lo), np.log10(hi)
+                norm = Normalize(vmin=lo_log, vmax=hi_log)
+                cbar = fig.colorbar(
+                    ScalarMappable(
+                        norm=norm,
+                        cmap=self.PHYS_OVERVIEW_DEFAULTS[quantity]["cmap"]),
+                    cax=cbar_ax, orientation='horizontal')
+                cbar.ax.xaxis.set_ticks_position('top')
+                cbar.ax.xaxis.set_label_position('top')
+                cbar.ax.tick_params(direction='out', length=5, width=1,
+                                    colors='k', which='major')
+                cbar.ax.tick_params(direction='out', length=2.5, width=1,
+                                    colors='k', which='minor')
+                # cbar.ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
+                # cbar.ax.xaxis.set_minor_locator(mticker.MultipleLocator(0.5))
+                loc = mticker.MaxNLocator(nbins=nbins, steps=[1, 2, 5, 10])
+                eps = 1e-9 * max(1.0, abs(hi_log - lo_log))
+                ticks = [t for t in loc.tick_values(lo_log, hi_log)
+                        if lo_log - eps <= t <= hi_log + eps]
+                if len(ticks) < 2:                       # fallback: just the endpoints
+                    ticks = [lo_log, hi_log]
 
-        t = self.read_time_yr(self.dump_path)
-        if t is not None:
-            y = axes[0, 0].get_position().y1 + 0.075
-            self.add_time_label(fig, t, fontsize=20, x=0.06, y=min(y, 0.98))
+                # fewest decimals for which every label is unique and exact
+                for dec in range(0, 6):
+                    labels = [f'{t:.{dec}f}' for t in ticks]
+                    exact = all(abs(round(t, dec) - t) < 1e-6 for t in ticks)
+                    if len(set(labels)) == len(labels) and exact:
+                        break
+                else:
+                    labels = [f'{t:.{dec}f}' for t in ticks]
+
+                cbar.ax.xaxis.set_major_locator(mticker.FixedLocator(ticks))
+                cbar.ax.xaxis.set_major_formatter(mticker.FixedFormatter(labels))
+                cbar.ax.xaxis.set_minor_locator(mticker.AutoMinorLocator(2))
+                                
+                cbar.ax.tick_params(axis='x', which='minor', labeltop=False)
+                cbar.ax.tick_params(labelsize=fs * 0.75)
+                cbar.ax.set_title(
+                    self.PHYS_OVERVIEW_DEFAULTS[quantity]["label"],
+                    fontsize=fs * 0.85, pad=8)
+
+        # t = self.read_time_yr(self.dump_path)
+        # if t is not None:
+        #     y = axes[0, 0].get_position().y1 + 0.075
+        #     self.add_time_label(fig, t, fontsize=20, x=0.06, y=min(y, 0.98))
 
         if save_path is None and save:
             save_path = self.build_save_path("phys_overview", xlim=xlim)
@@ -1164,14 +1255,16 @@ class SPHRenderer:
         self.render_quantity(
             parent_sdf, parent, plane=plane, ax=axes[0], xlim=xlim,
             xsec=xsec, dens_weight=dens_weight, cmap=cmap, log_scale=True,
-            decades=0, interpolate=interpolate, fraction=1.0)
+            decades=0, interpolate=interpolate, fraction=1.0,
+            col_dens=col_dens)
 
         daughter_sdf, _ = self.prepare_render_dataframe(
             daughter, 1.0, col_dens)
         self.render_quantity(
             daughter_sdf, daughter, plane=plane, ax=axes[1], xlim=xlim,
             xsec=xsec, dens_weight=dens_weight, cmap=cmap, log_scale=True,
-            decades=0, interpolate=interpolate, fraction=1.0)
+            decades=0, interpolate=interpolate, fraction=1.0,
+            col_dens=col_dens)
 
         # parent sets the scale (with decades if requested); daughter copies
         clim = self.apply_clim(axes[0], vmin, vmax, decades, True)
@@ -1290,7 +1383,8 @@ class SPHRenderer:
                 dens_weight=dens_weight, cmap=cmap, log_scale=log_scale,
                 vmin=vmin, vmax=vmax, decades=decades,
                 interpolate=interpolate, fraction=1.0, contours=contours,
-                radii_save_path=radii_save_path)
+                radii_save_path=radii_save_path,
+                col_dens=col_dens)
             self.format_render_axes(
                 ax, quantity, plane, meta, xlim=xlim, xsec=xsec,
                 show_xlabel=is_bottom, show_ylabel=is_left,

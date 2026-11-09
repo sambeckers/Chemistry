@@ -66,6 +66,19 @@ from code_chem.run_plot_single_config_1D_model import (
 from kb.modeling.tools import CodeIO
 from kb import path as kb_path
 
+import matplotlib.patheffects as pe
+import matplotlib.ticker as mticker
+from astropy import units as u
+
+CM_PER_AU = u.au.to(u.cm)   # 1.495978707e13
+
+_TITLE_POS = {
+    "upper left":  (0.015, 0.97, "left",  "top"),
+    "upper right": (0.985, 0.97, "right", "top"),
+    "lower left":  (0.015, 0.03, "left",  "bottom"),
+    "lower right": (0.985, 0.03, "right", "bottom"),
+}
+
 # ---------------------------------------------------------------------------
 # Grid constants — MUST match plot_stats.py exactly
 # ---------------------------------------------------------------------------
@@ -197,7 +210,7 @@ def overlay_1d_profile(
     mloss_label = result[6]
     vinf_label  = result[7]
 
-    _label = label if label is not None else f"1D ({mloss_label}, {vinf_label})"
+    _label = label if label is not None else f"1D"
 
     if molecule is not None:
         frac = get_fractional_abundance(fracs_1d, molecule)
@@ -583,6 +596,7 @@ def plot_density(
     bin_count:      np.ndarray,
     val_centres:    np.ndarray,
     title:          str | None   = None,
+    title_pos:      str          = "upper right",
     param:          str | None   = None,
     clip_at_one:    bool         = False,
     apply_ab_limits: bool        = False,
@@ -591,6 +605,9 @@ def plot_density(
     molecule:       str | None   = None,
     chemistry:      str          = "Crich",
     particle_id:    int | None   = None,
+    min_count:      int          = 3,
+    legend_loc:     str          = "lower center",
+    figsize:        tuple        = (9, 6),
     vmin:           float | None = None,
     vmax:           float | None = None,
     save_path:      Path | None  = None,
@@ -620,76 +637,69 @@ def plot_density(
     show           : call plt.show()
     dark_mode      : use a dark background and colour scheme
     """
+    fg = "white" if dark_mode else "k"      # foreground (text / lines)
+    bg = "k"     if dark_mode else "white"  # background (boxes / halos)
+
     h_float  = hist_2d.astype(np.float64)
-    h_masked = np.ma.masked_where(h_float == 0, h_float)
+    h_masked = np.ma.masked_where(h_float < min_count, h_float)
 
-    nonzero = h_float[h_float > 0]
-    _vmin   = vmin if vmin is not None else nonzero.min()
-    _vmax   = vmax if vmax is not None else nonzero.max()
-    norm    = mcolors.LogNorm(vmin=_vmin, vmax=_vmax)
+    valid = h_float[h_float >= min_count]
+    _vmin = vmin if vmin is not None else valid.min()
+    _vmax = vmax if vmax is not None else valid.max()
+    norm  = mcolors.LogNorm(vmin=_vmin, vmax=_vmax)
 
-    fig, ax = plt.subplots(figsize=(9, 6), dpi=300)
+    fig, ax = plt.subplots(figsize=figsize)
 
-    # pcolormesh: X = R_EDGES, Y = val_edges, C = h.T
-    # hist_2d shape is (N_BINS [r], n_val_bins [value]);
-    # pcolormesh expects (value, r) so we transpose.
     pcm = ax.pcolormesh(
-        R_EDGES, val_edges,
-        h_masked.T,
-        cmap="plasma",
-        norm=norm,
-        rasterized=True,
-        shading="flat",
+        R_EDGES, val_edges, h_masked.T,
+        cmap="plasma", norm=norm, rasterized=True, shading="flat",
     )
-    cbar = fig.colorbar(pcm, ax=ax, pad=0.02)
-    cbar.set_label("Particle count per bin", fontsize=12)
 
+    # ---- colourbar (270° rotation kept, larger ticks) -------------------
+    cbar = fig.colorbar(pcm, ax=ax, pad=0.02)
+    cbar.set_label("Particle count per bin", fontsize=14,
+                   rotation=270, va="bottom", labelpad=6)
+    cbar.ax.tick_params(which="major", labelsize=13, length=5, width=1.0)
+    cbar.ax.tick_params(which="minor", length=3, width=0.8)
+
+    # ---- overlays -------------------------------------------------------
     if overlay_stats:
         stats = compute_stats(
             bin_sum, bin_count, hist_2d,
             val_centres=val_centres,
             clip_at_one=clip_at_one,
         )
-        primary_c_white = "white" if dark_mode else "k"
-        primary_c_k     = "k"     if dark_mode else "white"
         ax.plot(R_CENTRES, stats["mean"], lw=1.5, ls=":",
-                color=primary_c_white, alpha=0.8, label="Mean", zorder=5)
+                color='k', label="Mean", zorder=5)
         ax.plot(R_CENTRES, stats["p50"], lw=2.0, ls="-",
-                color=primary_c_white, label="Median", zorder=5)
+                color='k', label="Median", zorder=5)
 
     if overlay_1d and (molecule is not None or param is not None):
-        overlay_1d_profile(
-            ax,
-            chemistry  = chemistry,
-            molecule   = molecule,
-            phys_param = param,        
-        )
+        overlay_1d_profile(ax, chemistry=chemistry,
+                           molecule=molecule, phys_param=param)
 
     if particle_id is not None:
-        overlay_particle_track(
-            ax,
-            particle_id = particle_id,
-            molecule    = molecule,
-            phys_param  = param,
-        )
+        overlay_particle_track(ax, particle_id=particle_id,
+                               molecule=molecule, phys_param=param)
 
-    # Single legend call after all overlays so entries are always complete
+    # Contrast halo on every overlay line (also those drawn by the helpers)
+    halo = [pe.withStroke(linewidth=3.5, foreground=bg, alpha=0.8)]
+    for line in ax.lines:
+        line.set_path_effects(halo)
+
     if overlay_stats or overlay_1d or particle_id is not None:
-        primary_c_white = "white" if dark_mode else "k"
-        primary_c_k     = "k"     if dark_mode else "white"
-        ax.legend(loc="lower left", fontsize=12,
-                  framealpha=0.6, labelcolor=primary_c_white,
-                  facecolor=primary_c_k)
+        ax.legend(loc=legend_loc, ncol=3, fontsize=12, framealpha=0.9,
+                  labelcolor=fg, facecolor=bg, edgecolor="0.5",
+                  columnspacing=1.2, handlelength=2.2)
 
+    # ---- axes scales and limits ----------------------------------------
     ax.set_xscale("log")
     ax.set_yscale("log")
     if apply_ab_limits:
         apply_abundance_axis_limits(ax)
         occupied_r = np.where(hist_2d.sum(axis=1) > 0)[0]
         if len(occupied_r) > 0:
-            rmin = R_EDGES[occupied_r[0]]
-            rmax = R_EDGES[occupied_r[-1] + 1]
-            ax.set_xlim(rmin, rmax)
+            ax.set_xlim(R_EDGES[occupied_r[0]], R_EDGES[occupied_r[-1] + 1])
     else:
         all_x, all_y = _collect_xy([ax])
         ax.set_xlim(min(all_x), max(all_x))
@@ -700,12 +710,40 @@ def plot_density(
         elif param == "density":
             ax.set_ylim(min(all_y), max(all_y) * 10)
     add_log_ticks(ax)
+    ax.tick_params(axis="x", which="both", top=False) 
 
-    ax.set_xlabel("Radius [cm]", fontsize=13)
-    ax.set_ylabel(val_label, fontsize=13)
-    ax.set_title(title, fontsize=13)
+    # ---- ticks and grid --------------------------------------------------
+    ax.tick_params(which="major", labelsize=13, length=6, width=1.0, direction="out")
+    ax.tick_params(which="minor", length=3, width=0.7, direction="out")
+    # decade-only minor ticks on y (avoids the dense black clusters)
+    ax.yaxis.set_minor_locator(mticker.LogLocator(base=10, subs=(1.0,), numticks=30))
+    ax.yaxis.set_minor_formatter(mticker.NullFormatter())
+    # ax.grid(True, which="major", color="0.6", alpha=0.25, lw=0.6)
+    # ax.set_axisbelow(False)
 
-    plt.tight_layout()
+    # ---- labels -------------------------------------------------------
+    ax.set_xlabel("Radius [cm]", fontsize=14)
+    ax.set_ylabel(val_label, fontsize=14)
+
+    # secondary x-axis in au (astropy conversion)
+    secax = ax.secondary_xaxis(
+        "top",
+        functions=(lambda x: x / CM_PER_AU, lambda x: x * CM_PER_AU),
+    )
+    secax.set_xlabel("Radius [au]", fontsize=14)
+    secax.tick_params(which="major", labelsize=13, length=6, width=1.0, direction="out")
+    secax.tick_params(which="minor", length=3, width=0.7, direction="out")
+
+    # boxed species tag inside the axes (readable on top of the mesh)
+    if title:
+        x, y, ha, va = _TITLE_POS[title_pos]
+        ax.text(
+            x, y, title, transform=ax.transAxes, ha=ha, va=va,
+            fontsize=16, color=fg, zorder=10,
+            bbox=dict(boxstyle="round,pad=0.3", fc=bg, ec=fg, lw=0.8, alpha=0.85),
+        )
+
+    fig.tight_layout()
     if save_path is not None:
         fig.savefig(save_path, bbox_inches="tight", dpi=300)
         print(f"Saved: {save_path}")
@@ -777,7 +815,7 @@ def plot_density_all_phys(
             shading="flat",
         )
         cbar = fig.colorbar(pcm, ax=ax, pad=0.02)
-        cbar.set_label("Particle count per bin", fontsize=10)
+        cbar.set_label("Particle count per bin", fontsize=10, rotation=270, va="bottom")
 
         if overlay_stats:
             stats = compute_stats(
@@ -911,7 +949,8 @@ def main() -> None:
     mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN', 
                 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
                 'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
-                'CS', 'SiC2', 'HF', 'C2H4', 'SiS']
+                'CS', 'SiC2', 'HF', 'C2H4', 'SiS', "SO", "SO2"]
+    mol_list = ['OH', 'SO', 'SO2', 'HCO+']
     
     if is_interactive():
         args = parser.parse_args([
@@ -995,11 +1034,15 @@ def main() -> None:
                 bin_count        = bin_count,
                 val_centres      = cfg["centres"],
                 title            = None,
+                title_pos        = "upper right",
                 param            = param,
                 clip_at_one      = False,
                 apply_ab_limits  = False,
                 overlay_stats    = args.overlay_stats,
                 particle_id      = args.overlay_particle,
+                min_count        = 3,
+                legend_loc       = "lower center",
+                figsize          = (9, 6),
                 vmin             = args.vmin,
                 vmax             = args.vmax,
                 save_path        = save_dir / f"point_density_{param}.{save_ext}",

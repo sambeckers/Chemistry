@@ -17,14 +17,23 @@ r = SPHRenderer(
     phantom_dir="/fred/oz304/beckers/v10a09",
     chemistry="Crich",
     dark_mode=False,
-    decades=3,
+    # decades=4,
     fast=1,
-    # smooth_au=100,
+    # smooth_au=150,
 )
 
 # r.list_dumps()
 r.set_dump(index=1581)
 # r.set_dump(path="/fred/oz304/beckers/v10a09_out/output/dumps/dump_XXXX.h5")
+
+# for mol in r.PARENTS + r.DAUGHTERS:
+#     r.plot_single_render(mol, plane="xy", xlim=6000, dens_weight=True, 
+#     show=True, save=True, contours=True)
+#     # radii_save_path="/fred/oz304/beckers/v10a09_out/output/radii_contours.txt")
+
+# for mol in ['OH', 'SO', 'SO2', 'HCO+']:
+#     r.plot_single_render(mol, plane="xz", xlim=750, dens_weight=True, 
+#     show=True,)
 
 # Single render
 # fig = r.plot_single_render(
@@ -34,7 +43,7 @@ r.set_dump(index=1581)
 #     # dens_weight=True,
 #     col_dens=True,
 #     show=True,
-#     # contours=True,
+#     contours=True,
 #     # save=True,                      # use the standard directory/file naming
 # )
 
@@ -49,18 +58,21 @@ r.set_dump(index=1581)
 # fig = r.plot_fraction_compare("CO", plane="xz", xlim=6000, dens_weight=True, nine=True)    # 9 panels
 
 # Physical overview ---------------------------------------------------
-# fig = r.plot_phys_overview(xlim=6000)
+# fig = r.plot_phys_overview(xlim=200)
 
-#  Velocity components + wind cone -------------------------------------
-# fig = r.plot_velocity_components(plane="xz", xlim=6000, wind_angle=True, v_wind_kms=10.0)
+# #  Velocity components + wind cone -------------------------------------
+# fig = r.plot_velocity_components(plane="xz", xlim=750, wind_angle=True, v_wind_kms=10.0)
 
 # Parent / daughter ---------------------------------------------------
 # for parent, daughter in r.PARENT_DAUGHTER_PAIRS:
 #     r.plot_parent_daughter_pair(parent, daughter, plane="xz", xlim=5000, dens_weight=True, decades=4)
 
 # Molecule grid -------------------------------------------------------
-fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=750, dens_weight=True)
-fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True)
+# fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=750, dens_weight=True, decades=3)
+# fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True)
+
+# fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=6000, dens_weight=True, contours=True, save=True)
+# fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=6000, dens_weight=True, contours=True, save=True)
 
 # %% Contours + radii table ----------------------------------------------
 # fig = r.plot_single_render(

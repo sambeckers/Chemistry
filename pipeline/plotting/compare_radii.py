@@ -60,10 +60,15 @@ THRESHOLDS = {
 }
 
 # Colours / markers for the two planes
+# PLANE_STYLE = {
+#     "xy": dict(color='navy', marker="o", label="3D  $xy$"),
+#     "xz": dict(color='cornflowerblue', marker="s", label="3D  $xz$"),
+# }
 PLANE_STYLE = {
-    "xy": dict(color='navy', marker="o", label="3D  $xy$"),
-    "xz": dict(color='cornflowerblue', marker="s", label="3D  $xz$"),
+    "xy": dict(color="navy", marker="o", label="3D  $xy$", hatch=None),
+    "xz": dict(color="navy", marker="o", label="3D  $xz$", hatch="////"),
 }
+
 
 # ===========================================================================
 # 1D loader  (verbatim interface from the user's existing code)
@@ -163,6 +168,13 @@ def _match_key(name: str, d: dict) -> str | None:
             return k
     return None
 
+def _to_float(val) -> float:
+    """Convert a table cell to float; any non-numeric placeholder ('--', '—', '', 'nan', 'N/A') becomes NaN."""
+    try:
+        return float(str(val).strip())
+    except ValueError:
+        return np.nan
+
 
 # ===========================================================================
 # Load 3D contour radii from the .txt file written by render_slice_v2.py
@@ -190,8 +202,8 @@ def load_3d_radii(path: Path) -> dict[str, dict[str, float]]:
             mol = row["molecule"].strip()
             entry: dict[str, float] = {}
             for col in ("R_xy_001", "R_xy_050", "R_xz_001", "R_xz_050"):
-                val = row.get(col, "—").strip()
-                entry[col] = float(val) if val not in ("—", "", "nan") else np.nan
+                entry[col] = _to_float(row.get(col, ""))
+                # entry[col] = float(val) if val not in ("—", "", "nan") else np.nan
             results[mol] = entry
 
     print(f"Loaded 3D radii for {len(results)} molecules from {path.name}")
@@ -212,6 +224,11 @@ def plot_comparison(
     show:      bool,
     chemistry: str,
 ):
+    """
+    One figure per threshold (0.01x, 0.50x), each with two side-by-side
+    panels: left = 3D xy plane, right = 3D xz plane.
+    Each panel has its own 1:1 line and its own log-log fit.
+    """
     common = sorted(
         set(radii_1d.keys()) & set(radii_3d.keys()),
         key=lambda s: s.lower(),
@@ -219,113 +236,124 @@ def plot_comparison(
     if not common:
         print("No molecules in common — nothing to plot.")
         return
-
+ 
+    planes = ["xy", "xz"]
+ 
     for tag, frac_label in [("001", "0.01×"), ("050", "0.50×")]:
-        fig, ax = plt.subplots(figsize=(7,5), dpi=300)
-
-        r1d_all, r3d_xy_all, r3d_xz_all, labels_all = [], [], [], []
-
+        # ---- gather data --------------------------------------------------
+        r1d_all = []
+        r3d_all = {p: [] for p in planes}
+        labels_all = []
+ 
         for mol in common:
             r1d = radii_1d[mol].get(tag, np.nan)
-            r_xy = radii_3d[mol].get(f"R_xy_{tag}", np.nan)
-            r_xz = radii_3d[mol].get(f"R_xz_{tag}", np.nan)
             if np.isnan(r1d):
                 continue
             r1d_all.append(r1d)
-            r3d_xy_all.append(r_xy)
-            r3d_xz_all.append(r_xz)
+            for p in planes:
+                r3d_all[p].append(radii_3d[mol].get(f"R_{p}_{tag}", np.nan))
             labels_all.append(mol)
-
+ 
         r1d_all = np.array(r1d_all)
-        r3d_xy  = np.array(r3d_xy_all)
-        r3d_xz  = np.array(r3d_xz_all)
-
-        all_finite = np.concatenate([
-            r1d_all[np.isfinite(r1d_all)],
-            r3d_xy[np.isfinite(r3d_xy)],
-            r3d_xz[np.isfinite(r3d_xz)],
-        ])
+        r3d = {p: np.array(v) for p, v in r3d_all.items()}
+        labels_all = np.array(labels_all)
+ 
+        all_finite = np.concatenate(
+            [r1d_all[np.isfinite(r1d_all)]]
+            + [r3d[p][np.isfinite(r3d[p])] for p in planes]
+        )
+        all_finite = all_finite[all_finite > 0]
         if not len(all_finite):
-            plt.close(fig)
             continue
-
+ 
         lim_lo = all_finite.min() * 0.7
         lim_hi = all_finite.max() * 1.4
         ref = np.array([lim_lo, lim_hi])
-        ax.plot(ref, ref, color="0.6", lw=1.2, ls="--", zorder=0, label="1:1")
-
-        # --- log-log fit ---
-        all_r1d = np.concatenate([r1d_all[np.isfinite(r3d_xy)], r1d_all[np.isfinite(r3d_xz)]])
-        all_r3d = np.concatenate([r3d_xy[np.isfinite(r3d_xy)], r3d_xz[np.isfinite(r3d_xz)]])
-        if len(all_r1d) >= 2:
-            slope, intercept = np.polyfit(np.log10(all_r1d), np.log10(all_r3d), 1)
-            x_fit = np.logspace(np.log10(lim_lo), np.log10(lim_hi), 100)
-            ax.plot(x_fit, 10**(intercept + slope * np.log10(x_fit)),
-                    color="k", lw=1.5, ls="-",
-                    label=rf"fit: $y={slope:.2f}x+{intercept:.2f}$")
-            print(f"  {tag}: slope = {slope:.3f}, intercept = {intercept:.3f}")
-
-        texts = []
-
-        # --- xy series ---
-        mask_xy = np.isfinite(r3d_xy)
-        if mask_xy.any():
-            sty = PLANE_STYLE["xy"]
-            ax.scatter(r1d_all[mask_xy], r3d_xy[mask_xy],
-                       color=sty["color"], marker=sty["marker"],
-                       s=60, zorder=3, label=sty["label"])
-            for r1, r3, mol in zip(r1d_all[mask_xy], r3d_xy[mask_xy],
-                                   np.array(labels_all)[mask_xy]):
-                t = ax.text(r1, r3, format_species_label(mol),
-                            fontsize=10, color=sty["color"], ha="center")
-                t.set_path_effects(
-                    [PathEffects.withStroke(linewidth=1.5, foreground="w")]
-                )
-                texts.append(t)
-
-        # --- xz series ---
-        mask_xz = np.isfinite(r3d_xz)
-        if mask_xz.any():
-            sty = PLANE_STYLE["xz"]
-            ax.scatter(r1d_all[mask_xz], r3d_xz[mask_xz],
-                       color=sty["color"], marker=sty["marker"],
-                       s=60, zorder=3, label=sty["label"])
-            for r1, r3, mol in zip(r1d_all[mask_xz], r3d_xz[mask_xz],
-                                   np.array(labels_all)[mask_xz]):
-                t = ax.text(r1, r3, format_species_label(mol),
-                            fontsize=10, color=sty["color"], ha="center")
-                t.set_path_effects(
-                    [PathEffects.withStroke(linewidth=1.5, foreground="w")]
-                )
-                texts.append(t)
-
-        # --- non-overlapping labels with hairline connectors ---
-        # ax.set_xlim(lim_lo, lim_hi)
-        # ax.set_ylim(lim_lo, lim_hi)
-
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        ax.set_xlim(lim_lo, lim_hi)
-        ax.set_ylim(lim_lo, lim_hi)
-        ax.set_box_aspect(1)
-        adjust_text(
-            texts,
-            ax=ax,
-            arrowprops=dict(arrowstyle="-", color="0.7", lw=0.5),
-            expand=(1.2, 1.4),
+ 
+        # ---- figure with two subplots ------------------------------------
+        fig, axes = plt.subplots(
+            1, 2, figsize=(7, 5), dpi=300, sharex=True, sharey=True
         )
-        ax.set_xlabel(r"$R_{\rm 1D}$ [au]", fontsize=FONT_SIZE)
-        ax.set_ylabel(r"$R_{\rm 3D}$ [au]", fontsize=FONT_SIZE)
-        ax.tick_params(axis="both", which="both", direction="in",
-                       top=True, right=True, labelsize=FONT_SIZE * 0.8)
-        ax.legend(fontsize=FONT_SIZE * 0.8, framealpha=0.7)
-        ax.grid(True, which="both", ls=":", lw=0.5, alpha=0.4)
+ 
+        for ax, p in zip(axes, planes):
+            sty = PLANE_STYLE[p]
+            y = r3d[p]
+            mask = np.isfinite(y) & np.isfinite(r1d_all) & (y > 0) & (r1d_all > 0)
+ 
+            # 1:1 line
+            ax.plot(ref, ref, color="0.6", lw=1.2, ls="--", zorder=0, label="1:1")
+ 
+            # # log-log fit for this plane only
+            # if mask.sum() >= 2:
+            #     slope, intercept = np.polyfit(
+            #         np.log10(r1d_all[mask]), np.log10(y[mask]), 1
+            #     )
+            #     x_fit = np.logspace(np.log10(lim_lo), np.log10(lim_hi), 100)
+            #     ax.plot(
+            #         x_fit, 10 ** (intercept + slope * np.log10(x_fit)),
+            #         color="k", lw=1.5, ls="-",
+            #         label=rf"fit: $y={slope:.2f}x{intercept:+.2f}$",
+            #     )
+            #     print(f"  {tag} {p}: slope = {slope:.3f}, intercept = {intercept:.3f}")
+ 
+            # scatter + labels
+            texts = []
+            if mask.any():
+                ax.scatter(
+                    r1d_all[mask], y[mask],
+                    color=sty["color"], marker=sty["marker"],
+                    s=40, zorder=3, label=sty["label"],
+                )
+                for r1, r3_, mol in zip(r1d_all[mask], y[mask], labels_all[mask]):
+                    t = ax.text(
+                        r1, r3_, format_species_label(mol),
+                        fontsize=9, color=sty["color"], ha="center",
+                    )
+                    t.set_path_effects(
+                        [PathEffects.withStroke(linewidth=1.5, foreground="w")]
+                    )
+                    texts.append(t)
+ 
+            ax.set_xscale("log")
+            ax.set_yscale("log")
+            ax.set_xlim(lim_lo, lim_hi)
+            ax.set_ylim(lim_lo, lim_hi)
+            ax.set_box_aspect(1)
+ 
+            # Legend goes in the empty lower-right corner (below the 1:1 line)
+            # so it never competes with labels for space.
+            ax.legend(fontsize=FONT_SIZE * 0.8, framealpha=0.7, loc="lower right")
+ 
+            if texts:
+                # Pass the marker positions (x, y) so labels are pushed away
+                # from ALL points, not only from each other.
+                adjust_text(
+                    texts,
+                    x=r1d_all[mask], y=y[mask],
+                    ax=ax,
+                    arrowprops=dict(arrowstyle="-", color="0.7", lw=0.5),
+                    expand=(1.3, 1.6),
+                    force_text=(0.4, 0.8),
+                    force_static=(0.6, 1.0),
+                )
+ 
+            ax.set_xlabel(rf"$R_{{{frac_label}}}$ (1D) [au]", fontsize=FONT_SIZE)
+            ax.tick_params(axis="both", which="major", direction="in",
+                           top=True, right=True, labelsize=FONT_SIZE, size=5)
+            ax.tick_params(axis="both", which="minor", direction="in",
+                           top=True, right=True, labelsize=FONT_SIZE, size=3)
+            ax.grid(True, which="both", ls=":", lw=0.5, alpha=0.4)
+ 
+        axes[0].set_ylabel(rf"$R_{{{frac_label}}}$ (3D) [au]", fontsize=FONT_SIZE)
         plt.tight_layout()
-
+ 
         if save_dir is not None:
-            fname = Path(save_dir) / f"radii_compare_{chemistry}_{tag}.png"
+            save_dir = Path(save_dir)
+            save_dir.mkdir(parents=True, exist_ok=True)
+            fname = save_dir / f"radii_compare_{chemistry}_{tag}.png"
             fig.savefig(fname, dpi=150, bbox_inches="tight")
             print(f"Saved: {fname}")
+ 
         plt.show() if show else plt.close(fig)
 
 
@@ -344,11 +372,16 @@ def plot_radii_grouped_bars(
     common = set(radii_1d.keys()) & set(radii_3d.keys())
     if not common:
         return
-
-    categories = ["$R_{\\rm 1D}$", "$R_{\\rm 3D,xy}$", "$R_{\\rm 3D,xz}$"]
-    bar_colors = ["k", "navy", "cornflowerblue"]
+ 
+    # categories = ["$R_{\\rm 1D}$", "$R_{\\rm 3D,xy}$", "$R_{\\rm 3D,xz}$"]
+    # (facecolor, edgecolor, hatch)  — 'none' face keeps it dark-mode safe
+    bar_styles = [
+        ("0.55", "0.55", None),     # 1D: solid grey
+        ("navy", "navy", None),     # xy: solid navy
+        ("none", "navy", "////"),   # xz: hatched, same colour
+    ]
     width = 0.25
-
+ 
     for tag, frac_label in [("001", "0.01×"), ("050", "0.50×")]:
         # Build list of molecules with their 1D radius for this threshold
         mols_with_r1d = []
@@ -360,9 +393,11 @@ def plot_radii_grouped_bars(
         mols_with_r1d.sort(key=lambda x: x[1], reverse=True)
         sorted_molecules = [m for m, _ in mols_with_r1d]
 
+        categories = [fr"$R_{{{frac_label}}}$ (1D)", fr"$R_{{{frac_label}}}$ (3D, $xy$)", fr"$R_{{{frac_label}}}$ (3D, $xz$)"]
+ 
         if not sorted_molecules:
             continue
-
+ 
         # Prepare data in the sorted order
         r1d_vals = []
         r_xy_vals = []
@@ -371,39 +406,42 @@ def plot_radii_grouped_bars(
             r1d_vals.append(radii_1d[mol].get(tag, np.nan))
             r_xy_vals.append(radii_3d[mol].get(f"R_xy_{tag}", np.nan))
             r_xz_vals.append(radii_3d[mol].get(f"R_xz_{tag}", np.nan))
-
+ 
         # Replace missing values with 0 for plotting (bars will be invisible)
         r1d_vals = [v if np.isfinite(v) else 0.0 for v in r1d_vals]
         r_xy_vals = [v if np.isfinite(v) else 0.0 for v in r_xy_vals]
         r_xz_vals = [v if np.isfinite(v) else 0.0 for v in r_xz_vals]
-
+ 
         fig, ax = plt.subplots(figsize=(max(8, len(sorted_molecules)*0.5), 6), dpi=300)
-
+ 
         x = np.arange(len(sorted_molecules))
         offset = -width
         data = [r1d_vals, r_xy_vals, r_xz_vals]
-        for i, (cat, color, vals) in enumerate(zip(categories, bar_colors, data)):
-            ax.bar(x + offset, vals, width, label=cat, color=color, alpha=0.85)
+        for cat, (fc, ec, hatch), vals in zip(categories, bar_styles, data):
+            ax.bar(x + offset, vals, width, label=cat,
+                   facecolor=fc, edgecolor=ec, hatch=hatch, linewidth=1.0)
             offset += width
-
+ 
+        ax.set_yscale("log")
         ax.set_xticks(x)
         ax.set_xticklabels([format_species_label(mol) for mol in sorted_molecules],
                            rotation=45, ha="right", fontsize=FONT_SIZE+4)
-        ax.set_yticklabels(ax.get_yticks(), fontsize=FONT_SIZE+6)
+        # NOTE: set_yticklabels(ax.get_yticks()) on a log axis freezes labels
+        # to whatever ticks existed at that moment; tick_params is safer.
+        ax.tick_params(axis="y", labelsize=FONT_SIZE+6)
         ax.set_ylabel("Radius [au]", fontsize=FONT_SIZE+6)
         ax.legend(fontsize=FONT_SIZE+2)
         # ax.grid(axis="y", ls=":", lw=0.5, alpha=0.4)
-        ax.set_yscale("log")
-
+ 
         plt.tight_layout()
-
+ 
         if save_dir is not None:
             save_dir = Path(save_dir)
             save_dir.mkdir(parents=True, exist_ok=True)
             fname = save_dir / f"radii_barchart_{chemistry}_{tag}.png"
             fig.savefig(fname, dpi=150, bbox_inches="tight")
             print(f"Saved: {fname}")
-
+ 
         if show:
             plt.show()
         else:
