@@ -31,6 +31,11 @@ from pathlib import Path
 import h5py
 import numpy as np
 from tqdm import tqdm
+import sys
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from config import BASE_PATH
+from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, set_plot_style, _collect_xy, format_species_label
 
 
 # ---------------------------------------------------------------------------
@@ -250,13 +255,17 @@ def run_extract(n_workers: int = 32) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Plot mode: overlay traces on density slice at given dump
+# Plot mode 1: overlay traces on density slice at given dump
 # ---------------------------------------------------------------------------
 
 def run_plot(dump_index: int = 1581, xlim_au: float = 6000,
              show: bool = False) -> None:
     import matplotlib.pyplot as plt
+    import numpy as np
     import sarracen
+
+    # DUMP_DIR, PHANTOM_DIR, SAVE_DIR, RAY_ANGLES_DEG and AU_PER_PC
+    # are module-level globals, as in the original script.
 
     dump_files = sorted(DUMP_DIR.glob("dump_*.h5"))
     if dump_index >= len(dump_files):
@@ -282,9 +291,14 @@ def run_plot(dump_index: int = 1581, xlim_au: float = 6000,
     print(f"Loading phantom: {phantom_path.name}")
     sdf, _ = sarracen.read_phantom(phantom_path)
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 8), dpi=200)
+    # ---- formatting (matches render_slice_v3.py / SPHRenderer style) ----
+    fs = 20
+    # constrained layout keeps labels, ticks and colorbars from overlapping
+    fig, axes = plt.subplots(1, 2, figsize=(18, 8), dpi=300,
+                             layout="constrained")
+    fig.get_layout_engine().set(w_pad=0.1, wspace=0.08)
 
-    for ax, plane in zip(axes, ("xz", "xy")):
+    for i, (ax, plane) in enumerate(zip(axes, ("xz", "xy"))):
         y_col = "z" if plane == "xz" else "y"
 
         print(f"Rendering density ({plane}) at index {dump_index}...")
@@ -292,7 +306,7 @@ def run_plot(dump_index: int = 1581, xlim_au: float = 6000,
                    xlim=(-xlim_au, xlim_au),
                    ylim=(-xlim_au, xlim_au),
                    cmap="gist_heat", log_scale=True,
-                   normalize=True, dens_weight=True)
+                   normalize=True, cbar=False)
 
         for angle in RAY_ANGLES_DEG:
             key = (plane, angle)
@@ -310,22 +324,195 @@ def run_plot(dump_index: int = 1581, xlim_au: float = 6000,
                 x_au = x_pc * AU_PER_PC
                 y_au = y_pc * AU_PER_PC
 
-            ax.plot(x_au, y_au, color="lime", lw=1.5, alpha=0.85,
+            ax.plot(x_au, y_au, color="lime", lw=2, alpha=0.9,
                     label=f"{angle}°")
-            # Final-timestep marker
             ax.plot(x_au[-1], y_au[-1], "s", color="white",
-                    mec="black", mew=0.8, ms=5)
+                    mec="black", mew=1.0, ms=8)
 
-        ax.set_title(f"{plane} plane  (t = {dump_path.name})", fontsize=13)
-        ax.set_xlabel("x [au]", fontsize=12)
-        ax.set_ylabel(f"{y_col} [au]", fontsize=12)
-        ax.tick_params(labelsize=10)
-        ax.legend(loc="upper right", fontsize=9, ncol=2,
-                  title="ray angle", title_fontsize=9)
+        # --- axes style: black bg, white inward ticks, black tick labels ---
+        ax.set_facecolor("k")
+        ax.tick_params(axis="both", which="major", direction="in",
+                       length=8, width=1,
+                       color="white", labelcolor="black",
+                       top=True, right=True, labelsize=fs)
+        ax.tick_params(axis="both", which="minor", direction="in",
+                       length=4, width=1,
+                       color="white",
+                       top=True, right=True)
+        ax.minorticks_on()
+        ax.set_aspect("equal")
+        ax.set_xlim(-xlim_au, xlim_au)
+        ax.set_ylim(-xlim_au, xlim_au)
+
+        ax.set_xlabel(r"$x$ [au]", fontsize=fs, color="black")
+        ax.set_ylabel(rf"${y_col}$ [au]", fontsize=fs, color="black",
+                      labelpad=8)
+        ax.set_title(f"{plane} plane", fontsize=fs + 2, fontweight="bold",
+                     color="black", pad=10)
+
+        # --- one colorbar per panel, consistent size/gap ---
+        cbar = fig.colorbar(ax.images[0], ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label("log(column density)", fontsize=fs * 0.9,
+                       rotation=270, labelpad=25, color="black")
+        cbar.ax.tick_params(labelsize=fs * 0.8)
+
+        if i == 0:
+            ax.legend(loc="upper right", fontsize=fs * 0.8, ncol=2,
+                      title="ray angle", title_fontsize=fs * 0.8,
+                      framealpha=0.9)
+
+    out = SAVE_DIR / f"trace_overlay_density_idx{dump_index:04d}.png"
+    fig.savefig(out, dpi=300, bbox_inches="tight")
+    print(f"Saved: {out}")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+# ---------------------------------------------------------------------------
+# Plot mode 2: trace trajectories vs radius  (mirrors
+#              plot_abundance_physics_comparison from evolution_traces.py)
+# ---------------------------------------------------------------------------
+
+def run_plot_traces(save_dir: Path | None = None, show: bool = False) -> None:
+    """Plot every trace's trajectory (physical quantities vs radius).
+
+    Layout mirrors plot_abundance_physics_comparison:
+
+        4 rows x 2 columns, shared x-axis (radius, log),
+        shared y-axis per row.
+
+        Row 0 (2.2x taller): arrival time [s] vs radius [cm]
+                             (i.e. how the outflow front propagates —
+                             this is the "trajectory" of the trace point)
+        Row 1:               number density n [cm^-3]
+        Row 2:               gas temperature T [K]
+        Row 3:               visual extinction A_V [mag]
+
+        Left column:  xz plane
+        Right column: xy plane
+
+        Each panel overlays all rays from RAY_ANGLES_DEG, coloured by
+        angle from +x axis.  To flip and use time as the shared x-axis,
+        change `xattr = "time"` and use `d[:, 9]` for the abscissa in
+        each loop — everything else works unchanged.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
+    save_dir = Path(save_dir) if save_dir is not None else SAVE_DIR
+
+    # --- Load every trace file ---
+    traces: dict[tuple[str, int], np.ndarray] = {}
+    for plane in ("xz", "xy"):
+        for angle in RAY_ANGLES_DEG:
+            path = save_dir / f"trace_{plane}_{angle:03d}deg.txt"
+            if path.exists():
+                data = np.loadtxt(path)
+                if data.ndim == 1:      # single-row guard
+                    data = data[np.newaxis, :]
+                traces[(plane, angle)] = data
+    if not traces:
+        print(f"No trace files found in {save_dir}")
+        return
+
+    angles = list(RAY_ANGLES_DEG)
+    colors = plt.cm.viridis(np.linspace(0.05, 0.95, len(angles)))
+    color_map = {a: colors[i] for i, a in enumerate(angles)}
+    planes = ("xz", "xy")
+
+    # Column indices in the trace file
+    IX, IY, IZ, IDENS, ITEMP, IAV, ITIME = 0, 1, 2, 3, 4, 6, 9
+
+    quantities = [
+        (IDENS, "$n$ [cm$^{-3}$]"),
+        (ITEMP, "$T$ [K]"),
+        (IAV,   "$A_V$ [mag]"),
+    ]
+
+    fig, axes = plt.subplots(
+        4, 2, figsize=(13, 11), dpi=300,
+        sharex=True, sharey="row",
+        gridspec_kw={"height_ratios": [2.2, 1, 1, 1]},
+    )
+    fig.subplots_adjust(right=0.97, hspace=0.12, wspace=0.08)
+
+    for j, plane in enumerate(planes):
+        # --- Row 0: arrival time vs radius (the trajectory) ---
+        ax = axes[0, j]
+        for angle in angles:
+            key = (plane, angle)
+            if key not in traces:
+                continue
+            d = traces[key]
+            r_cm = np.sqrt(d[:, IX]**2 + d[:, IY]**2 + d[:, IZ]**2) * CM_PER_PC
+            t_s  = d[:, ITIME]
+            valid = np.isfinite(r_cm) & np.isfinite(t_s) & (r_cm > 0) & (t_s > 0)
+            if valid.any():
+                ax.plot(r_cm[valid], t_s[valid], lw=2.5,
+                        color=color_map[angle], zorder=3)
+
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_title(rf"${{{plane}}}$ plane", fontsize=22, fontweight="bold", pad=12)
+        if j == 0:
+            ax.set_ylabel("time [s]", fontsize=18)
+        else:
+            ax.tick_params(labelleft=False)
+
+        # --- Rows 1-3: physical quantities vs radius ---
+        for k, (col, ylabel) in enumerate(quantities, start=1):
+            axp = axes[k, j]
+            for angle in angles:
+                key = (plane, angle)
+                if key not in traces:
+                    continue
+                d = traces[key]
+                r_cm = np.sqrt(d[:, IX]**2 + d[:, IY]**2 + d[:, IZ]**2) * CM_PER_PC
+                vals = d[:, col]
+                valid = (np.isfinite(r_cm) & np.isfinite(vals)
+                         & (r_cm > 0) & (vals > 0))
+                if valid.any():
+                    axp.plot(r_cm[valid], vals[valid], lw=2.0,
+                             color=color_map[angle], zorder=3)
+            axp.set_xscale("log")
+            axp.set_yscale("log")
+            if j == 0:
+                axp.set_ylabel(ylabel, fontsize=16)
+            else:
+                axp.tick_params(labelleft=False)
+
+    # --- Cosmetic formatting ---
+    for i in range(4):
+        for j in range(2):
+            ax = axes[i, j]
+            ax.grid(True, which="major", alpha=0.2, lw=0.6, zorder=0)
+            ax.tick_params(axis="both", which="major", labelsize=14)
+            ax.tick_params(axis="both", which="minor", labelsize=10)
+            if i < 3:
+                ax.tick_params(labelbottom=False)
+
+    for j in range(2):
+        axes[-1, j].set_xlabel("Radius [cm]", fontsize=18)
+
+    # --- Legend: only include rays that actually have data ---
+    handles = []
+    for angle in angles:
+        has_data = any(
+            (plane, angle) in traces and
+            np.isfinite(traces[(plane, angle)][:, ITIME]).any()
+            for plane in planes
+        )
+        if has_data:
+            handles.append(Line2D([0], [0], color=color_map[angle],
+                                  lw=2.5, label=f"{angle}°"))
+
+    if handles:
+        axes[0, 1].legend(handles=handles, loc="upper left", fontsize=18,
+                          frameon=True, title="Ray angle", title_fontsize=18)
 
     plt.tight_layout()
-    out = SAVE_DIR / f"trace_overlay_density_idx{dump_index:04d}.png"
-    fig.savefig(out, dpi=200, bbox_inches="tight")
+    out = save_dir / "trace_trajectories.png"
+    fig.savefig(out, dpi=300, bbox_inches="tight")
     print(f"Saved: {out}")
     if show:
         plt.show()
@@ -342,12 +529,15 @@ def is_interactive():
     except ImportError:
         return False
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--mode", choices=["extract", "plot"], default="extract")
+    parser.add_argument("--mode",
+                        choices=["extract", "plot", "plot-traces"],
+                        default="extract")
     parser.add_argument("--n-workers", type=int, default=32,
                         help="Thread pool size for extract mode.")
     parser.add_argument("--dump-index", type=int, default=1581,
@@ -355,7 +545,9 @@ def main() -> None:
     parser.add_argument("--xlim-au", type=float, default=6000.0,
                         help="Half-width of plot in AU (plot mode).")
     parser.add_argument("--show", action="store_true",
-                        help="Display the plot interactively (plot mode).")
+                        help="Display the plot interactively (plot modes).")
+    
+    set_plot_style(dark_mode=False)
 
     if is_interactive():
         args = parser.parse_args([
@@ -364,11 +556,13 @@ def main() -> None:
         ])
     else:
         args = parser.parse_args()
-    
+
     if args.mode == "extract":
         run_extract(args.n_workers)
-    else:
+    elif args.mode == "plot":
         run_plot(args.dump_index, args.xlim_au, show=args.show)
+    else:
+        run_plot_traces(show=args.show)
 
 
 if __name__ == "__main__":

@@ -950,7 +950,7 @@ def main() -> None:
                 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
                 'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
                 'CS', 'SiC2', 'HF', 'C2H4', 'SiS', "SO", "SO2"]
-    mol_list = ['OH', 'SO', 'SO2', 'HCO+']
+    mol_list = ['C2H3+', 'HCNH+', 'NH4+']
     
     if is_interactive():
         args = parser.parse_args([

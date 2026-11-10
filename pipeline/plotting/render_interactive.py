@@ -31,9 +31,9 @@ r.set_dump(index=1581)
 #     show=True, save=True, contours=True)
 #     # radii_save_path="/fred/oz304/beckers/v10a09_out/output/radii_contours.txt")
 
-# for mol in ['OH', 'SO', 'SO2', 'HCO+']:
-#     r.plot_single_render(mol, plane="xz", xlim=750, dens_weight=True, 
-#     show=True,)
+for mol in ['C2H3+', 'HCNH+', 'NH4+']:
+    r.plot_single_render(mol, plane="xz", xlim=750, dens_weight=True, 
+    show=True,)
 
 # Single render
 # fig = r.plot_single_render(
