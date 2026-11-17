@@ -17,7 +17,7 @@ r = SPHRenderer(
     phantom_dir="/fred/oz304/beckers/v10a09",
     chemistry="Crich",
     dark_mode=False,
-    # decades=4,
+    decades=3,
     fast=1,
     # smooth_au=150,
 )
@@ -31,9 +31,11 @@ r.set_dump(index=1581)
 #     show=True, save=True, contours=True)
 #     # radii_save_path="/fred/oz304/beckers/v10a09_out/output/radii_contours.txt")
 
-for mol in ['C2H3+', 'HCNH+', 'NH4+']:
-    r.plot_single_render(mol, plane="xz", xlim=750, dens_weight=True, 
-    show=True,)
+# for mol in ['C', 'O', 'N']:
+#     r.plot_single_render(mol, plane="xz", xlim=750, dens_weight=True, 
+#     show=True,)
+#     r.plot_single_render(mol, plane="xy", xlim=750, dens_weight=True, 
+#     show=True,)
 
 # Single render
 # fig = r.plot_single_render(
@@ -68,9 +70,14 @@ for mol in ['C2H3+', 'HCNH+', 'NH4+']:
 #     r.plot_parent_daughter_pair(parent, daughter, plane="xz", xlim=5000, dens_weight=True, decades=4)
 
 # Molecule grid -------------------------------------------------------
-# fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=750, dens_weight=True, decades=3)
-# fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True)
+# For publication:
+fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=750, dens_weight=True, decades=3, save=True)
+fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True, decades=3, save=True)
 
+# fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True, decades=3, save=True)
+# fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xy", xlim=500, dens_weight=True, decades=3, save=True)
+# fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=200, dens_weight=True, decades=3, save=True)
+# fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xy", xlim=200, dens_weight=True, decades=3, save=True)
 # fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=6000, dens_weight=True, contours=True, save=True)
 # fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=6000, dens_weight=True, contours=True, save=True)
 

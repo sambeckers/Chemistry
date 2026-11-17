@@ -47,7 +47,7 @@ PHANTOM_DIR = Path("/fred/oz304/beckers/v10a09")
 SAVE_DIR    = Path("/fred/oz304/beckers/Chemistry/traces/v10a09_out")
 
 # Radial grid (cm)
-R_MIN, R_MAX, N_BINS = 1e14, 1e18, 100
+R_MIN, R_MAX, N_BINS = 1e14, 1e18, 4000
 R_EDGES   = np.logspace(np.log10(R_MIN), np.log10(R_MAX), N_BINS + 1)
 R_CENTRES = np.sqrt(R_EDGES[:-1] * R_EDGES[1:])
 
@@ -100,11 +100,19 @@ def _trace_point(r_sel, dens_sel, temp_sel, av_sel, t_s):
         # Cumulative mass from the OUTSIDE inward
         cumsum_outside = np.cumsum(bin_mass[::-1])[::-1]
         target = MASS_OUTER_FRACTION * total_mass
-        below = np.where(cumsum_outside < target)[0]
-        r_idx = int(below[0]) if below.size else N_BINS - 1
-        # Step inward until we hit a populated bin
-        while r_idx > 0 and not populated[r_idx]:
-            r_idx -= 1
+        # Nearest bin where "mass outside" crosses the target.
+        # argmin (rather than `<`) is robust to fine binning, where the
+        # exact target may land between two sparse bins.
+        r_idx = int(np.argmin(np.abs(cumsum_outside - target)))
+        # Snap to the nearest populated bin in *either* direction.  The
+        # original step-inward-only loop is biased toward smaller radii
+        # once bins become sparse (N_BINS=4000 → ~2 particles/bin).
+        if not populated[r_idx]:
+            idx_all = np.arange(N_BINS)
+            distances = np.where(populated,
+                                 np.abs(idx_all - r_idx),
+                                 N_BINS + 1)   # ~inf for empty bins
+            r_idx = int(np.argmin(distances))
 
     return {
         "r_cm": R_CENTRES[r_idx],
@@ -551,7 +559,7 @@ def main() -> None:
 
     if is_interactive():
         args = parser.parse_args([
-            "--mode", "plot",
+            "--mode", "plot-traces",
             "--show",
         ])
     else:

@@ -27,7 +27,13 @@ Optional flags
         Overplot the mean and 16th/84th percentile bands (default: on).
 
     --overlay-1d
-        Overlay the 1-D chemistry model profile (molecule mode only).
+        Overlay the pre-computed 1-D model profile read from ev_0.dat
+        (``overlay_1d_profile``).
+
+    --overlay-1d-cse
+        Overlay the on-the-fly 1-D chemistry model profile produced by
+        run_model() (``overlay_1d_profile_CSE``).  Can be combined with
+        --overlay-1d.
 
     --overlay-particle PARTICLE_ID
         Overlay the radius-vs-value track of a single particle across all
@@ -50,6 +56,7 @@ import h5py
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
+import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -137,11 +144,11 @@ for _cfg in PHYS_PARAMS.values():
                                   _cfg["n_bins"] + 1)
     _cfg["centres"] = np.sqrt(_cfg["edges"][:-1] * _cfg["edges"][1:])
 
-# ---------------------------------------------------------------------------
-# 1-D model loader
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# 1-D model loader and overlay — OLD (run_model, CSE-suffixed)
+# ===========================================================================
 
-def load_1d_data(chemistry: str):
+def load_1d_data_CSE(chemistry: str):
     if chemistry == "Crich":
         inputfile = str(BASE_PATH /
                         "KoekenBak/input/20251015_Sam_Mdot_Vinf_Crich.dat")
@@ -168,18 +175,16 @@ def load_1d_data(chemistry: str):
     print(f"Loaded 1D model")
     return radius_1d, fracs_1d, coldens, nH2, AV, T, mloss_label, vinf_label
 
-# ---------------------------------------------------------------------------
-# 1-D profile overlay
-# ---------------------------------------------------------------------------
 
-# Maps the PHYS_PARAMS key to the index in load_1d_data's return tuple
-_PHYS_1D_INDEX = {
+# Maps the PHYS_PARAMS key to the index in load_1d_data_CSE's return tuple
+_PHYS_1D_INDEX_CSE = {
     "temperature": 5,   # T
     "av":          4,   # AV
     "density":     3,   # nH2
 }
 
-def overlay_1d_profile(
+
+def overlay_1d_profile_CSE(
     ax,
     chemistry:  str,
     molecule:   str | None = None,
@@ -190,8 +195,7 @@ def overlay_1d_profile(
     label:      str | None = None,
 ) -> None:
     """
-    Overlay the 1-D model profile on *ax* for either a chemical species
-    or a physical parameter.
+    Overlay the on-the-fly 1-D chemistry model profile (``run_model``) on *ax*.
 
     Parameters
     ----------
@@ -202,30 +206,196 @@ def overlay_1d_profile(
     if (molecule is None) == (phys_param is None):
         raise ValueError("Provide exactly one of 'molecule' or 'phys_param'.")
 
-    # load_1d_data returns:
+    # load_1d_data_CSE returns:
     #   radius_1d, fracs_1d, coldens, nH2, AV, T, mloss_label, vinf_label
-    result = load_1d_data(chemistry)
-    radius_1d   = result[0]
-    fracs_1d    = result[1]
-    mloss_label = result[6]
-    vinf_label  = result[7]
+    result = load_1d_data_CSE(chemistry)
+    radius_1d = result[0]
+    fracs_1d  = result[1]
 
-    _label = label if label is not None else f"1D"
+    _label = label if label is not None else "1D (CSE)"
 
     if molecule is not None:
         frac = get_fractional_abundance(fracs_1d, molecule)
         if frac is None:
-            print(f"  overlay_1d_profile: '{molecule}' not found in 1-D model — skipping.")
+            print(f"  overlay_1d_profile_CSE: '{molecule}' not found in 1-D model — skipping.")
             return
         values = frac
-
     else:
-        if phys_param not in _PHYS_1D_INDEX:
-            print(f"  overlay_1d_profile: '{phys_param}' not supported — skipping.")
+        if phys_param not in _PHYS_1D_INDEX_CSE:
+            print(f"  overlay_1d_profile_CSE: '{phys_param}' not supported — skipping.")
             return
-        values = result[_PHYS_1D_INDEX[phys_param]]
+        values = result[_PHYS_1D_INDEX_CSE[phys_param]]
 
     ax.plot(radius_1d, values, lw=lw, ls=ls, color=color, label=_label, zorder=6)
+
+
+# ===========================================================================
+# 1-D model loader and overlay — NEW (pre-computed ev_0.dat)
+# ===========================================================================
+
+DEFAULT_EV_DAT = Path(
+    "/fred/oz304/beckers/Chemistry/evolving_model/"
+    "Crich_1d_verify/ev_output/ev_0.dat"
+)
+
+# Maps the PHYS_PARAMS key to the corresponding column in ev_0.dat
+_PHYS_COL = {
+    "temperature": "TEMP",
+    "av":          "AV",
+    "density":     "DENSITY",
+}
+
+
+def load_ev_dat(filepath: str | Path = DEFAULT_EV_DAT) -> pd.DataFrame:
+    """
+    Load a Crich/ev_0.dat GNUPLOT output file.
+
+    The file has the structure:
+        # comment header ...
+        <column names>          (72 columns)
+        # units row
+        <whitespace-separated numeric rows>
+
+    Duplicate species names (CH2, CH3, H2CO, H2CS, CH3CN, SiC, SiN are
+    printed twice in the header) are de-duplicated with a numeric suffix
+    (e.g. ``H2CO_1``).
+
+    Parameters
+    ----------
+    filepath : str or Path
+        Path to ev_0.dat.  Defaults to the Crich 1D verify path.
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        Rows = radial samples, columns = quantities.  Truncated / non-numeric
+        trailing lines are silently skipped.
+    """
+    filepath = Path(filepath)
+    if not filepath.is_file():
+        raise FileNotFoundError(filepath)
+
+    lines = filepath.read_text().splitlines()
+
+    # 1. Header line = first non-empty, non-comment line
+    header_idx = next(
+        i for i, ln in enumerate(lines)
+        if ln.strip() and not ln.lstrip().startswith("#")
+    )
+    names = lines[header_idx].split()
+
+    # 2. First data line = next non-empty, non-comment line after header
+    data_start = next(
+        j for j in range(header_idx + 1, len(lines))
+        if lines[j].strip() and not lines[j].lstrip().startswith("#")
+    )
+
+    # 3. De-duplicate column names
+    seen, cols = {}, []
+    for n in names:
+        if n in seen:
+            seen[n] += 1
+            cols.append(f"{n}_{seen[n]}")
+        else:
+            seen[n] = 0
+            cols.append(n)
+    ncol = len(cols)
+
+    # 4. Parse numeric rows (tolerate truncated / blank / short lines)
+    rows = []
+    for ln in lines[data_start:]:
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split()
+        if len(parts) != ncol:
+            continue
+        try:
+            rows.append([float(p) for p in parts])
+        except ValueError:
+            continue
+    if not rows:
+        raise ValueError(f"No numeric data rows found in {filepath}")
+
+    return pd.DataFrame(np.asarray(rows), columns=cols)
+
+
+def get_1d_profile(
+    filepath: str | Path = DEFAULT_EV_DAT,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, np.ndarray]]:
+    """
+    Convenience wrapper around :func:`load_ev_dat`.
+
+    Returns
+    -------
+    r        : (n,)  radius in cm
+    n_dens   : (n,)  total gas density in cm^-3 (``DENSITY`` column)
+    T        : (n,)  temperature in K
+    species  : dict mapping every abundance column to its (n,) array
+    """
+    df = load_ev_dat(filepath)
+    r       = df["R"].to_numpy()
+    n_dens  = df["DENSITY"].to_numpy()
+    T       = df["TEMP"].to_numpy()
+    species = {c: df[c].to_numpy() for c in df.columns[8:]}   # skip X,Y,Z,R,n,T,AV,t
+    return r, n_dens, T, species
+
+
+def overlay_1d_profile(
+    ax,
+    molecule:   str | None       = None,
+    phys_param: str | None       = None,
+    filepath:   str | Path       = DEFAULT_EV_DAT,
+    color:      str              = "k",
+    lw:         float            = 2.0,
+    ls:         str              = "-.",
+    label:      str | None       = None,
+) -> None:
+    """
+    Overlay the pre-computed 1-D model profile (ev_0.dat) on *ax*.
+
+    Parameters
+    ----------
+    molecule   : species name — mutually exclusive with phys_param
+    phys_param : one of "temperature", "av", "density"
+                 mutually exclusive with molecule
+    filepath   : path to ev_0.dat (defaults to the Crich 1D verify file)
+    color, lw, ls, label
+        Styling; defaults (``C3``/``--``) differ from
+        :func:`overlay_1d_profile_CSE` (``k``/``-.``) so the two curves
+        can be told apart when both are drawn.
+
+    Notes
+    -----
+    The ``density`` overlay uses the total gas density column ``DENSITY``
+    (cm^-3), whereas :func:`overlay_1d_profile_CSE` uses ``n(H2)``.  In
+    molecular gas the two differ by roughly a factor of ~2.
+    """
+    if (molecule is None) == (phys_param is None):
+        raise ValueError("Provide exactly one of 'molecule' or 'phys_param'.")
+
+    try:
+        df = load_ev_dat(filepath)
+    except FileNotFoundError:
+        print(f"  overlay_1d_profile: file not found '{filepath}' — skipping.")
+        return
+
+    radius = df["R"].to_numpy()
+    _label = label if label is not None else "1D"
+
+    if molecule is not None:
+        if molecule not in df.columns:
+            print(f"  overlay_1d_profile: '{molecule}' not in ev_0.dat — skipping.")
+            return
+        values = df[molecule].to_numpy()
+    else:
+        if phys_param not in _PHYS_COL:
+            print(f"  overlay_1d_profile: '{phys_param}' not supported — skipping.")
+            return
+        values = df[_PHYS_COL[phys_param]].to_numpy()
+
+    ax.plot(radius, values, lw=lw, ls=ls, color=color, label=_label, zorder=6)
+
 
 # ---------------------------------------------------------------------------
 # Single-particle track
@@ -602,6 +772,8 @@ def plot_density(
     apply_ab_limits: bool        = False,
     overlay_stats:  bool         = True,
     overlay_1d:     bool         = False,
+    overlay_1d_cse: bool         = False,
+    ev_filepath:    str | Path   = DEFAULT_EV_DAT,
     molecule:       str | None   = None,
     chemistry:      str          = "Crich",
     particle_id:    int | None   = None,
@@ -628,8 +800,10 @@ def plot_density(
     clip_at_one    : clip smoothed lines at 1 (True for abundances only)
     apply_ab_limits: call apply_abundance_axis_limits() (True for species)
     overlay_stats  : draw mean + percentile lines
-    overlay_1d     : draw the 1-D chemistry model profile (molecule mode only)
-    molecule       : species name — used by overlay_1d and overlay_particle
+    overlay_1d     : draw the pre-computed 1-D profile from ev_0.dat
+    overlay_1d_cse : draw the on-the-fly 1-D chemistry model profile
+    ev_filepath    : path to ev_0.dat for the ``overlay_1d`` overlay
+    molecule       : species name — used by overlays and particle track
     chemistry      : "Crich" or "Orich"
     particle_id    : if set, overlay the track of this single particle
     vmin, vmax     : manual colour-scale limits
@@ -674,9 +848,15 @@ def plot_density(
         ax.plot(R_CENTRES, stats["p50"], lw=2.0, ls="-",
                 color='k', label="Median", zorder=5)
 
+    # NEW: pre-computed ev_0.dat profile
     if overlay_1d and (molecule is not None or param is not None):
-        overlay_1d_profile(ax, chemistry=chemistry,
-                           molecule=molecule, phys_param=param)
+        overlay_1d_profile(ax, molecule=molecule, phys_param=param,
+                           filepath=ev_filepath)
+
+    # OLD: on-the-fly chemistry model
+    if overlay_1d_cse and (molecule is not None or param is not None):
+        overlay_1d_profile_CSE(ax, chemistry=chemistry,
+                               molecule=molecule, phys_param=param)
 
     if particle_id is not None:
         overlay_particle_track(ax, particle_id=particle_id,
@@ -687,7 +867,7 @@ def plot_density(
     for line in ax.lines:
         line.set_path_effects(halo)
 
-    if overlay_stats or overlay_1d or particle_id is not None:
+    if overlay_stats or overlay_1d or overlay_1d_cse or particle_id is not None:
         ax.legend(loc=legend_loc, ncol=3, fontsize=12, framealpha=0.9,
                   labelcolor=fg, facecolor=bg, edgecolor="0.5",
                   columnspacing=1.2, handlelength=2.2)
@@ -760,7 +940,9 @@ def plot_density(
 def plot_density_all_phys(
     data_per_param: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
     overlay_stats:  bool         = True,
-    overlay_1d:     bool         = False,   
+    overlay_1d:     bool         = False,
+    overlay_1d_cse: bool         = False,
+    ev_filepath:    str | Path   = DEFAULT_EV_DAT,
     particle_id:    int | None   = None,
     vmin:           float | None = None,
     vmax:           float | None = None,
@@ -779,6 +961,9 @@ def plot_density_all_phys(
                      (bin_sum, bin_count, hist_2d) tuple returned by
                      aggregate_phys_param().
     overlay_stats  : draw mean + median lines on every panel
+    overlay_1d     : draw the pre-computed ev_0.dat profile on every panel
+    overlay_1d_cse : draw the on-the-fly chemistry model profile on every panel
+    ev_filepath    : path to ev_0.dat for the ``overlay_1d`` overlay
     particle_id    : if set, overlay the single-particle track on every panel
     All other arguments have the same meaning as in plot_density().
     """
@@ -793,6 +978,7 @@ def plot_density_all_phys(
     )
 
     headroom = {"temperature": 4, "av": 2, "density": 10}
+    bg = "k"     if dark_mode else "white"  # background (boxes / halos)
 
     for ax, param in zip(axes, params):
         cfg                         = PHYS_PARAMS[param]
@@ -814,8 +1000,12 @@ def plot_density_all_phys(
             rasterized=True,
             shading="flat",
         )
+
         cbar = fig.colorbar(pcm, ax=ax, pad=0.02)
-        cbar.set_label("Particle count per bin", fontsize=10, rotation=270, va="bottom")
+        cbar.set_label("Particle count per bin", fontsize=14,
+                        rotation=270, va="bottom", labelpad=6)
+        cbar.ax.tick_params(which="major", labelsize=13, length=5, width=1.0)
+        cbar.ax.tick_params(which="minor", length=3, width=0.8)
 
         if overlay_stats:
             stats = compute_stats(
@@ -829,9 +1019,18 @@ def plot_density_all_phys(
                     color=primary_c_white, alpha=0.8, label="Mean", zorder=5)
             ax.plot(R_CENTRES, stats["p50"], lw=2.0, ls="-",
                     color=primary_c_white, label="Median", zorder=5)
-            
+
+        # NEW: pre-computed ev_0.dat profile
         if overlay_1d:
             overlay_1d_profile(
+                ax,
+                phys_param = param,
+                filepath   = ev_filepath,
+            )
+
+        # OLD: on-the-fly chemistry model
+        if overlay_1d_cse:
+            overlay_1d_profile_CSE(
                 ax,
                 chemistry  = chemistry,
                 phys_param = param,
@@ -844,8 +1043,13 @@ def plot_density_all_phys(
                 phys_param  = param,
             )
 
+            # Contrast halo on every overlay line (also those drawn by the helpers)
+        halo = [pe.withStroke(linewidth=3.5, foreground=bg, alpha=0.8)]
+        for line in ax.lines:
+            line.set_path_effects(halo)
+
         # Single legend call after all overlays
-        if overlay_stats or particle_id is not None:
+        if overlay_stats or overlay_1d or overlay_1d_cse or particle_id is not None:
             primary_c_white = "white" if dark_mode else "k"
             primary_c_k     = "k"     if dark_mode else "white"
             ax.legend(loc="lower left", fontsize=10,
@@ -862,8 +1066,39 @@ def plot_density_all_phys(
         add_log_ticks(ax)
         ax.set_ylabel(cfg["label"], fontsize=12)
 
+        # ---- ticks and grid --------------------------------------------------
+        ax.tick_params(which="major", labelsize=13, length=6, width=1.0, direction="out")
+        ax.tick_params(which="minor", length=3, width=0.7, direction="out")
+        # decade-only minor ticks on y (avoids the dense black clusters)
+        ax.yaxis.set_minor_locator(mticker.LogLocator(base=10, subs=(1.0,), numticks=30))
+        ax.yaxis.set_minor_formatter(mticker.NullFormatter())
+        # ax.grid(True, which="major", color="0.6", alpha=0.25, lw=0.6)
+        # ax.set_axisbelow(False)
+        ax.tick_params(axis="x", which="both", top=False) 
+
     # x-label only on the bottom panel
     axes[-1].set_xlabel("Radius [cm]", fontsize=13)
+
+    # Top panel: keep the axis label
+    secax = axes[0].secondary_xaxis(
+        "top",
+        functions=(lambda x: x / CM_PER_AU, lambda x: x * CM_PER_AU),
+    )
+    secax.set_xlabel("Radius [au]", fontsize=14)
+    secax.tick_params(which="major", length=6, width=1.0,
+                    direction="out", labelsize=13)
+    secax.tick_params(which="minor", length=3, width=0.7, labelsize=13)
+
+    # Middle + bottom panels: ticks only, no labels, no axis label
+    for ax in axes[1:]:
+        s = ax.secondary_xaxis(
+            "top",
+            functions=(lambda x: x / CM_PER_AU, lambda x: x * CM_PER_AU),
+        )
+        s.tick_params(which="major", length=6, width=1.0,
+                    direction="out", labeltop=False)
+        s.tick_params(which="minor", length=3, width=0.7, labeltop=False)
+        # (no s.set_xlabel call → no "Radius [au]" text)
 
     plt.tight_layout()
     if save_path is not None:
@@ -927,7 +1162,21 @@ def main() -> None:
     )
     parser.add_argument(
         "--overlay-1d", action="store_true", default=False,
-        help="Overlay the 1-D chemistry model profile (molecule mode only).",
+        help=(
+            "Overlay the pre-computed 1-D model profile from ev_0.dat "
+            "(overlay_1d_profile)."
+        ),
+    )
+    parser.add_argument(
+        "--overlay-1d-cse", action="store_true", default=False,
+        help=(
+            "Overlay the on-the-fly 1-D chemistry model profile "
+            "(overlay_1d_profile_CSE).  Can be combined with --overlay-1d."
+        ),
+    )
+    parser.add_argument(
+        "--ev-filepath", type=str, default=str(DEFAULT_EV_DAT),
+        help=f"Path to ev_0.dat for --overlay-1d (default: {DEFAULT_EV_DAT}).",
     )
     parser.add_argument(
         "--overlay-particle",
@@ -950,16 +1199,17 @@ def main() -> None:
                 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
                 'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
                 'CS', 'SiC2', 'HF', 'C2H4', 'SiS', "SO", "SO2"]
-    mol_list = ['C2H3+', 'HCNH+', 'NH4+']
+    # mol_list = ['C', 'O', 'N']
     
     if is_interactive():
         args = parser.parse_args([
-            "--molecule",       *mol_list,
-            # "--phys-param",    "all",
+            # "--molecule",       *mol_list,
+            "--phys-param",    "all",
             "--chemistry",      "Crich",
             "--n-tasks",        "32",
             "--overlay-stats",
             "--overlay-1d",
+            # "--overlay-1d-cse",
             # "--overlay-particle", "2073529",
             "--show",
         ])
@@ -992,6 +1242,8 @@ def main() -> None:
                 apply_ab_limits  = True,
                 overlay_stats    = args.overlay_stats,
                 overlay_1d       = args.overlay_1d,
+                overlay_1d_cse   = args.overlay_1d_cse,
+                ev_filepath      = args.ev_filepath,
                 molecule         = molecule,
                 chemistry        = args.chemistry,
                 particle_id      = args.overlay_particle,
@@ -1011,8 +1263,10 @@ def main() -> None:
             plot_density_all_phys(
                     data_per_param = data_per_param,
                     overlay_stats  = args.overlay_stats,
-                    overlay_1d     = args.overlay_1d,   # NEW
-                    chemistry      = args.chemistry,     # NEW
+                    overlay_1d     = args.overlay_1d,
+                    overlay_1d_cse = args.overlay_1d_cse,
+                    ev_filepath    = args.ev_filepath,
+                    chemistry      = args.chemistry,
                     particle_id    = args.overlay_particle,
                     vmin           = args.vmin,
                     vmax           = args.vmax,
@@ -1039,6 +1293,9 @@ def main() -> None:
                 clip_at_one      = False,
                 apply_ab_limits  = False,
                 overlay_stats    = args.overlay_stats,
+                overlay_1d       = args.overlay_1d,
+                overlay_1d_cse   = args.overlay_1d_cse,
+                ev_filepath      = args.ev_filepath,
                 particle_id      = args.overlay_particle,
                 min_count        = 3,
                 legend_loc       = "lower center",

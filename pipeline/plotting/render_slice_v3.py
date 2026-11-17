@@ -67,15 +67,15 @@ class SPHRenderer:
                  'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC',
                  'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O',
                  'C2H2', 'CS', 'SiC2', 'HF', 'C2H4', 'SiS', 'OH', 'SO', 'SO2', 'HCO+', 'C2H3+', 'HCNH+', 'NH4+']
-    PARENTS = ["CO", "N2", "CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
-               "SiO", "HCl", "C2H4", "NH3", "HCP", "HF", "H2S"]
-    # PARENTS = ["CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
-    #            "SiO", "HCl", "NH3", "HCP", "H2S"]
-    DAUGHTERS = ['CH2', 'CH3', 'CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
-                 'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO', 'SO2', "OH", "HCO+", "C2H3+", "HCNH+", "NH4+"]
+    # PARENTS = ["CO", "N2", "CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
+    #            "SiO", "HCl", "C2H4", "NH3", "HCP", "HF", "H2S"]
+    PARENTS = ["CH4", "H2O", "SiC2", "CS", "C2H2", "HCN", "SiS",
+               "SiO", "HCl", "NH3", "HCP", "H2S"]
+    # DAUGHTERS = ['CH2', 'CH3', 'CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
+    #              'C4H', 'C6H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO', 'SO2', "OH", "HCO+", "C2H3+", "HCNH+", "NH4+", "C", "O", "N"]
 
-    # DAUGHTERS = ['CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
-    #             'C4H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO']
+    DAUGHTERS = ['CH3CN', 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H',
+                'C4H', 'SiC', 'SiN', 'H2CS', 'H2CO', 'SO']
     PARENT_DAUGHTER_PAIRS = [("C2H2", "C2H"), ("HCN", "CN")]
 
     CONTOUR_COLS = ["molecule", "R_xy_001", "R_xy_050", "R_xz_001", "R_xz_050"]
@@ -1343,7 +1343,7 @@ class SPHRenderer:
             return None
         fs = 12
 
-        ncols = 4
+        ncols = 3
         nrows = math.ceil(n / ncols)
 
         # ---- layout in inches ----------------------------------------------
