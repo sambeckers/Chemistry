@@ -23,7 +23,7 @@ Usage
 
 Optional flags
 --------------
-    --overlay-stats / --no-overlay-stats
+    --overlay-stats / --no-overlay-stats'
         Overplot the mean and 16th/84th percentile bands (default: on).
 
     --overlay-1d
@@ -105,7 +105,7 @@ AB_LOG_MAX =  0.0
 AB_EDGES   = np.logspace(AB_LOG_MIN, AB_LOG_MAX, N_AB_BINS + 1)
 AB_CENTRES = np.sqrt(AB_EDGES[:-1] * AB_EDGES[1:])
 
-MIN_COUNT    = 30
+MIN_COUNT    = 10
 SMOOTH_SIGMA = 0       # set > 0 to smooth the overlay lines
 
 # ---------------------------------------------------------------------------
@@ -212,7 +212,7 @@ def overlay_1d_profile_CSE(
     radius_1d = result[0]
     fracs_1d  = result[1]
 
-    _label = label if label is not None else "1D (CSE)"
+    _label = label if label is not None else "1D"
 
     if molecule is not None:
         frac = get_fractional_abundance(fracs_1d, molecule)
@@ -723,9 +723,19 @@ def compute_stats(
     """
     n_val_bins = hist_2d.shape[1]
 
+    # with np.errstate(invalid="ignore", divide="ignore"):
+    #     mean = np.where(bin_count >= MIN_COUNT,
+    #                     bin_sum / bin_count, np.nan)
+
+    # Mean from the histogram, ignoring sparse cells (same cut as the colormesh)
+    h = hist_2d.astype(np.float64)
+    h_use = np.where(h > MIN_COUNT, h, 0.0)
+    use_counts = h_use.sum(axis=1)
     with np.errstate(invalid="ignore", divide="ignore"):
-        mean = np.where(bin_count >= MIN_COUNT,
-                        bin_sum / bin_count, np.nan)
+        mean = np.where(use_counts >= MIN_COUNT,
+                        (h_use * val_centres[None, :]).sum(axis=1) / use_counts,
+                        np.nan)
+
 
     row_counts = hist_2d.sum(axis=1).astype(np.float64)
     cdf = np.cumsum(hist_2d.astype(np.float64), axis=1)
@@ -777,7 +787,6 @@ def plot_density(
     molecule:       str | None   = None,
     chemistry:      str          = "Crich",
     particle_id:    int | None   = None,
-    min_count:      int          = 3,
     legend_loc:     str          = "lower center",
     figsize:        tuple        = (9, 6),
     vmin:           float | None = None,
@@ -815,9 +824,9 @@ def plot_density(
     bg = "k"     if dark_mode else "white"  # background (boxes / halos)
 
     h_float  = hist_2d.astype(np.float64)
-    h_masked = np.ma.masked_where(h_float < min_count, h_float)
+    h_masked = np.ma.masked_where(h_float < MIN_COUNT, h_float)
 
-    valid = h_float[h_float >= min_count]
+    valid = h_float[h_float >= MIN_COUNT]
     _vmin = vmin if vmin is not None else valid.min()
     _vmax = vmax if vmax is not None else valid.max()
     norm  = mcolors.LogNorm(vmin=_vmin, vmax=_vmax)
@@ -1195,21 +1204,26 @@ def main() -> None:
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dark-mode", action="store_true")
 
-    mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN', 
-                'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
-                'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
-                'CS', 'SiC2', 'HF', 'C2H4', 'SiS', "SO", "SO2"]
+    # mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN', 
+    #             'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC', 
+    #             'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O', 'C2H2', 
+    #             'CS', 'SiC2', 'HF', 'C2H4', 'SiS', "SO", "SO2", ]
+    mol_list = ['CO', 'CH2', 'CH3', 'CH4', 'HCl', 'CH3CN', 'SiO', 'HCN',
+                 'CN', 'HC3N', 'HC5N', 'HC7N', 'C2H', 'C4H', 'C6H', 'SiC',
+                 'SiN', 'H2CS', 'H2CO', 'N2', 'NH3', 'H2S', 'HCP', 'H2O',
+                 'C2H2', 'CS', 'SiC2', 'HF', 'C2H4', 'SiS', 'OH', 'SO', 'SO2', 'HCO+', 'C2H3+', 'HCNH+', 'NH4+', 
+                 'C', 'O', 'N']
     # mol_list = ['C', 'O', 'N']
     
     if is_interactive():
         args = parser.parse_args([
-            # "--molecule",       *mol_list,
-            "--phys-param",    "all",
+            "--molecule",       *mol_list,
+            # "--phys-param",    "all",
             "--chemistry",      "Crich",
             "--n-tasks",        "32",
             "--overlay-stats",
-            "--overlay-1d",
-            # "--overlay-1d-cse",
+            # "--overlay-1d",
+            "--overlay-1d-cse",
             # "--overlay-particle", "2073529",
             "--show",
         ])
@@ -1297,7 +1311,6 @@ def main() -> None:
                 overlay_1d_cse   = args.overlay_1d_cse,
                 ev_filepath      = args.ev_filepath,
                 particle_id      = args.overlay_particle,
-                min_count        = 3,
                 legend_loc       = "lower center",
                 figsize          = (9, 6),
                 vmin             = args.vmin,

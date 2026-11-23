@@ -485,7 +485,7 @@ class SPHRenderer:
         if col_dens:
             spec_inner = format_species_label(quantity).strip("$")
             return rf"$n^{{\mathrm{{{spec_inner}}}}}$ [m$^{{-3}}$]"
-        return r"Abundance relative to $\mathrm{H}_2$"
+        return r"Abundance relative to $\mathrm{H}$"
 
     @staticmethod
     def kau_tick_formatter(val, pos):
@@ -607,19 +607,29 @@ class SPHRenderer:
 
     def save_contour_radii(self, save_path, quantity, plane, radii,
                            contour_values=None):
-        """Append/update contour radii in a tab-separated .txt file."""
-        levels = sorted(radii.keys())
+        """Append/update contour radii in a tab-separated .txt file.
+
+        contour_values : canonical [low, half] = [0.01*dmax, 0.5*dmax].
+            Only levels actually present in ``radii`` are written, so a
+            call made with a subset of ``contour_fracs`` leaves the other
+            level's column unchanged.
+        """
+        if contour_values is None or len(contour_values) < 2:
+            raise ValueError(
+                "save_contour_radii needs contour_values=[low, half]"
+            )
+        low_level, half_level = contour_values[0], contour_values[1]
+
         if plane == "xy":
-            col_map = {levels[0]: "R_xy_001", levels[-1]: "R_xy_050"}
-            fill_cols = {"R_xz_001": "--", "R_xz_050": "--"}
+            low_col, half_col = "R_xy_001", "R_xy_050"
         else:
-            col_map = {levels[0]: "R_xz_001", levels[-1]: "R_xz_050"}
-            fill_cols = {"R_xy_001": "--", "R_xy_050": "--"}
+            low_col, half_col = "R_xz_001", "R_xz_050"
 
         new_vals = {}
-        for level, col in col_map.items():
-            r = radii.get(level, np.nan)
-            new_vals[col] = f"{r:.1f}" if np.isfinite(r) else "--"
+        for level, col_name in ((low_level, low_col), (half_level, half_col)):
+            if level in radii:
+                r = radii[level]
+                new_vals[col_name] = f"{r:.1f}" if np.isfinite(r) else "--"
 
         save_path = Path(save_path)
         rows = []
@@ -629,7 +639,11 @@ class SPHRenderer:
 
         mol_row = next((r for r in rows if r["molecule"] == quantity), None)
         if mol_row is None:
-            rows.append({"molecule": quantity, **fill_cols, **new_vals})
+            base = {"molecule": quantity,
+                    "R_xy_001": "--", "R_xy_050": "--",
+                    "R_xz_001": "--", "R_xz_050": "--"}
+            base.update(new_vals)
+            rows.append(base)
         else:
             mol_row.update(new_vals)
 
@@ -695,7 +709,7 @@ class SPHRenderer:
                         log_scale=True, vmin=None, vmax=None, decades=None,
                         interpolate=False, fraction=1.0, contours=False,
                         hmin=None, radii_save_path=None, smooth=None,
-                        col_dens=False):
+                        col_dens=False, contour_fracs=(0.01, 0.5)):
         """Render an SPH quantity onto a Matplotlib axes using Sarracen.
 
         smooth: Gaussian sigma [au] applied to the rendered image
@@ -766,22 +780,35 @@ class SPHRenderer:
                 contour_extent = img.get_extent()
 
             dmax, dmin = np.nanmax(contour_data), np.nanmin(contour_data)
-            contour_values = [0.01 * dmax, 0.5 * dmax]
-            valid = [cv for cv in contour_values if dmin < cv < dmax]
-            if valid:
-                cs = ax.contour(contour_data, levels=valid, colors="white",
-                                linestyles=["--", "-"], linewidths=1.0,
-                                origin="image", extent=contour_extent)
+
+            # Canonical level order: low (0.01), then half (0.5).
+            all_fracs = (0.01, 0.5)
+            all_linestyles = ("--", "-")
+            contour_values = [f * dmax for f in all_fracs]
+
+            draw_values = []
+            draw_styles = []
+            for frac, ls, cv in zip(all_fracs, all_linestyles, contour_values):
+                if frac in contour_fracs and dmin < cv < dmax:
+                    draw_values.append(cv)
+                    draw_styles.append(ls)
+
+            if draw_values:
+                cs = ax.contour(contour_data, levels=draw_values,
+                                colors="white", linestyles=draw_styles,
+                                linewidths=1.0, origin="image",
+                                extent=contour_extent)
                 radii = self.extract_contour_radii(cs)
                 for level, r in radii.items():
                     print(f"Level {level:.3e} -> R = {r}")
-                self.draw_radii_arrows(ax, radii, plane=plane)
+                # self.draw_radii_arrows(ax, radii, plane=plane)
                 if radii_save_path is not None:
                     self.save_contour_radii(radii_save_path, quantity, plane,
                                             radii, contour_values)
             else:
-                print(f"Skipping contours for {quantity}: levels outside "
-                      f"data range [{dmin:.2e}, {dmax:.2e}]")
+                print(f"Skipping contours for {quantity}: no requested "
+                      f"levels in range [{dmin:.2e}, {dmax:.2e}] "
+                      f"(contour_fracs={contour_fracs})")
         return ax
 
     # ------------------------------------------------------------------
@@ -857,7 +884,8 @@ class SPHRenderer:
                            vmax=None, decades=None, contours=False,
                            col_dens=False, hmin=None, radii_save_path=None,
                            time_yr=None, smooth=None, save=False,
-                           save_path=None, show=True):
+                           save_path=None, show=True,
+                           contour_fracs=(0.01, 0.5)):
         """Render one quantity for the current dump.
 
         smooth: Gaussian sigma [au] (None -> renderer default, 0 -> off).
@@ -871,7 +899,7 @@ class SPHRenderer:
             vmin=vmin, vmax=vmax, decades=decades, interpolate=interpolate,
             fraction=fraction, contours=contours, hmin=hmin,
             radii_save_path=radii_save_path, smooth=smooth,
-            col_dens=col_dens,
+            col_dens=col_dens, contour_fracs=contour_fracs,
         )
         self.format_render_axes(ax, quantity, plane, meta, xlim=xlim,
                                 xsec=xsec, plot_single=True)
@@ -909,7 +937,7 @@ class SPHRenderer:
                               cmap="gist_heat", vmin=None, vmax=None,
                               decades=None, fractions=None, col_dens=False,
                               nine=False, save=False, save_path=None,
-                              show=True):
+                              show=True, contour_fracs=(0.01, 0.5)):
         """Multi-panel render at several particle fractions.
 
         All panels share the colour limits of the largest-fraction panel.
@@ -942,7 +970,7 @@ class SPHRenderer:
                 dens_weight=dens_weight, cmap=cmap, log_scale=log_scale,
                 vmin=vmin, vmax=vmax, decades=0,   # shared limits set below
                 interpolate=interpolate, fraction=frac,
-                col_dens=col_dens)
+                col_dens=col_dens, contour_fracs=contour_fracs)
             self.format_render_axes(
                 ax, quantity, plane, meta, xlim=xlim, xsec=xsec,
                 interpolate=interpolate, q_in_title=False,
@@ -1334,9 +1362,10 @@ class SPHRenderer:
                            vmax=None, decades=None, col_dens=False,
                            contours=False, radii_save_path=None,
                            time_yr=None, save=False, save_path=None,
-                           show=True):
+                           show=True, contour_fracs=(0.01, 0.5)):
         """4-column grid of molecules, each panel with its own colourbar
-        (and, if decades is set, its own `decades`-wide colour range)."""
+        (and, if decades is set, its own `decades`-wide colour range).
+        """
         n = len(quantities)
         if n == 0:
             print("plot_molecule_grid: no quantities supplied.")
@@ -1385,7 +1414,7 @@ class SPHRenderer:
                 vmin=vmin, vmax=vmax, decades=decades,
                 interpolate=interpolate, fraction=1.0, contours=contours,
                 radii_save_path=radii_save_path,
-                col_dens=col_dens)
+                col_dens=col_dens, contour_fracs=contour_fracs)
             self.format_render_axes(
                 ax, quantity, plane, meta, xlim=xlim, xsec=xsec,
                 show_xlabel=is_bottom, show_ylabel=is_left,

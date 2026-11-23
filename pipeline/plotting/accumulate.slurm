@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32     # matches MAX_WORKERS in the Python script
 #SBATCH --mem=8G
-#SBATCH --time=00:30:00
+#SBATCH --time=01:30:00
 
 # --- chemistry to process: Crich or Orich ---
 CHEMISTRY=${CHEMISTRY:-Crich}

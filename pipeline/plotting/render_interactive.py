@@ -38,16 +38,17 @@ r.set_dump(index=1581)
 #     show=True,)
 
 # Single render
-# fig = r.plot_single_render(
-#     "CO",
-#     plane="xz",
-#     xlim=3000,
-#     # dens_weight=True,
-#     col_dens=True,
-#     show=True,
-#     contours=True,
-#     # save=True,                      # use the standard directory/file naming
-# )
+fig = r.plot_single_render(
+    "CO",
+    plane="xz",
+    xlim=3000,
+    # dens_weight=True,
+    col_dens=True,
+    show=True,
+    contours=True,
+    contour_fracs=(0.5,),
+    # save=True,                      # use the standard directory/file naming
+)
 
 # Other ways to set the colour range ----------------------------------
 # fig = r.plot_single_render("CO", plane="xz", xlim=6000, dens_weight=True, decades=3)       # 3 decades
@@ -71,8 +72,8 @@ r.set_dump(index=1581)
 
 # Molecule grid -------------------------------------------------------
 # For publication:
-fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=750, dens_weight=True, decades=3, save=True)
-fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True, decades=3, save=True)
+# fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=750, dens_weight=True, decades=3, save=True)
+# fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True, decades=3, save=True)
 
 # fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=500, dens_weight=True, decades=3, save=True)
 # fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xy", xlim=500, dens_weight=True, decades=3, save=True)

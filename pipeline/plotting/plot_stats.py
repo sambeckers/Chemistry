@@ -6,6 +6,11 @@ Computes mean molecular abundances vs radius by accumulating ALL HDF5 dump
 files from aphid, then plots those 3-D averages against the 1-D chemistry model.
 Also averages and plots physical parameters (temperature, AV, density).
 
+Particles whose chemistry solver failed (summed negative abundance over all
+species > NEG_TOL, or non-finite abundances) are excluded from BOTH the
+abundance and the physical-parameter statistics, using the same criterion as
+find_bad_particles.py.
+
 NEW: Particle subsampling mode (--mode plot-fraction-compare) allows testing
 the effect of using only 10% or 50% of particles (random, deterministic) on
 the derived abundance profiles.
@@ -69,6 +74,17 @@ AB_LOG_MIN  = -20.0           # log10 of the lowest abundance edge
 AB_LOG_MAX  =  0.0            # log10 of the highest abundance edge (= 1)
 AB_EDGES    = np.logspace(AB_LOG_MIN, AB_LOG_MAX, N_AB_BINS + 1)
 AB_CENTRES  = np.sqrt(AB_EDGES[:-1] * AB_EDGES[1:])   # geometric centres
+
+# ---------------------------------------------------------------------------
+# Failed-chemistry detection (same criterion as find_bad_particles.py)
+# ---------------------------------------------------------------------------
+# A particle is "failed" if the sum of its negative abundances over all species
+# exceeds NEG_TOL (normal solver noise stays below ~1e-25, failures are above
+# ~1e-10), or if any of its abundances is non-finite.
+
+NEG_TOL = 1e-15
+NONSPECIES = {'av', 'density', 'id', 'placeholder', 'r', 'temp',
+              'temperature', 'time', 'x', 'y', 'z'}
 
 # ---------------------------------------------------------------------------
 # Physical parameter configuration
@@ -171,6 +187,44 @@ def get_species_and_colors(chemistry: str, present: set[str]):
 
 
 # ---------------------------------------------------------------------------
+# Failed-chemistry particle detection
+# ---------------------------------------------------------------------------
+
+def find_failed_particles(p, neg_tol: float = NEG_TOL) -> np.ndarray:
+    """
+    Boolean mask (True = failed chemistry) over all particles in the dump.
+
+    Same criterion as find_bad_particles.py: the summed negative abundance
+    over ALL species exceeds neg_tol, or any abundance is non-finite.
+    "Lost exponent" artefacts (Fortran writes x < 1e-99 as '3.546-105', which
+    a naive parser reads as 3.546) are zeroed first so they are not counted
+    as failures or as negative values.
+    Reads one species at a time to keep memory low.
+
+    Parameters
+    ----------
+    p : h5py.Group
+        The ``particles`` group of an open dump file.
+    """
+    n = p["r"].shape[0]
+    negsum    = np.zeros(n)
+    nonfinite = np.zeros(n, dtype=bool)
+
+    for k in p:
+        if k in NONSPECIES:
+            continue
+        d   = p[k][:]
+        fin = np.isfinite(d)
+        nonfinite |= ~fin
+        art = fin & (np.abs(d) < 10) & ((d <= -1) | (d > 1.0001))
+        d   = np.where(art | ~fin, 0.0, d)
+        neg = d < 0
+        negsum[neg] -= d[neg]
+
+    return (negsum > neg_tol) | nonfinite
+
+
+# ---------------------------------------------------------------------------
 # Deterministic particle filter  (vectorised)
 # ---------------------------------------------------------------------------
 
@@ -220,8 +274,10 @@ def _particle_keep_mask(
 def _accumulate_dump(path: Path, species_list: list[str], fraction: float = 1.0):
     """
     Read r, particle IDs, every requested species, and physical parameters from
-    one HDF5 dump. Particles are filtered according to `fraction` using their
-    unique ID (deterministic). For fraction=1.0, all particles are kept.
+    one HDF5 dump. Particles with failed chemistry are always excluded (from
+    both abundances and physical parameters). Remaining particles are further
+    filtered according to `fraction` using their unique ID (deterministic).
+    For fraction=1.0, all non-failed particles are kept.
     """
     import h5py
 
@@ -231,6 +287,14 @@ def _accumulate_dump(path: Path, species_list: list[str], fraction: float = 1.0)
     try:
         with h5py.File(path, "r") as f:
             r = f["particles/r"][:]
+
+            # Chemistry-failure mask (True = good particle). Applied to every
+            # species AND every physical parameter below.
+            good_chem = ~find_failed_particles(f["particles"])
+            n_failed = int((~good_chem).sum())
+            if n_failed:
+                print(f"  {path.name}: excluding {n_failed}/{good_chem.size} "
+                      f"failed particles")
 
             # Only read IDs and compute a keep-mask when actually subsampling.
             # For fraction=1.0 every particle is included, so skip both.
@@ -246,13 +310,14 @@ def _accumulate_dump(path: Path, species_list: list[str], fraction: float = 1.0)
                 except KeyError:
                     continue
 
-                # Mask unphysical values + optional particle filter
+                # Mask unphysical values + failed particles + optional subsample
                 mask = (
                     np.isfinite(r)  &
                     np.isfinite(ab) &
                     (r  > 0)        &
                     (ab > 0)        &
-                    (ab <= 1.0)
+                    (ab <= 1.0)     &
+                    good_chem
                 )
                 if keep_mask is not None:
                     mask &= keep_mask
@@ -290,7 +355,8 @@ def _accumulate_dump(path: Path, species_list: list[str], fraction: float = 1.0)
                     np.isfinite(r)    &
                     np.isfinite(vals) &
                     (r    > 0)        &
-                    (vals > 0)
+                    (vals > 0)        &
+                    good_chem
                 )
                 if keep_mask is not None:
                     mask &= keep_mask
@@ -402,8 +468,7 @@ def run_accumulate(task_id: int, n_tasks: int, chemistry: str, fraction: float =
     species_list = get_all_species()
     species_totals, phys_totals = accumulate_chunk(chunk, species_list, fraction=fraction)
 
-    # Fraction=1.0 uses the original filename format (no fraction suffix)
-    # so existing files remain valid without re-running the accumulate step.
+    # Fraction=1.0 uses the original filename format (no fraction suffix).
     if fraction >= 1.0 - 1e-9:
         out_path = (SCRATCH_DIR /
                     f"partial_{chemistry}_{task_id:04d}_of_{n_tasks:04d}.npz")
