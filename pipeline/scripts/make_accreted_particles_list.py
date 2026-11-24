@@ -19,3 +19,9 @@ for fp in files:
     accr = sdf["iorig"].to_numpy()[sdf["h"].to_numpy() <= 0]
     np.save(OUT_DIR / f"accr_{num}.npy", np.sort(accr).astype(np.int64))
     print(f"{fp.name}: {accr.size} accreted / {len(sdf)} particles")
+    
+    # If the particle is accreted, print h
+    for i, h in enumerate(sdf["h"].to_numpy()):
+        if h <= 0:
+            print(f"Particle {sdf['iorig'].to_numpy()[i]}: h = {h}")
+            

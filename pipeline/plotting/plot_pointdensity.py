@@ -8,6 +8,12 @@ OR a physical parameter (temperature, AV, density) by reading the partial
 
 NO RE-RUNNING OF THE ACCUMULATION IS NEEDED
 
+The colour scale shows the MEAN number of particles per bin PER DUMP, i.e.
+the accumulated histogram (summed over all dumps) divided by the number of
+dumps. The MIN_COUNT cut is still applied to the raw accumulated counts, and
+the mean/median/percentile overlays are computed from the raw histogram
+(they are ratios within a radial row, so the normalisation cancels).
+
 Usage
 -----
     # Chemical species
@@ -107,6 +113,9 @@ AB_CENTRES = np.sqrt(AB_EDGES[:-1] * AB_EDGES[1:])
 
 MIN_COUNT    = 10
 SMOOTH_SIGMA = 0       # set > 0 to smooth the overlay lines
+
+# NEW: colourbar label for the normalised histogram
+CBAR_LABEL = "Mean particle count per bin per dump"
 
 # ---------------------------------------------------------------------------
 # Physical parameter config — MUST match plot_stats.py exactly
@@ -550,6 +559,21 @@ def overlay_particle_track(
     )
 
 # ---------------------------------------------------------------------------
+# Number of dumps (for per-dump normalisation)   — NEW
+# ---------------------------------------------------------------------------
+
+def get_n_dumps(chemistry: str, n_tasks: int) -> int:
+    """
+    Number of dumps that went into the accumulated histograms.
+    """
+    n = len(list(DUMP_DIR.glob("dump_*.h5")))
+    if n == 0:
+        raise FileNotFoundError(f"No dump_*.h5 files found in {DUMP_DIR}")
+    print(f"n_dumps = {n} (counted dump_*.h5 files in {DUMP_DIR})")
+    return n
+
+
+# ---------------------------------------------------------------------------
 # Load & aggregate — chemical species
 # ---------------------------------------------------------------------------
 
@@ -712,6 +736,9 @@ def compute_stats(
     """
     Return mean, median, p16, p84 — each shape (N_BINS,).
 
+    NOTE: always pass the RAW accumulated hist_2d (not the per-dump
+    normalised one), so the MIN_COUNT cuts keep their meaning.
+
     Parameters
     ----------
     val_centres : (n_val_bins,)
@@ -794,6 +821,7 @@ def plot_density(
     save_path:      Path | None  = None,
     show:           bool         = False,
     dark_mode:      bool         = False,
+    n_dumps:        int          = 1,          # NEW
 ) -> None:
     """
     Generic 2-D density plot on a log(r) × log(value) grid.
@@ -801,7 +829,7 @@ def plot_density(
     Parameters
     ----------
     title          : axes title string (already formatted for LaTeX)
-    hist_2d        : (N_BINS, n_val_bins) accumulated counts
+    hist_2d        : (N_BINS, n_val_bins) accumulated counts (summed over dumps)
     val_edges      : (n_val_bins + 1,) bin boundaries for the value axis
     val_label      : y-axis label
     bin_sum/count  : (N_BINS,) for the stats overlay
@@ -815,18 +843,23 @@ def plot_density(
     molecule       : species name — used by overlays and particle track
     chemistry      : "Crich" or "Orich"
     particle_id    : if set, overlay the track of this single particle
-    vmin, vmax     : manual colour-scale limits
+    vmin, vmax     : manual colour-scale limits (in particles per bin PER DUMP)
     save_path      : where to write the figure (None = don't save)
     show           : call plt.show()
     dark_mode      : use a dark background and colour scheme
+    n_dumps        : number of dumps summed in hist_2d; the colour scale shows
+                     hist_2d / n_dumps (mean particles per bin per dump)
     """
     fg = "white" if dark_mode else "k"      # foreground (text / lines)
     bg = "k"     if dark_mode else "white"  # background (boxes / halos)
 
+    # CHANGED: normalise by number of dumps; MIN_COUNT cut stays on RAW counts
     h_float  = hist_2d.astype(np.float64)
-    h_masked = np.ma.masked_where(h_float < MIN_COUNT, h_float)
+    sparse   = h_float < MIN_COUNT
+    h_norm   = h_float / n_dumps
+    h_masked = np.ma.masked_where(sparse, h_norm)
 
-    valid = h_float[h_float >= MIN_COUNT]
+    valid = h_norm[~sparse]
     _vmin = vmin if vmin is not None else valid.min()
     _vmax = vmax if vmax is not None else valid.max()
     norm  = mcolors.LogNorm(vmin=_vmin, vmax=_vmax)
@@ -840,7 +873,7 @@ def plot_density(
 
     # ---- colourbar (270° rotation kept, larger ticks) -------------------
     cbar = fig.colorbar(pcm, ax=ax, pad=0.02)
-    cbar.set_label("Particle count per bin", fontsize=14,
+    cbar.set_label(CBAR_LABEL, fontsize=14,                       # CHANGED
                    rotation=270, va="bottom", labelpad=6)
     cbar.ax.tick_params(which="major", labelsize=13, length=5, width=1.0)
     cbar.ax.tick_params(which="minor", length=3, width=0.8)
@@ -848,7 +881,7 @@ def plot_density(
     # ---- overlays -------------------------------------------------------
     if overlay_stats:
         stats = compute_stats(
-            bin_sum, bin_count, hist_2d,
+            bin_sum, bin_count, hist_2d,        # raw hist: normalisation cancels
             val_centres=val_centres,
             clip_at_one=clip_at_one,
         )
@@ -959,6 +992,7 @@ def plot_density_all_phys(
     show:           bool         = False,
     dark_mode:      bool         = False,
     chemistry:      str          = "Crich", 
+    n_dumps:        int          = 1,          # NEW
 ) -> None:
     """
     Plot all three physical parameters in a single figure with three
@@ -974,6 +1008,8 @@ def plot_density_all_phys(
     overlay_1d_cse : draw the on-the-fly chemistry model profile on every panel
     ev_filepath    : path to ev_0.dat for the ``overlay_1d`` overlay
     particle_id    : if set, overlay the single-particle track on every panel
+    n_dumps        : number of dumps summed in the histograms; the colour
+                     scale shows hist_2d / n_dumps
     All other arguments have the same meaning as in plot_density().
     """
     params = list(PHYS_PARAMS)   # ["temperature", "av", "density"]
@@ -993,13 +1029,17 @@ def plot_density_all_phys(
         cfg                         = PHYS_PARAMS[param]
         bin_sum, bin_count, hist_2d = data_per_param[param]
 
+        # CHANGED: normalise by number of dumps; same MIN_COUNT cut on RAW
+        # counts as plot_density (previously this panel masked only == 0)
         h_float  = hist_2d.astype(np.float64)
-        h_masked = np.ma.masked_where(h_float == 0, h_float)
+        sparse   = h_float < MIN_COUNT
+        h_norm   = h_float / n_dumps
+        h_masked = np.ma.masked_where(sparse, h_norm)
 
-        nonzero = h_float[h_float > 0]
-        _vmin   = vmin if vmin is not None else nonzero.min()
-        _vmax   = vmax if vmax is not None else nonzero.max()
-        norm    = mcolors.LogNorm(vmin=_vmin, vmax=_vmax)
+        valid = h_norm[~sparse]
+        _vmin = vmin if vmin is not None else valid.min()
+        _vmax = vmax if vmax is not None else valid.max()
+        norm  = mcolors.LogNorm(vmin=_vmin, vmax=_vmax)
 
         pcm = ax.pcolormesh(
             R_EDGES, cfg["edges"],
@@ -1011,14 +1051,14 @@ def plot_density_all_phys(
         )
 
         cbar = fig.colorbar(pcm, ax=ax, pad=0.02)
-        cbar.set_label("Particle count per bin", fontsize=14,
+        cbar.set_label(CBAR_LABEL, fontsize=14,                   # CHANGED
                         rotation=270, va="bottom", labelpad=6)
         cbar.ax.tick_params(which="major", labelsize=13, length=5, width=1.0)
         cbar.ax.tick_params(which="minor", length=3, width=0.8)
 
         if overlay_stats:
             stats = compute_stats(
-                bin_sum, bin_count, hist_2d,
+                bin_sum, bin_count, hist_2d,    # raw hist: normalisation cancels
                 val_centres=cfg["centres"],
                 clip_at_one=False,
             )
@@ -1136,7 +1176,8 @@ def main() -> None:
         description=(
             "Plot 2-D particle density (radius × value) for a molecule or "
             "physical parameter using pre-accumulated histogram data from "
-            "plot_stats.py."
+            "plot_stats.py. The colour scale is the mean particle count per "
+            "bin per dump."
         )
     )
 
@@ -1198,9 +1239,11 @@ def main() -> None:
         ),
     )
     parser.add_argument("--vmin", type=float, default=None,
-                        help="Manual colour-scale lower limit.")
+                        help="Manual colour-scale lower limit "
+                             "(particles per bin per dump).")
     parser.add_argument("--vmax", type=float, default=None,
-                        help="Manual colour-scale upper limit.")
+                        help="Manual colour-scale upper limit "
+                             "(particles per bin per dump).")
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--dark-mode", action="store_true")
 
@@ -1237,6 +1280,9 @@ def main() -> None:
 
     save_ext = "pdf" if args.dark_mode else "png"
 
+    # NEW: number of dumps for the per-dump normalisation (computed once)
+    n_dumps = get_n_dumps(args.chemistry, args.n_tasks)
+
     if args.molecule:
         for molecule in args.molecule:
             print(f"\nProcessing molecule: {molecule}")
@@ -1248,7 +1294,7 @@ def main() -> None:
                 title            = rf"{format_species_label(molecule)}",
                 hist_2d          = hist_2d,
                 val_edges        = AB_EDGES,
-                val_label        = r"Abundance relative to $\mathrm{H}_2$",
+                val_label        = r"Abundance relative to $\mathrm{H}$",
                 bin_sum          = bin_sum,
                 bin_count        = bin_count,
                 val_centres      = AB_CENTRES,
@@ -1266,6 +1312,7 @@ def main() -> None:
                 save_path        = save_dir / f"point_density_{molecule}.{save_ext}",
                 show             = args.show,
                 dark_mode        = args.dark_mode,
+                n_dumps          = n_dumps,                    # NEW
             )
     else:
         if args.phys_param == "all":
@@ -1287,6 +1334,7 @@ def main() -> None:
                     save_path      = save_dir / f"point_density_phys_all.{save_ext}",
                     show           = args.show,
                     dark_mode      = args.dark_mode,
+                    n_dumps        = n_dumps,                  # NEW
                 )
         else:
             param = args.phys_param
@@ -1318,6 +1366,7 @@ def main() -> None:
                 save_path        = save_dir / f"point_density_{param}.{save_ext}",
                 show             = args.show,
                 dark_mode        = args.dark_mode,
+                n_dumps          = n_dumps,                    # NEW
             )
 
 
