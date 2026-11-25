@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+count_files_with_data_rows.py
+@author(s): Sam Beckers
+
+Count the number of files in a directory (and optionally its subdirectories) that have more than a specified number of data rows.
+"""
 from __future__ import annotations
 
 import sys

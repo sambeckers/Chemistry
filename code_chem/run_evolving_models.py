@@ -1,12 +1,17 @@
-"""Run chemistry models on phantom particle traces.
+#!/usr/bin/env python3
+"""
+run_evolving_models.py
+@author(s): Sam Beckers
+
+Run evolving models on particle traces.
 
 Usage
 -----
 Interactive / local (default):
-    python run_chemistry_models.py
+    python run_evolving_models.py
 
 SLURM array (one particle per task, set by the slurm script automatically):
-    python run_chemistry_models.py --parallel
+    python run_evolving_models.py --parallel
 
 The --parallel flag makes the script non-interactive: it skips directory-setup
 prompts and uses SLURM_ARRAY_TASK_ID to pick the particle for this task.

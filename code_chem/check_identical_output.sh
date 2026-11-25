@@ -1,4 +1,8 @@
 #!/bin/bash
+# check_identical_output.sh
+# @author(s): Sam Beckers
+#
+# Check if two output files are identical, and if not, show the first 120 lines of the diff.
 set -e
 
 f1="/fred/oz304/beckers/Chemistry/evolving_model/Crich/output/model_output_21549.dat"

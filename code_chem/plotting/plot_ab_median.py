@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+"""
+plot_ab_median.py
+@author(s): Sam Beckers
+
+Plot median abundances of parent and daughter molecules from 3D particle chemistry outputs.
+
+Usage
+-----
+Change the chemistry type (Crich or Orich) and other parameters in the main() function.
+"""
+
 import math
 import os
 import re

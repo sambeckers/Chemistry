@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+plot_particle_timesteps.py
+@author(s): Sam Beckers
+
+Plot the number of timesteps for each particle in a trace.
+"""
 from __future__ import annotations
 
 from bisect import bisect_right

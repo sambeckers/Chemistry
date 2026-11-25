@@ -1,3 +1,14 @@
+"""
+plot_evolution_all.py
+@author(s): Sam Beckers
+
+Plot evolution of density, temperature, A_V, and abundances for all particles in a trace
+
+Usage
+-----
+Uncomment functions at the bottom of this file to select which plots to generate
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D

@@ -1,4 +1,11 @@
 #!/bin/bash
+# submit_em_parallel.sh
+# @author(s): Sam Beckers
+#
+# Submit run_em_parallel.slurm with the array size set automatically
+#
+# Usage
+# -----
 # Submit run_em_parallel.slurm with the array size set automatically
 # to match the number of selected particle IDs in run_evolving_models.py.
 #

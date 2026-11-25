@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+"""
+inspect_particles.py
+@author(s): Sam Beckers
+
+Inspect particle traces and chemistry outputs for selected particles in a HTML overview page.
+"""
 import numpy as np
 import argparse
 import json

@@ -1,4 +1,16 @@
 #!/bin/bash
+# run_em_parallel.slurm
+# @author(s): Sam Beckers
+#
+# Run evolving models on particle traces as a SLURM job array (one particle per array task).
+#
+# Usage
+# -----
+#   sbatch run_em_parallel.slurm Crich [analysis]
+#   sbatch run_em_parallel.slurm Orich [analysis]
+#   CHEMISTRY_TYPE=Crich sbatch run_em_parallel.slurm
+# NOTE: Submit job via submit_em_parallel.sh
+
 #SBATCH --job-name=em_parallel
 #SBATCH --output=logs/logs_%A/em_parallel_%A_%a.out  # overridden by submit_em_parallel.sh
 #SBATCH --error=logs/logs_%A/em_parallel_%A_%a.err   # overridden by submit_em_parallel.sh
@@ -45,7 +57,7 @@ echo "Starting job ${SLURM_ARRAY_JOB_ID:-NA}, array task ${SLURM_ARRAY_TASK_ID:-
 echo "Chemistry type: ${CHEMISTRY_TYPE:-<default set in python script>}"
 echo "Analysis mode: $([[ "$ANALYSIS_FLAG" == "--analysis" ]] && echo true || echo false)"
 
-# --slurm enables non-interactive mode and single-particle selection via
+# --parallel enables non-interactive mode and single-particle selection via
 # SLURM_ARRAY_TASK_ID.  Science settings (paths, particle selection, analysis
 # flags, …) are configured inside run_chemistry_models.py — keep --array
 # in sync with n_select defined there.

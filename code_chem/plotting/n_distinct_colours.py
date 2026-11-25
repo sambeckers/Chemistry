@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+"""
+n_distinct_colours.py
+@author(s): Sam Beckers
+
+Generate a matplotlib ListedColormap with a specified number of visually distinct colors.
+"""
+
 import math
 
 import numpy as np

@@ -1,4 +1,9 @@
-"""Shared matplotlib utilities for abundance plots.
+#!/usr/bin/env python3
+"""
+plot_utils.py
+@author(s): Sam Beckers
+
+Shared matplotlib utilities for abundance plots.
 
 Provides importable helpers that can be called after lines are plotted:
 
@@ -21,7 +26,14 @@ Provides importable helpers that can be called after lines are plotted:
         directed outward.  Also applies a dashed grid and tick label size 16.
         Safe to call on linear-scale axes too.
 
-Both limit functions are no-ops when the axes contain no valid data or the
+    set_plot_style(dark_mode=False)
+        Sets a consistent style for all plots.  If
+        *dark_mode* is True, sets a dark background with white text and axes.
+
+    format_species_label(species)
+        Convert a chemical species string into LaTeX.
+
+Both limit functions do not modify the axes when the axes contain no valid data or the
 relevant scale is not 'log'.
 """
 
@@ -35,7 +47,6 @@ import re
 # ---------------------------------------------------------------------------
 # Internal helper
 # ---------------------------------------------------------------------------
-
 def _collect_xy(axes_list) -> tuple[list[float], list[float]]:
     all_x: list[float] = []
     all_y: list[float] = []

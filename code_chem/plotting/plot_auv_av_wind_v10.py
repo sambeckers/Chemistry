@@ -1,4 +1,9 @@
-"""Plot A_UV/A_V over time for all particles in traces/wind_v10."""
+"""
+plot_auv_av_wind_v10.py
+@author(s): Sam Beckers
+
+Plot A_UV/A_V over time for all particles in traces/wind_v10
+"""
 
 from __future__ import annotations
 

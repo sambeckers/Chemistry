@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+"""
+run_plot_single_config_1D_model.py
+@author(s): Sam Beckers
+
+Run and plot 1D chemistry models for C-rich and O-rich AGB stars
+for a single configuration of mass-loss rate and terminal velocity.
+"""
 from __future__ import division
 import os
 from pathlib import Path

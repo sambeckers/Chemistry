@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+"""
+run_plot_1D_model.py
+@author(s): Sam Beckers
+
+Run and plot 1D chemistry models for C-rich and O-rich AGB stars.
+"""
+
 from __future__ import division
 import os
 from pathlib import Path
