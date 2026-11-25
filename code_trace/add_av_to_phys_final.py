@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """
+add_av_to_phys_final.py
+@author(s): Sam Beckers
+
 Add A_V column to .phys trace files.
 
 This script adds visual extinction (A_V) measurements as a new column to .phys 
@@ -13,7 +16,8 @@ Input:
 Output:
   - Modified .phys files with A_V column in trace_output_with_av/
 
-Usage:
+Usage
+-----
   # Test with single particle
   python add_av_to_phys_final.py
 

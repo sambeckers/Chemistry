@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+"""
+column_densities.py
+@author(s): Owen Vermeulen and Sam Beckers
+
+Calculate column densities for a given dump of a Phantom simulation using Magritte.
+"""
+
 import numpy as np
 import pandas as pd
 import pickle

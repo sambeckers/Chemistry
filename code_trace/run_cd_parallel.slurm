@@ -1,4 +1,8 @@
 #!/bin/bash
+# run_cd_parallel.slurm
+# @author(s): Sam Beckers
+# Run column density calculations on particle traces as a SLURM job array (one dump per array task).
+
 #SBATCH --job-name=cd_parallel
 #SBATCH --output=logs/logs_%A/cd_parallel_%A_%a.out  # overridden by process_all_dumps.sh
 #SBATCH --error=logs/logs_%A/cd_parallel_%A_%a.err   # overridden by process_all_dumps.sh

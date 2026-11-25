@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+"""
+animate_traces_density.py
+@author(s): Sam Beckers
+
+Animate the evolution of particle traces over a density background.
+"""
 import re
 from pathlib import Path
 from typing import Dict, List, Tuple

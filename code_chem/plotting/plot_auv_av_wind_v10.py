@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 plot_auv_av_wind_v10.py
 @author(s): Sam Beckers

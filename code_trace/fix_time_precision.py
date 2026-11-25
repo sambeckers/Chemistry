@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """
+utils_raytracer.py
+@author(s): Sam Beckers
+
 Fix time precision in AV files from .10e to .8e using exact simulation times.
 Reads each dump file to get the precise simulation time.
 """

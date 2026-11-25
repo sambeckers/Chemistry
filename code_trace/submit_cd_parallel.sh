@@ -1,4 +1,7 @@
 #!/bin/bash
+# submit_cd_parallel.sh
+# @author(s): Sam Beckers
+#
 # Submit column density calculations as a SLURM array job.
 # One CPU per dump, only unprocessed dumps are queued.
 #

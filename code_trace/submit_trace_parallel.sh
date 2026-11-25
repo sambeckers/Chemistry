@@ -1,4 +1,7 @@
 #!/bin/bash
+# submit_trace_parallel.sh
+# @author(s): Sam Beckers
+#
 # Submit phantomanalysis as a SLURM array job.
 # Each task processes one pair of dumps separated by STEP:
 #   ./phantomanalysis PREFIX_N PREFIX_{N+STEP}

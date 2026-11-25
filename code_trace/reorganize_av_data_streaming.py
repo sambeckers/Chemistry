@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """
+reorganize_av_data_streaming.py
+@author(s): Sam Beckers
+
 Script to reorganize A_V data from per-timestep files to per-particle files.
 Memory-efficient streaming version.
 

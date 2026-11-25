@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+"""
+utils_raytracer.py
+@author(s): Owen Vermeulen
+
+Utility functions for ray tracing in a Phantom simulation.
+"""
 import numpy as np
 import numba as nb
 import pandas as pd 

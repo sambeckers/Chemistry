@@ -1,7 +1,12 @@
-'''
+#!/usr/bin/env python3
+"""
+particleIDs.py
+@author(s): Camille Landri and Sam Beckers
+
 Extract a list of particle IDs to track from a phantom simulation and write it
 to a file.
-'''
+"""
+
 import os
 
 import numpy as np

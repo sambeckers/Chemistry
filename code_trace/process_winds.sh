@@ -1,13 +1,15 @@
 #!/bin/bash
-
-# Don't exit on errors - we want to continue even if phantomanalysis crashes
-set +e
-
+# process_winds.sh
+# @author(s): Sam Beckers 
+#
 # Script to run phantomanalysis on wind files in pairs from START_NUM onwards
 # Processes files in pairs because analysis_trace.f90 needs two consecutive files:
 # - First file: initialization only (reads particle IDs, sets up arrays)
 # - Second file: actual trace file writing begins
 # This prevents memory overflow while ensuring trace files are created
+
+# Don't exit on errors - we want to continue even if phantomanalysis crashes
+set +e
 
 WIND_DIR="/net/vdesk/data2/beckers/MRP/v20_a25"
 START_NUM=0

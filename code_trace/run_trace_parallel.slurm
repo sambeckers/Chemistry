@@ -1,4 +1,14 @@
 #!/bin/bash
+# run_trace_parallel.slurm
+# @author(s): Sam Beckers
+# Runs phantomanalysis on one pair of dumps separated by STEP.
+# The first dump is used for initialisation only (no output).
+# The second dump produces one line per tracked particle in trace_output/*.phys.
+#
+# NOTE: All concurrent jobs append to the same particle .phys files.
+#       Lines from different jobs may arrive out of time order.
+#       Sort each .phys file by the first column (time) after all jobs finish.
+
 #SBATCH --job-name=trace_parallel
 #SBATCH --output=logs/logs_%A/trace_%A_%a.out  # overridden by submit_trace_parallel.sh
 #SBATCH --error=logs/logs_%A/trace_%A_%a.err   # overridden by submit_trace_parallel.sh
@@ -7,13 +17,7 @@
 #SBATCH --mem-per-cpu=16G
 #SBATCH --array=0-0  # overridden dynamically by submit_trace_parallel.sh
 
-# Runs phantomanalysis on one pair of dumps separated by STEP.
-# The first dump is used for initialisation only (no output).
-# The second dump produces one line per tracked particle in trace_output/*.phys.
-#
-# NOTE: All concurrent jobs append to the same particle .phys files.
-#       Lines from different jobs may arrive out of time order.
-#       Sort each .phys file by the first column (time) after all jobs finish.
+
 
 set -euo pipefail
 

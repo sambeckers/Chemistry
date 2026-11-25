@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+"""
+cons.py
+@author(s): Owen Vermeulen
+
+Contains constants and functions for calculating column densities.
+"""
+
 import numpy as np
 
 iH = 1
