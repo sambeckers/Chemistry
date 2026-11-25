@@ -40,7 +40,7 @@ plt.rcParams.update({
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from config import BASE_PATH, daughters_Crich, daughters_Orich, parents
-from code_chem.plotting.n_distinct_colours import generate_colormap
+from code_chem.plot.n_distinct_colours import generate_colormap
 from kb.modeling.tools import CodeIO
 from kb import path as kb_path
 from code_chem.run_plot_single_config_1D_model import (
@@ -50,7 +50,7 @@ from code_chem.run_plot_single_config_1D_model import (
     TARGET_MLOSS,
     TARGET_VELOCITY,
 )
-from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, _collect_xy, format_species_label
+from code_chem.plot.plot_utils import apply_abundance_axis_limits, add_log_ticks, _collect_xy, format_species_label
 
 
 # ---------------------------------------------------------------------------

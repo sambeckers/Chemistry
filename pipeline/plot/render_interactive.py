@@ -1,14 +1,12 @@
-# %%
 """
 render_interactive.py
 
 Interactive driver for sph_render.SPHRenderer.
-Run cell-by-cell (VS Code / Spyder / Jupyter `# %%` cells).
 """
 import importlib
-import render_slice_v3
-importlib.reload(render_slice_v3)          # pick up edits to sph_render.py
-from render_slice_v3 import SPHRenderer
+import pipeline.plot.render_slice as render_slice
+importlib.reload(render_slice)          # pick up edits to render_slice.py
+from pipeline.plot.render_slice import SPHRenderer
 
 # Setup ---------------------------------------------------------------
 # decades=4 -> every plot gets vmin = vmax / 10**4 automatically

@@ -67,7 +67,7 @@ from scipy.ndimage import gaussian_filter1d
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config import BASE_PATH
-from code_chem.plotting.plot_utils import apply_abundance_axis_limits, add_log_ticks, set_plot_style, _collect_xy, format_species_label
+from code_chem.plot.plot_utils import apply_abundance_axis_limits, add_log_ticks, set_plot_style, _collect_xy, format_species_label
 
 from code_chem.run_plot_single_config_1D_model import (
     run_model,

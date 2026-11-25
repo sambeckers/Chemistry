@@ -49,7 +49,7 @@ from kb.modeling.tools import CodeIO
 from kb import path as kb_path
 
 # Shared plot style from the pipeline
-from code_chem.plotting.plot_utils import set_plot_style, format_species_label
+from code_chem.plot.plot_utils import set_plot_style, format_species_label
 
 FONT_SIZE = 14
 
