@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
 """
 render_interactive.py
+@author(s): Sam Beckers
 
-Interactive driver for sph_render.SPHRenderer.
+Interactive script for SPHRenderer() in render_slice.py
 """
 import importlib
 import pipeline.plot.render_slice as render_slice

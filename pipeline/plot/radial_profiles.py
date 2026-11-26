@@ -1,20 +1,58 @@
 #!/usr/bin/env python3
 """
-plot_stats.py
+radial_profiles.py
+@author(s): Sam Beckers
 
-Computes mean molecular abundances vs radius by accumulating ALL HDF5 dump
-files from aphid, then plots those 3-D averages against the 1-D chemistry model.
-Also averages and plots physical parameters (temperature, AV, density).
+Radial abundance and physical-parameter profiles from 3D Phantom chemistry
+dumps, compared against 1D models.
 
-Particles whose chemistry solver failed (summed negative abundance over all
-species > NEG_TOL, or non-finite abundances) are excluded from BOTH the
-abundance and the physical-parameter statistics, using the same criterion as
-find_bad_particles.py.
+Reads the HDF5 dumps of a 3D post-processed chemistry + Phantom simulation, bins particles in
+log-spaced radius, and builds statistical profiles (mean, median and the
+16th-84th percentile band) for every chemical species and for temperature,
+A_V and density. Abundance profiles can be overplotted on the corresponding
+1D (KoekenBak) model.
 
-NEW: Particle subsampling mode (--mode plot-fraction-compare) allows testing
-the effect of using only 10% or 50% of particles (random, deterministic) on
-the derived abundance profiles.
+Workflow
+--------
+Processing is split into two stages so that large dump sets can be handled
+in parallel on SLURM:
+
+1. accumulate : each array task processes its slice of dump_*.h5 files (using
+                a thread pool) and writes a partial .npz containing, per
+                quantity, the per-bin sum, per-bin count and a 2-D
+                (radius x value) histogram. The histograms are what allow
+                percentiles to be recovered later without keeping every
+                particle in memory.
+2. plot       : all partial .npz files are aggregated and the figures are made.
+
+Usage
+-----
+SLURM array, one task per chunk of dumps:
+    sbatch accumulate.slurm
+
+After all tasks have finished:
+    python radial_profiles.py --mode plot                  --chemistry Crich --n-tasks 32
+    python radial_profiles.py --mode plot-single           --chemistry Crich --n-tasks 32 --molecule CO
+    python radial_profiles.py --mode plot-phys             --chemistry Crich --n-tasks 32
+    python radial_profiles.py --mode plot-fraction-compare --chemistry Crich --n-tasks 32 --molecule CO
+
+Modes
+-----
+accumulate             Build partial statistics for one chunk of dumps.
+plot                   Grid of per-molecule profiles, 3D median (+ percentile
+                       shading) vs 1D model.
+plot-single            Mean/median/percentiles vs 1D for one molecule.
+plot-phys              Temperature, A_V and density profiles.
+plot-fraction-compare  Convergence test: 10%, 50% and 100% particle samples.
+                       Requires accumulate runs for each fraction.
+
+Notes
+-----
+Paths, radial and abundance binning, smoothing, MIN_COUNT and the percentile
+band are set in the configuration section near the top of the file.
+Figures are written to SAVE_DIR_BASE/<chemistry>/ab/.
 """
+
 from __future__ import annotations
 
 import argparse

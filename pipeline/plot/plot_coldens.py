@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""
+plot_coldens.py
+@author(s): Sam Beckers
+
+Plot a comparison of column densities from the 1D CSE model and the 3D Phantom/Sarracen render.
+
+Usage
+-----
+    python plot_coldens.py --molecule CO HCl SiO --chemistry Crich --n-tasks 32 --save
+"""
 from __future__ import annotations
 
 import argparse

@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 """
 plot_pointdensity.py
+@author(s): Sam Beckers
 
-Visualises the 2-D point density (radius × value) for a single molecule
+Visualises the 2D point density (radius × value) for a chemical species (abundance)
 OR a physical parameter (temperature, AV, density) by reading the partial
-.npz files produced by the accumulate step of plot_stats.py.
+.npz files produced by the accumulate step of radial_profiles.py.
 
 NO RE-RUNNING OF THE ACCUMULATION IS NEEDED
-
-The colour scale shows the MEAN number of particles per bin PER DUMP, i.e.
-the accumulated histogram (summed over all dumps) divided by the number of
-dumps. The MIN_COUNT cut is still applied to the raw accumulated counts, and
-the mean/median/percentile overlays are computed from the raw histogram
-(they are ratios within a radial row, so the normalisation cancels).
 
 Usage
 -----

@@ -1,8 +1,59 @@
 #!/usr/bin/env python3
 """
-sph_render.py
+render_slice.py
+@author(s): Sam Beckers
 
-Native Sarracen SPH rendering, wrapped in one class (``SPHRenderer``).
+Render 3D post-processed Chemistry + Phantom SPH dumps with Sarracen, including per-particle chemistry.
+
+All rendering is wrapped in one class, SPHRenderer(). Particle positions,
+smoothing lengths and sinks are read from the Phantom dump (via Sarracen);
+abundances and physical parameters (temperature, density, A_V) are read from
+the matching post-processed HDF5 dump and attached to the particles by ID.
+
+Usage
+-----
+    r = SPHRenderer(chemistry="Crich", fast=False)
+    r.list_dumps()
+    r.set_dump(index=-1)
+    r.plot_single_render("CO", plane="xy", xlim=500, save=True)
+
+Plot types
+----------
+plot_single_render        One quantity (abundance, T, n, A_V or speed) in the
+                          xy or xz plane, with optional contours.
+plot_fraction_compare     Same quantity at several particle subsampling
+                          fractions (3 or 9 panels) on shared colour limits.
+plot_phys_overview        Temperature, density and A_V in xy (top) and xz
+                          (bottom), each row with its own colourbar.
+plot_velocity_components  Signed in-plane velocity components, optionally
+                          with the orbital wind-cone angle drawn on top.
+plot_parent_daughter_pair A parent species next to its daughter on the
+                          parent's colour scale.
+plot_molecule_grid        Grid of many molecules, one colourbar per panel.
+
+Main features
+-------------
+- Subsampling: "fast" mode and the per-plot "fraction" keep a
+  deterministic subset of particles chosen by hashing the particle ID
+  (identical to the selection in the profile-statistics script).
+- Colour limits: "vmin"/"vmax" or a fixed number of "decades" below the
+  maximum, applied to the finished image.
+- Image clean-up: optional nearest-neighbour filling of empty pixels
+  ("interpolate") and log-space Gaussian smoothing ("smooth_au").
+- Column density: "col_dens" multiplies the abundance by n(H2) and renders
+  it in m^-3; contours are still drawn from the pure abundance.
+- Contours: levels at 1% and 50% of the image maximum. Their mean radii can
+  be appended to a tab-separated file ("radii_save_path").
+- Caching: prepared DataFrames are cached per dump, quantity and fraction.
+- Batch runs: "load_render_config_row" reads one row of a configs CSV into a
+  settings dict, for SLURM-style batch rendering.
+
+Notes
+-----
+Paths ("BASE_PATH", dump and Phantom directories, output directory) are
+set at the top of the file and in "SPHRenderer.__init__". Output goes to
+"save_dir_base/<chemistry>/render[_fast]/<kind>/...", as PNG, or PDF in
+dark mode.
 """
 
 from __future__ import annotations

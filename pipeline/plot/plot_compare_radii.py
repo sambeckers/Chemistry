@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 compare_radii_1d_3d.py
+@author(s): Sam Beckers
 
 Compare photodissociation radii from:
-  - 1D KoekenBak model  (R at 0.01× and 0.5× initial abundance)
-  - 3D Phantom/Sarracen render  (contour radii saved by render_slice_v2.py)
+  - 1D CSE model (R at 0.01× and 0.5× initial abundance)
+  - 3D Phantom/Sarracen render  (contour radii saved by render_slice.py)
 
 For each molecule present in both datasets, plots R_1D vs R_3D for each
 plane (xy, xz) and each threshold (0.01×, 0.5×).
