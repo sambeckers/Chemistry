@@ -138,9 +138,24 @@ class ParticleIdDiscoveryApp:
             if "processing" not in config_data:
                 config_data["processing"] = {}
 
-            config_data["paths"]["particle_ids_cache"] = str(particle_ids_file.resolve())
+            base_path = Path(config_data["paths"].get("base_path", "/")).resolve()
+            scratch_path = Path(config_data["paths"].get("scratch_path", str(base_path))).resolve()
+
+            def _portable(absolute: Path) -> str:
+                """Return a config-portable path value (scratch-relative, base-relative, or absolute)."""
+                try:
+                    return f"~scratch/{absolute.relative_to(scratch_path).as_posix()}"
+                except ValueError:
+                    pass
+                try:
+                    return absolute.relative_to(base_path).as_posix()
+                except ValueError:
+                    pass
+                return str(absolute)
+
+            config_data["paths"]["particle_ids_cache"] = _portable(particle_ids_file.resolve())
             config_data["paths"]["particle_ids_cache_mode"] = "all_ids"
-            config_data["paths"]["dump_time_map_cache"] = str(dump_time_map_file.resolve())
+            config_data["paths"]["dump_time_map_cache"] = _portable(dump_time_map_file.resolve())
             config_data["processing"]["discovered_particle_count_all"] = int(len(all_sorted))
             config_data["processing"]["discovered_particle_count"] = selected_count
             config_data["processing"]["discovered_batch_count"] = int(len(layout))

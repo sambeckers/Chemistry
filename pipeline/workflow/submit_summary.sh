@@ -14,6 +14,24 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PIPELINE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Find a usable Python interpreter.
+# Priority: PIPELINE_PYTHON env var > python3 on PATH > hard error.
+# (In SLURM tasks, PIPELINE_PYTHON is always set via --export by the submit scripts.)
+_bootstrap_python() {
+    if [[ -n "${PIPELINE_PYTHON:-}" && -x "${PIPELINE_PYTHON}" ]]; then
+        echo "${PIPELINE_PYTHON}"; return
+    fi
+    local by_path
+    by_path=$(command -v python3 2>/dev/null || true)
+    if [[ -n "${by_path}" && -x "${by_path}" ]]; then
+        echo "${by_path}"; return
+    fi
+    echo "Error: Python not found. Export PIPELINE_PYTHON or activate MRP_env." >&2
+    exit 1
+}
+BOOTSTRAP_PYTHON="$(_bootstrap_python)"
+
 DEFAULT_CONFIG="${PIPELINE_ROOT}/config/pipeline_config.yaml"
 SUMMARY_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/summarize_batches.slurm"
 
@@ -70,7 +88,7 @@ if [[ ! -f "${CONFIG_PATH}" ]]; then
 fi
 
 PYTHON_BIN=$(
-    /fred/oz304/beckers/MRP_env/bin/python - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
+    ${BOOTSTRAP_PYTHON} - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
 import sys
 from pathlib import Path
 
@@ -81,7 +99,7 @@ sys.path.insert(0, str(pipeline_root / "scripts"))
 from common import PipelineConfigManager  # noqa: E402
 
 cfg = PipelineConfigManager.load(config_path)
-print(cfg.get("paths", {}).get("python", "/fred/oz304/beckers/MRP_env/bin/python"))
+print(cfg.get("paths", {}).get("python", ""))
 PY
 )
 

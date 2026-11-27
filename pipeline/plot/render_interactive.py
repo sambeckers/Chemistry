@@ -6,9 +6,9 @@ render_interactive.py
 Interactive script for SPHRenderer() in render_slice.py
 """
 import importlib
-import pipeline.plot.render_slice as render_slice
+import render_slice
 importlib.reload(render_slice)          # pick up edits to render_slice.py
-from pipeline.plot.render_slice import SPHRenderer
+from render_slice import SPHRenderer
 
 # Setup ---------------------------------------------------------------
 # decades=4 -> every plot gets vmin = vmax / 10**4 automatically
@@ -82,15 +82,15 @@ fig = r.plot_single_render(
 # fig = r.plot_molecule_grid(r.PARENTS, plane="xz", xlim=6000, dens_weight=True, contours=True, save=True)
 # fig = r.plot_molecule_grid(r.DAUGHTERS, plane="xz", xlim=6000, dens_weight=True, contours=True, save=True)
 
-# %% Contours + radii table ----------------------------------------------
+# Contours + radii table ----------------------------------------------
 # fig = r.plot_single_render(
 #     "CO", plane="xy", xlim=6000, dens_weight=True, contours=True,
 #     radii_save_path="/fred/oz304/beckers/v10a09_out/output/radii_contours.txt",
 # )
 
-# %% Column-density weighting (abundance x n_H2) --------------------------
+# Column-density weighting (abundance x n_H2) --------------------------
 # fig = r.plot_single_render("CO", plane="xz", xlim=6000, col_dens=True)
 
-# %% Loop over several molecules -----------------------------------------
+# Loop over several molecules -----------------------------------------
 # for mol in ["CO", "HCN", "SiO"]:
 #     r.plot_single_render(mol, plane="xz", xlim=6000, dens_weight=True, save=True, show=False)

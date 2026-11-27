@@ -21,7 +21,7 @@ else
 fi
 
 CONFIG_PATH="${PIPELINE_CONFIG:-${ROOT}/config/pipeline_config.yaml}"
-PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
+PYTHON_BIN="${PIPELINE_PYTHON:-$(command -v python3 2>/dev/null || echo '')}"
 DISCOVER_OUT_DIR="${DISCOVER_OUT_DIR:?DISCOVER_OUT_DIR is required}"
 
 cd "${ROOT}"

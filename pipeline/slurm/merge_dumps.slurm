@@ -21,7 +21,7 @@ else
 fi
 
 CONFIG_PATH="${PIPELINE_CONFIG:-${ROOT}/config/pipeline_config.yaml}"
-PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
+PYTHON_BIN="${PIPELINE_PYTHON:-$(command -v python3 2>/dev/null || echo '')}"
 
 cd "${ROOT}"
 echo "WORKFLOW_TASK|stage=merge_dumps|dump_index=${SLURM_ARRAY_TASK_ID}|phase=start|epoch=$(date +%s)"

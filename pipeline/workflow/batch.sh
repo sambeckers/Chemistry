@@ -28,6 +28,24 @@ set -euo pipefail
 
 WORKFLOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIPELINE_ROOT="$(cd "${WORKFLOW_DIR}/.." && pwd)"
+
+# Find a usable Python interpreter.
+# Priority: PIPELINE_PYTHON env var > python3 on PATH > hard error.
+# (In SLURM tasks, PIPELINE_PYTHON is always set via --export by the submit scripts.)
+_bootstrap_python() {
+    if [[ -n "${PIPELINE_PYTHON:-}" && -x "${PIPELINE_PYTHON}" ]]; then
+        echo "${PIPELINE_PYTHON}"; return
+    fi
+    local by_path
+    by_path=$(command -v python3 2>/dev/null || true)
+    if [[ -n "${by_path}" && -x "${by_path}" ]]; then
+        echo "${by_path}"; return
+    fi
+    echo "Error: Python not found. Export PIPELINE_PYTHON or activate MRP_env." >&2
+    exit 1
+}
+BOOTSTRAP_PYTHON="$(_bootstrap_python)"
+
 DEFAULT_CONFIG="${PIPELINE_ROOT}/config/pipeline_config.yaml"
 SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/run_batch.slurm"
 MERGE_SLURM_SCRIPT="${PIPELINE_ROOT}/slurm/merge_dumps.slurm"
@@ -116,7 +134,11 @@ done
 
 if [[ -n "${RUN_INDEX}" ]]; then
     # Run mode: one task executes one batch index.
-    PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
+    PYTHON_BIN="${PIPELINE_PYTHON:-$(command -v python3 2>/dev/null || true)}"
+    if [[ -z "${PYTHON_BIN}" || ! -x "${PYTHON_BIN}" ]]; then
+        echo "Error: Python not found. Export PIPELINE_PYTHON or activate MRP_env." >&2
+        exit 1
+    fi
     echo "Run mode: executing batch index ${RUN_INDEX}"
     exec "${PYTHON_BIN}" "${PIPELINE_ROOT}/scripts/run_batch_pipeline.py" \
         --config "${CONFIG_PATH}" \
@@ -139,7 +161,7 @@ step_done
 
 step_start "Checking particle-ID discovery cache"
 DISCOVERY_NEEDED=0
-if ! /fred/oz304/beckers/MRP_env/bin/python - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
+if ! ${BOOTSTRAP_PYTHON} - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
 import sys
 from pathlib import Path
 
@@ -166,7 +188,7 @@ step_done
 step_start "Loading batch submission metadata"
 set +e
 INFO_RAW=$(
-    /fred/oz304/beckers/MRP_env/bin/python - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
+    ${BOOTSTRAP_PYTHON} - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
 import sys
 from pathlib import Path
 
@@ -188,7 +210,7 @@ discovery_mode = str(cfg.get("processing", {}).get("discovery_mode", "array")).s
 if discovery_mode not in {"array", "serial"}:
     raise ValueError("processing.discovery_mode must be 'array' or 'serial'")
 
-python_bin = cfg.get("paths", {}).get("python", "/fred/oz304/beckers/MRP_env/bin/python")
+python_bin = cfg.get("paths", {}).get("python", "")
 scratch_root = cfg.get("paths", {}).get("scratch_root", str(pipeline_root / "work"))
 
 dump_count = len(DumpSelection.target_dump_numbers(cfg))
@@ -247,7 +269,7 @@ if [[ -n "${RESUME_STATUS_FILE}" ]]; then
     PENDING_DIR="${SCRATCH_ROOT}/logs"
     PENDING_BATCH_FILE="${PENDING_DIR}/pending_batches_${DATETIME}.txt"
 
-    /fred/oz304/beckers/MRP_env/bin/python - \
+    ${BOOTSTRAP_PYTHON} - \
             "${RESUME_STATUS_FILE}" "${TOTAL_BATCH_COUNT}" "${PENDING_BATCH_FILE}" <<'PY'
 import sys
 from pathlib import Path
@@ -339,7 +361,7 @@ DISCOVER_MERGE_JOB_ID=""
 if [[ "${DISCOVERY_NEEDED}" -eq 1 ]]; then
     step_start "Submitting particle discovery jobs"
     readarray -t DISCOVERY_INFO < <(
-        /fred/oz304/beckers/MRP_env/bin/python - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
+        ${BOOTSTRAP_PYTHON} - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
 import sys
 from pathlib import Path
 

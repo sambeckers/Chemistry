@@ -254,9 +254,22 @@ class PipelineConfigManager:
             return {key: PipelineConfigManager._expand_value(item) for key, item in value.items()}
         return value
 
+    # Prefix used in YAML to mark a path as relative to scratch_path instead of base_path.
+    _SCRATCH_PREFIX = "~scratch/"
+
     @staticmethod
     def _resolve_paths_with_base(config: dict) -> dict:
-        """Resolve relative entries in paths.* against paths.base_path."""
+        """Resolve relative entries in paths.* against paths.base_path or paths.scratch_path.
+
+        Resolution rules (applied after env-var expansion):
+        - ``base_path``   is always made absolute (relative → joined against PIPELINE_ROOT).
+        - ``scratch_path`` is made absolute relative to ``base_path`` if not already absolute.
+          If absent it defaults to ``base_path`` so old configs without it still work.
+        - Any value starting with ``~scratch/`` is resolved against ``scratch_path``
+          (the prefix is stripped before joining).
+        - Any other relative value is resolved against ``base_path``.
+        - Already-absolute values pass through unchanged.
+        """
         paths = config.get("paths")
         if not isinstance(paths, dict):
             return config
@@ -270,15 +283,31 @@ class PipelineConfigManager:
             base_path = (PIPELINE_ROOT / base_path).resolve()
         else:
             base_path = base_path.resolve()
-
         paths["base_path"] = str(base_path)
 
+        scratch_value = paths.get("scratch_path", "")
+        if isinstance(scratch_value, str) and scratch_value.strip():
+            scratch_path = Path(scratch_value).expanduser()
+            if not scratch_path.is_absolute():
+                scratch_path = (base_path / scratch_path).resolve()
+            else:
+                scratch_path = scratch_path.resolve()
+        else:
+            scratch_path = base_path
+        paths["scratch_path"] = str(scratch_path)
+
+        scratch_prefix = PipelineConfigManager._SCRATCH_PREFIX
         for key, value in list(paths.items()):
-            if key == "base_path" or not isinstance(value, str) or not value.strip():
+            if key in ("base_path", "scratch_path", "particle_ids_cache_mode") or not isinstance(value, str) or not value.strip():
                 continue
-            resolved = Path(value).expanduser()
-            if not resolved.is_absolute():
-                paths[key] = str((base_path / resolved).resolve())
+            if value.startswith(scratch_prefix):
+                rel = value[len(scratch_prefix):]
+                paths[key] = str((scratch_path / rel).resolve())
+                continue
+            expanded = Path(value).expanduser()
+            if expanded.is_absolute():
+                continue  # already absolute — leave as-is
+            paths[key] = str((base_path / expanded).resolve())
 
         return config
 

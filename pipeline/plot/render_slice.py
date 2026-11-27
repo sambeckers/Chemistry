@@ -83,7 +83,7 @@ BASE_PATH = Path("/fred/oz304/beckers/Chemistry")
 
 # ---- plot_utils (external helper module) ----------------------------------
 _spec = importlib.util.spec_from_file_location(
-    "plot_utils", BASE_PATH / "code_chem" / "plotting" / "plot_utils.py"
+    "plot_utils", BASE_PATH / "code_chem" / "plot" / "plot_utils.py"
 )
 _plot_utils = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_plot_utils)

@@ -18,7 +18,7 @@ else
 	exit 1
 fi
 
-PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
+PYTHON_BIN="${PIPELINE_PYTHON:-$(command -v python3 2>/dev/null || echo '')}"
 
 if [[ -z "${BATCH_LOG_DIR:-}" ]]; then
 	echo "Error: BATCH_LOG_DIR is not set."

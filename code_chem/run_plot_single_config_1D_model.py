@@ -20,7 +20,7 @@ from kb.plotting.objects import PlotChem as PlotChemModule
 from kb import path
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, str(Path(__file__).parent / 'plotting'))
+sys.path.insert(0, str(Path(__file__).parent / 'plot'))
 from n_distinct_colours import generate_colormap
 from config import BASE_PATH, parents, daughters_Crich as daughters, daughters_Orich
 

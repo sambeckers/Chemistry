@@ -31,7 +31,7 @@ else
 fi
 
 CONFIG_PATH="${PIPELINE_CONFIG:-${ROOT}/config/pipeline_config.yaml}"
-PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
+PYTHON_BIN="${PIPELINE_PYTHON:-$(command -v python3 2>/dev/null || echo '')}"
 
 # Number of batch files processed serially by this task.
 # Set by the submitter via --export; falls back to 10.

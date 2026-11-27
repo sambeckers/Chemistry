@@ -30,7 +30,7 @@ else
 fi
 
 CONFIG_PATH="${PIPELINE_CONFIG:-${ROOT}/config/pipeline_config.yaml}"
-PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
+PYTHON_BIN="${PIPELINE_PYTHON:-$(command -v python3 2>/dev/null || echo '')}"
 
 REAL_INDEX=$(sed -n "$((SLURM_ARRAY_TASK_ID + INDEX_OFFSET + 1))p" "${PENDING_INDEX_FILE}")
 

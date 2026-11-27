@@ -40,12 +40,18 @@ class TracingRunner:
         self.dump_dir = Path(paths["phantom_dump_dir"]).resolve()
         self.av_dir = Path(paths["av_dir"]).resolve()
         self.phantomanalysis_binary = Path(paths["phantomanalysis_binary"]).resolve()
-        self.analysis_trace_source = Path(
-            paths.get("analysis_trace_source", "/fred/oz304/beckers/phantom/src/utils/analysis_trace.f90")
-        ).resolve()
-        self.phantom_writemake_script = Path(
-            paths.get("phantom_writemake_script", "/fred/oz304/beckers/phantom/scripts/writemake.sh")
-        ).resolve()
+        if "analysis_trace_source" not in paths:
+            raise KeyError(
+                "paths.analysis_trace_source is required in pipeline_config.yaml "
+                "(e.g. 'phantom/src/utils/analysis_trace.f90' relative to base_path)"
+            )
+        self.analysis_trace_source = Path(paths["analysis_trace_source"]).resolve()
+        if "phantom_writemake_script" not in paths:
+            raise KeyError(
+                "paths.phantom_writemake_script is required in pipeline_config.yaml "
+                "(e.g. 'phantom/scripts/writemake.sh' relative to base_path)"
+            )
+        self.phantom_writemake_script = Path(paths["phantom_writemake_script"]).resolve()
         self.scratch_root = Path(paths["scratch_root"]).resolve()
 
         default_root = self.scratch_root / "tracing"
@@ -377,6 +383,27 @@ class TracingRunner:
             shutil.move(str(src), str(dst))
         return self.trace_binary_dir
 
+    @staticmethod
+    def _make_config_path_value(absolute: Path, base_path: Path, scratch_path: Path) -> str:
+        """Return a config-portable path value for a resolved absolute path.
+
+        Priority:
+        1. Relative to scratch_path  → stored as ``~scratch/<rel>``
+        2. Relative to base_path     → stored as ``<rel>`` (bare relative)
+        3. Neither                   → stored as absolute string (fallback)
+        """
+        try:
+            rel = absolute.relative_to(scratch_path)
+            return f"~scratch/{rel.as_posix()}"
+        except ValueError:
+            pass
+        try:
+            rel = absolute.relative_to(base_path)
+            return rel.as_posix()
+        except ValueError:
+            pass
+        return str(absolute)
+
     def _write_metadata_and_update_config(
         self,
         selected_ids: np.ndarray,
@@ -384,6 +411,9 @@ class TracingRunner:
         selected_dumps: list[int],
     ) -> None:
         """Write trace metadata and update config.
+
+        Auto-written paths are stored relative to base_path or scratch_path
+        (using the ``~scratch/`` prefix) so the config remains portable between users.
 
         Args:
             selected_ids (np.ndarray): Array of selected particle IDs.
@@ -403,9 +433,20 @@ class TracingRunner:
             cfg = yaml.safe_load(handle)
         if "paths" not in cfg:
             cfg["paths"] = {}
-        cfg["paths"]["trace_binary_batches_dir"] = str(self.trace_binary_dir.resolve())
-        cfg["paths"]["trace_metadata_file"] = str(self.trace_metadata_file.resolve())
-        cfg["paths"]["analysis_trace_source"] = str(self.analysis_trace_source)
+
+        base_path = Path(cfg["paths"].get("base_path", "/")).resolve()
+        scratch_path = Path(cfg["paths"].get("scratch_path", str(base_path))).resolve()
+
+        cfg["paths"]["trace_binary_batches_dir"] = self._make_config_path_value(
+            self.trace_binary_dir.resolve(), base_path, scratch_path
+        )
+        cfg["paths"]["trace_batches_dir"] = cfg["paths"]["trace_binary_batches_dir"]
+        cfg["paths"]["trace_metadata_file"] = self._make_config_path_value(
+            self.trace_metadata_file.resolve(), base_path, scratch_path
+        )
+        cfg["paths"]["analysis_trace_source"] = self._make_config_path_value(
+            self.analysis_trace_source.resolve(), base_path, scratch_path
+        )
         with open(self.config_path, "w", encoding="ascii") as handle:
             yaml.safe_dump(cfg, handle, sort_keys=False)
 

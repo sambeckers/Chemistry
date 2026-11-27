@@ -45,6 +45,23 @@ MAX_ARRAY_SIZE=2048
 CHUNKS_PER_WAVE=5    # attempt up to 5 chunks per wave
 MAX_SUBMIT_JOBS=10000 # hard cap: clips last chunk in a wave if needed
 
+# Find a usable Python interpreter.
+# Priority: PIPELINE_PYTHON env var > python3 on PATH > hard error.
+# (In SLURM tasks, PIPELINE_PYTHON is always set via --export.)
+_bootstrap_python() {
+    if [[ -n "${PIPELINE_PYTHON:-}" && -x "${PIPELINE_PYTHON}" ]]; then
+        echo "${PIPELINE_PYTHON}"; return
+    fi
+    local by_path
+    by_path=$(command -v python3 2>/dev/null || true)
+    if [[ -n "${by_path}" && -x "${by_path}" ]]; then
+        echo "${by_path}"; return
+    fi
+    echo "Error: Python not found. Export PIPELINE_PYTHON or activate MRP_env." >&2
+    exit 1
+}
+BOOTSTRAP_PYTHON="$(_bootstrap_python)"
+
 CONFIG_PATH="${PIPELINE_CONFIG:-${DEFAULT_CONFIG}}"
 MAX_CONCURRENT=""
 RUN_INDEX=""
@@ -83,7 +100,11 @@ done
 
 if [[ -n "${RUN_INDEX}" ]]; then
     # Run mode: one SLURM task executes one batch index.
-    PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
+    PYTHON_BIN="${PIPELINE_PYTHON:-$(command -v python3 2>/dev/null || true)}"
+    if [[ -z "${PYTHON_BIN}" || ! -x "${PYTHON_BIN}" ]]; then
+        echo "Error: Python not found. Set PIPELINE_PYTHON or activate MRP_env before running." >&2
+        exit 1
+    fi
     echo "Run mode: executing batch index ${RUN_INDEX}"
     exec "${PYTHON_BIN}" "${PIPELINE_ROOT}/scripts/run_batch_pipeline.py" \
         --config "${CONFIG_PATH}" \
@@ -103,7 +124,7 @@ if [[ -n "${RESUME_STATUS_FILE}" && ! -f "${RESUME_STATUS_FILE}" ]]; then
 fi
 
 readarray -t INFO < <(
-    /fred/oz304/beckers/MRP_env/bin/python - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
+    "${BOOTSTRAP_PYTHON}" - <<'PY' "${CONFIG_PATH}" "${PIPELINE_ROOT}"
 import sys
 from pathlib import Path
 
@@ -120,7 +141,7 @@ if cfg.get("processing", {}).get("discovered_particle_count_all") is None:
     sys.exit(2)
 
 count = BatchPlanner.batch_count(cfg)
-python_bin = cfg.get("paths", {}).get("python", "/fred/oz304/beckers/MRP_env/bin/python")
+python_bin = cfg.get("paths", {}).get("python", "")
 scratch_root = cfg.get("paths", {}).get("scratch_root", str(pipeline_root / "work"))
 
 print(count)
@@ -158,7 +179,7 @@ if [[ -n "${RESUME_STATUS_FILE}" ]]; then
     PENDING_DIR="${SCRATCH_ROOT}/logs"
     PENDING_BATCH_FILE="${PENDING_DIR}/pending_batches_${DATETIME}.txt"
 
-    /fred/oz304/beckers/MRP_env/bin/python - \
+    ${BOOTSTRAP_PYTHON} - \
             "${RESUME_STATUS_FILE}" "${TOTAL_BATCH_COUNT}" "${PENDING_BATCH_FILE}" <<'PY'
 import sys
 from pathlib import Path
@@ -220,6 +241,7 @@ echo "Chemistry HDF5 Batch Submit"
 echo "========================================="
 echo "Pipeline root   : ${PIPELINE_ROOT}"
 echo "Config          : ${CONFIG_PATH}"
+echo "Using Python environment: ${BOOTSTRAP_PYTHON}"; "${BOOTSTRAP_PYTHON}" -c "import sys; print(sys.prefix)"
 if [[ -n "${RESUME_STATUS_FILE}" ]]; then
     echo "Resume mode     : YES (status file: ${RESUME_STATUS_FILE})"
     echo "Pending batches : ${BATCH_COUNT} / ${TOTAL_BATCH_COUNT}"

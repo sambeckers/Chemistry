@@ -19,7 +19,7 @@ else
 fi
 
 CONFIG_PATH="${PIPELINE_CONFIG:-${ROOT}/config/pipeline_config.yaml}"
-PYTHON_BIN="${PIPELINE_PYTHON:-/fred/oz304/beckers/MRP_env/bin/python}"
+PYTHON_BIN="${PIPELINE_PYTHON:-$(command -v python3 2>/dev/null || echo '')}"
 
 # Enable OpenMP multithreading for phantomanalysis to massively speed up tracing
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}

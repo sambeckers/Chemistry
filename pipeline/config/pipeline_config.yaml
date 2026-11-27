@@ -1,0 +1,58 @@
+paths:
+  # --- Anchors (must be absolute; set these for each user/machine) -----------
+  base_path: /fred/oz304/beckers/
+  scratch_path: /aphid/scratch-3month/sbeckers/
+
+  # --- Relative to base_path -------------------------------------------------
+  phantom_dump_dir: v10a09
+  av_dir: v10a09_out/AV
+  phantomanalysis_binary: v10a09_out/phantomanalysis
+  chemistry_model_root: Chemistry/evolving_model
+  python: MRP_env/bin/python
+  analysis_trace_source: phantom/src/utils/analysis_trace.f90
+  phantom_writemake_script: phantom/scripts/writemake.sh
+  tracing_root: v10a09_out/work/tracing
+  scratch_root: v10a09_out/work
+
+  # --- Relative to scratch_path (prefix ~scratch/) ---------------------------
+  batch_output_dir: "~scratch/v10a09_out_test/output/batches"
+  scatter_output_dir: "~scratch/v10a09_out/output/scatter"
+  final_output_dir: "~scratch/v10a09_out/output/dumps"
+
+  # --- Auto-written by pipeline steps (do not edit manually) -----------------
+  # trace_batches_dir and trace_binary_batches_dir are written by run_tracing.py
+  # dump_time_map_cache and particle_ids_cache are written by discover step
+  trace_batches_dir: v10a09_out/work/tracing/batches
+  trace_binary_batches_dir: v10a09_out/work/tracing/batches
+  trace_metadata_file: v10a09_out/work/tracing/tracing_metadata.yaml
+  dump_time_map_cache: v10a09_out/work/particle_discovery/run_2026-03-16_15-27-59/per_dump_ids/dump_time_map_cache.json
+  particle_ids_cache: v10a09_out/work/particle_discovery/run_2026-03-16_15-27-59/per_dump_ids/particle_ids_all.npy
+  particle_ids_cache_mode: all_ids
+simulation:
+  prefix: wind
+processing:
+  start_dump: 0
+  end_dump: 1600
+  dump_step: 1
+  discovery_mode: serial
+  time_key_decimals: 0
+  n_batches: 10000
+  n_boundary: 50000
+  chemistry_types:
+  - Crich
+  compression: gzip
+  compression_level: 4
+  cleanup_temporary: true
+  overwrite_batch: true
+  verbose_chemistry_output: false
+  retain_batch_files_after_merge: true
+  discovered_particle_count_all: 4099320
+  discovered_particle_count: 4079320
+  discovered_batch_count: 10000
+  verbose_tracing: false
+  auto_compile_analysis: true
+  force_recompile_analysis: false
+  analysis_compile_system: gfortran
+hdf5:
+  backend: python
+  fortran_converter_executable: /path/to/convert_ev_to_hdf5
