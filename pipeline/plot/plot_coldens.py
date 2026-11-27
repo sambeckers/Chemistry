@@ -29,6 +29,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config import BASE_PATH
 from code_chem.plot.plot_utils import set_plot_style, format_species_label
 
+_PIPELINE_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PIPELINE_ROOT / "scripts"))
+from common import PipelineConfigManager
+_PIPELINE_CFG = PipelineConfigManager.load(_PIPELINE_ROOT / "config" / "pipeline_config.yaml")
+
 from code_chem.run_plot_single_config_1D_model import (
     run_model,
     find_star_for_config,
@@ -39,8 +44,8 @@ from code_chem.run_plot_single_config_1D_model import (
 from kb.modeling.tools import CodeIO
 from kb import path as kb_path
 
-DUMP_DIR      = Path("/fred/oz304/beckers/v10a09_out/output/dumps")
-SCRATCH_DIR   = Path("/aphid/scratch-3month/sbeckers/v10a09_out/accum_scratch")
+DUMP_DIR      = Path(_PIPELINE_CFG["paths"]["final_output_dir"])
+SCRATCH_DIR   = Path(_PIPELINE_CFG["paths"]["final_output_dir"]).parent.parent / "accum_scratch"
 SAVE_DIR_BASE = BASE_PATH / "figures/v10a09_out"
 
 R_MIN, R_MAX, N_BINS = 1e14, 1e17, 300

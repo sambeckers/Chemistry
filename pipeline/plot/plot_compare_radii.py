@@ -39,6 +39,11 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config import BASE_PATH
 
+_PIPELINE_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PIPELINE_ROOT / "scripts"))
+from common import PipelineConfigManager
+_PIPELINE_CFG = PipelineConfigManager.load(_PIPELINE_ROOT / "config" / "pipeline_config.yaml")
+
 from code_chem.run_plot_single_config_1D_model import (
     run_model,
     find_star_for_config,
@@ -492,9 +497,10 @@ def main():
     )
     if is_interactive():
         args = parser.parse_args([
-            "--radii-file", "/fred/oz304/beckers/v10a09_out/output/radii_contours.txt",
+            "--radii-file", str(Path(_PIPELINE_CFG["paths"]["final_output_dir"]).parent / "radii_contours.txt"),
             "--chemistry", "Crich",
-            "--save-dir", "/fred/oz304/beckers/Chemistry/figures/v10a09_out/Crich",
+            # "--save-dir", str(BASE_PATH / "figures/v10a09_out/Crich"),
+            "--save-dir", str(Path("/fred/oz304/marievds/figures/v10a09_out/Crich")),
             "--show",
             # "--dark-mode",
         ])

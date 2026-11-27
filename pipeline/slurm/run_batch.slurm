@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-echo "Using: ${PIPELINE_PYTHON:-unset}"
+echo "Using Python environment: ${PIPELINE_PYTHON:-unset}"
 "${PIPELINE_PYTHON:-python3}" -c "import sys; print(sys.prefix)"
 
 # Keep root resolution compatible with both submit wrappers and direct sbatch use.

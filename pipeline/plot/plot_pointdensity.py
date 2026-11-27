@@ -64,6 +64,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config import BASE_PATH
 from code_chem.plot.plot_utils import apply_abundance_axis_limits, add_log_ticks, set_plot_style, _collect_xy, format_species_label
 
+_PIPELINE_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PIPELINE_ROOT / "scripts"))
+from common import PipelineConfigManager
+_PIPELINE_CFG = PipelineConfigManager.load(_PIPELINE_ROOT / "config" / "pipeline_config.yaml")
+
 from code_chem.run_plot_single_config_1D_model import (
     run_model,
     find_star_for_config,
@@ -91,9 +96,10 @@ _TITLE_POS = {
 # Grid constants — MUST match plot_stats.py exactly
 # ---------------------------------------------------------------------------
 
-DUMP_DIR      = Path("/fred/oz304/beckers/v10a09_out/output/dumps")
-SCRATCH_DIR   = Path("/aphid/scratch-3month/sbeckers/v10a09_out/accum_scratch")
-SAVE_DIR_BASE = BASE_PATH / "figures/v10a09_out"
+DUMP_DIR      = Path(_PIPELINE_CFG["paths"]["final_output_dir"])
+ACCUM_DIR = Path(_PIPELINE_CFG["paths"]["accumulate_dir"])
+# SAVE_DIR_BASE = Path(_PIPELINE_CFG["paths"]["figures_dir"])
+SAVE_DIR_BASE = Path("/fred/oz304/marievds/figures/v10a09_out")
 
 R_MIN, R_MAX, N_BINS = 1e13, 1e17, 300
 R_EDGES   = np.logspace(np.log10(R_MIN), np.log10(R_MAX), N_BINS + 1)
@@ -237,9 +243,9 @@ def overlay_1d_profile_CSE(
 # 1-D model loader and overlay — NEW (pre-computed ev_0.dat)
 # ===========================================================================
 
-DEFAULT_EV_DAT = Path(
-    "/fred/oz304/beckers/Chemistry/evolving_model/"
-    "Crich_1d_verify/ev_output/ev_0.dat"
+DEFAULT_EV_DAT = (
+    Path(_PIPELINE_CFG["paths"]["chemistry_model_root"])
+    / "Crich_1d_verify/ev_output/ev_0.dat"
 )
 
 # Maps the PHYS_PARAMS key to the corresponding column in ev_0.dat
@@ -587,10 +593,10 @@ def aggregate_molecule(
     hist_2d   : (N_BINS, N_AB_BINS)
     """
     pattern = f"partial_{chemistry}_*_of_{n_tasks:04d}.npz"
-    files   = sorted(SCRATCH_DIR.glob(pattern))
+    files   = sorted(ACCUM_DIR.glob(pattern))
     if not files:
         raise FileNotFoundError(
-            f"No partial files matching '{pattern}' in {SCRATCH_DIR}\n"
+            f"No partial files matching '{pattern}' in {ACCUM_DIR}\n"
             "Run the accumulate step of plot_stats.py first."
         )
     print(f"Aggregating {len(files)} partial files for '{molecule}' …")
@@ -652,10 +658,10 @@ def aggregate_phys_param(
         )
     cfg     = PHYS_PARAMS[param]
     pattern = f"partial_{chemistry}_*_of_{n_tasks:04d}.npz"
-    files   = sorted(SCRATCH_DIR.glob(pattern))
+    files   = sorted(ACCUM_DIR.glob(pattern))
     if not files:
         raise FileNotFoundError(
-            f"No partial files matching '{pattern}' in {SCRATCH_DIR}\n"
+            f"No partial files matching '{pattern}' in {ACCUM_DIR}\n"
             "Run the accumulate step of plot_stats.py first."
         )
     print(f"Aggregating {len(files)} partial files for phys param '{param}' …")

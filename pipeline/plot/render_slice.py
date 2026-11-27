@@ -62,6 +62,7 @@ import csv
 import importlib.util
 import math
 import re
+import sys
 from pathlib import Path
 
 import h5py
@@ -80,6 +81,12 @@ from scipy.ndimage import distance_transform_edt, gaussian_filter
 from scipy.spatial import cKDTree
 
 BASE_PATH = Path("/fred/oz304/beckers/Chemistry")
+
+_PIPELINE_ROOT = Path(__file__).resolve().parent.parent
+if str(_PIPELINE_ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(_PIPELINE_ROOT / "scripts"))
+from common import PipelineConfigManager
+_PIPELINE_CFG = PipelineConfigManager.load(_PIPELINE_ROOT / "config" / "pipeline_config.yaml")
 
 # ---- plot_utils (external helper module) ----------------------------------
 _spec = importlib.util.spec_from_file_location(
@@ -138,8 +145,8 @@ class SPHRenderer:
     # ------------------------------------------------------------------
     def __init__(
         self,
-        dump_dir="/fred/oz304/beckers/v10a09_out/output/dumps",
-        phantom_dir="/fred/oz304/beckers/v10a09",
+        dump_dir=None,
+        phantom_dir=None,
         save_dir_base=None,
         fast: bool = False,
         chemistry: str = "Crich",
@@ -150,10 +157,10 @@ class SPHRenderer:
         smooth_au: float = 0.0,      # Gaussian sigma in au; 0 = off
         smooth_edge: float = 0.5,    # blurred-mask level that defines the edge
     ):
-        self.dump_dir = Path(dump_dir)
-        self.phantom_dir = Path(phantom_dir)
+        self.dump_dir = Path(dump_dir or _PIPELINE_CFG["paths"]["final_output_dir"])
+        self.phantom_dir = Path(phantom_dir or _PIPELINE_CFG["paths"]["phantom_dump_dir"])
         self.save_dir_base = Path(
-            save_dir_base or BASE_PATH / "figures/v10a09_out"
+            save_dir_base or _PIPELINE_CFG["paths"]["figures_dir"]
         )
         self.chemistry = chemistry
         self.dark_mode = dark_mode

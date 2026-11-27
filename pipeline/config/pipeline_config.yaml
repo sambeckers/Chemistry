@@ -13,11 +13,13 @@ paths:
   phantom_writemake_script: phantom/scripts/writemake.sh
   tracing_root: v10a09_out/work/tracing
   scratch_root: v10a09_out/work
+  figures_dir: v10a09_out/figures
 
   # --- Relative to scratch_path (prefix ~scratch/) ---------------------------
   batch_output_dir: "~scratch/v10a09_out_test/output/batches"
   scatter_output_dir: "~scratch/v10a09_out/output/scatter"
   final_output_dir: "~scratch/v10a09_out/output/dumps"
+  accumulate_dir: "~scratch/v10a09_out/accum_scratch"
 
   # --- Auto-written by pipeline steps (do not edit manually) -----------------
   # trace_batches_dir and trace_binary_batches_dir are written by run_tracing.py

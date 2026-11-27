@@ -6,15 +6,23 @@ render_interactive.py
 Interactive script for SPHRenderer() in render_slice.py
 """
 import importlib
+import sys
+from pathlib import Path
 import render_slice
 importlib.reload(render_slice)          # pick up edits to render_slice.py
 from render_slice import SPHRenderer
 
+_PIPELINE_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PIPELINE_ROOT / "scripts"))
+from common import PipelineConfigManager
+_PIPELINE_CFG = PipelineConfigManager.load(_PIPELINE_ROOT / "config" / "pipeline_config.yaml")
+
 # Setup ---------------------------------------------------------------
 # decades=4 -> every plot gets vmin = vmax / 10**4 automatically
 r = SPHRenderer(
-    dump_dir="/fred/oz304/beckers/v10a09_out/output/dumps",
-    phantom_dir="/fred/oz304/beckers/v10a09",
+    save_dir_base=Path("/fred/oz304/marievds/figures/v10a09_out"),
+    dump_dir=_PIPELINE_CFG["paths"]["final_output_dir"],
+    phantom_dir=_PIPELINE_CFG["paths"]["phantom_dump_dir"],
     chemistry="Crich",
     dark_mode=False,
     decades=3,
@@ -47,7 +55,7 @@ fig = r.plot_single_render(
     show=True,
     contours=True,
     contour_fracs=(0.5,),
-    # save=True,                      # use the standard directory/file naming
+    save=True,                      # use the standard directory/file naming
 )
 
 # Other ways to set the colour range ----------------------------------

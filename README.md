@@ -36,6 +36,8 @@ Key fields in `pipeline_config.yaml`, e.g. for v20a25:
 
 ```yaml
 paths:
+  base_path: /path/to/your/folder        # path to a folder including this repo, the data (e.g. v20a25 and v20a25_out) and the conda environments
+  scratch_path: /path/to/your/folder     # path to a folder with (unlimited) storage to temporarily save batch, scatter and gather output
   phantom_dump_dir: v20a25               # Phantom dump directory (relative to base_path)
   av_dir: v20a25_out/AV                  # AV_XXXXX files from column_densities.py
   batch_output_dir: .../output/batches   # per-batch HDF5 output
@@ -61,6 +63,9 @@ cd code_trace
 ```
 
 The pipeline reads these files at batch time. Without them, chemistry runs will fail.
+
+### Step 0 — Activate pipeline Python environment
+Before submitting any ./workflow/*.sh, make sure to activate the MRP_env environment. The .sh script will automatically read this, but will fallback to a default python3 interpeter if the conda environment is not activated!
 
 ### Step 1 — Particle discovery
 

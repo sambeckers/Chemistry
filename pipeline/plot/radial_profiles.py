@@ -90,14 +90,20 @@ from code_chem.run_plot_single_config_1D_model import (
 )
 from code_chem.plot.plot_utils import apply_abundance_axis_limits, add_log_ticks, _collect_xy, format_species_label
 
+_PIPELINE_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PIPELINE_ROOT / "scripts"))
+from common import PipelineConfigManager
+_PIPELINE_CFG = PipelineConfigManager.load(_PIPELINE_ROOT / "config" / "pipeline_config.yaml")
+
 
 # ---------------------------------------------------------------------------
 # Configuration — edit to match your setup
 # ---------------------------------------------------------------------------
 
-DUMP_DIR    = Path("/fred/oz304/beckers/v10a09_out/output/dumps")
-SCRATCH_DIR = Path("/aphid/scratch-3month/sbeckers/v10a09_out/accum_scratch")
-SAVE_DIR_BASE = BASE_PATH / "figures/v10a09_out"
+DUMP_DIR    = Path(_PIPELINE_CFG["paths"]["final_output_dir"])
+ACCUM_DIR = Path(_PIPELINE_CFG["paths"]["accumulate_dir"])
+# SAVE_DIR_BASE = Path(_PIPELINE_CFG["paths"]["figures_dir"])
+SAVE_DIR_BASE = Path("/fred/oz304/marievds/figures/v10a09_out")
 
 # Radius domain (cm)
 R_MIN = 1e13
@@ -492,7 +498,7 @@ def accumulate_chunk(
 def run_accumulate(task_id: int, n_tasks: int, chemistry: str, fraction: float = 1.0) -> None:
     """Process this task's slice of dump files, filter particles by fraction,
     and write a partial .npz with fraction encoded in the filename."""
-    SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+    ACCUM_DIR.mkdir(parents=True, exist_ok=True)
 
     dump_files = sorted(DUMP_DIR.glob("dump_*.h5"))
     if not dump_files:
@@ -508,11 +514,11 @@ def run_accumulate(task_id: int, n_tasks: int, chemistry: str, fraction: float =
 
     # Fraction=1.0 uses the original filename format (no fraction suffix).
     if fraction >= 1.0 - 1e-9:
-        out_path = (SCRATCH_DIR /
+        out_path = (ACCUM_DIR /
                     f"partial_{chemistry}_{task_id:04d}_of_{n_tasks:04d}.npz")
     else:
         frac_int = int(round(fraction * 100))
-        out_path = (SCRATCH_DIR /
+        out_path = (ACCUM_DIR /
                     f"partial_{chemistry}_f{frac_int:03d}_{task_id:04d}_of_{n_tasks:04d}.npz")
     save_dict: dict[str, np.ndarray] = {}
 
@@ -562,17 +568,17 @@ def aggregate_partials(
     else:
         frac_int = int(round(fraction * 100))
         pattern = f"partial_{chemistry}_f{frac_int:03d}_????_of_{n_tasks:04d}.npz"
-    files   = sorted(SCRATCH_DIR.glob(pattern))
+    files   = sorted(ACCUM_DIR.glob(pattern))
     if not files:
         if fraction >= 1.0 - 1e-9:
             raise FileNotFoundError(
-                f"No partial files matching '{pattern}' in {SCRATCH_DIR}\n"
+                f"No partial files matching '{pattern}' in {ACCUM_DIR}\n"
                 f"Run the accumulate step first (fraction=1.0 uses the original "
                 f"filename format without a fraction suffix)."
             )
         else:
             raise FileNotFoundError(
-                f"No partial files matching '{pattern}' in {SCRATCH_DIR}\n"
+                f"No partial files matching '{pattern}' in {ACCUM_DIR}\n"
                 f"Run the accumulate step with --fraction {fraction} first."
             )
     print(f"Aggregating {len(files)} partial files for fraction {fraction:.1%} …")
